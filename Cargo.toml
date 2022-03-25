@@ -1,0 +1,37 @@
+[package]
+authors = ["Michael Leonhard <michael@leonhardllc.com>"]
+description = "Modular HTTP server library, threaded handlers and async performance"
+categories = ["network-programming", "web-programming::http-server", "web-programming::websocket"]
+edition = "2021"
+keywords = ["web", "http", "server", "async", "threaded"]
+license = "MIT OR Apache-2.0"
+name = "beatrice"
+repository = "https://github.com/mleonhard/beatrice-rs"
+version = "0.1.0"
+
+[features]
+default = ["json"]
+json = ["serde", "serde_json"]
+internals = []
+
+[dependencies]
+async-fs = "^1.5.0"
+async-io = "^1.6.0"
+async-net = "^1.6"
+fixed-buffer = { version = "0.5", features = ["futures-io"] }
+futures-io = "^0.3.21"
+futures-lite = "^1.12.0"
+#libflate = "1"
+permit = "^0.1.4"
+safina-executor = { version = "^0.3.2" }
+safe-regex = "^0.2.5"
+safina-async-test = { version = "^0.1.13" }
+safina-timer = { version = "^0.1.11" }
+safina-sync = { version = "^0.2.2" }
+serde = { version = "1", optional = true, features = ["derive"] }
+serde_json = { version = "1", optional = true }
+temp-dir = "^0.1.11"
+temp-file = "^0.1.7"
+url = "2"
+
+[dev-dependencies]

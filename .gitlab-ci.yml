@@ -1,0 +1,48 @@
+# https://doc.rust-lang.org/cargo/guide/continuous-integration.html#gitlab-ci
+# https://users.rust-lang.org/t/my-gitlab-config-docs-tests/16396/3
+# https://docs.gitlab.com/ee/ci/yaml/
+
+stages:
+  - stage1
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/cargo
+
+before_script:
+  - rustc --version && cargo --version
+  - du -sh cargo/ target/ || true
+  - cargo install cargo-readme
+
+after_script:
+  - du -sh cargo/ target/ || true
+
+cache:
+  # Increment the 'gen' number to clear the caches.
+  key: $CI_JOB_NAME-$CI_COMMIT_BRANCH-gen3
+  paths:
+    - cargo/
+    - target/
+
+stable:
+  stage: stage1
+  image: rust:latest
+  script:
+    - cargo fmt --version || rustup component add rustfmt
+    - cargo clippy --version || rustup component add clippy
+    - ./check-all.sh
+
+nightly:
+  stage: stage1
+  image: rustlang/rust:nightly
+  variables:
+    CFG_RELEASE_CHANNEL: nightly
+    CFG_RELEASE: nightly
+  script:
+    # Simplify this once either issue is addressed:
+    # "Support nightly CI" https://github.com/rust-lang/rustfmt/issues/4498
+    # "Include rustfmt and clippy" https://github.com/rust-lang/docker-rust-nightly/issues/25
+    # "Include rustfmt and clippy components by default" https://github.com/rust-lang/docker-rust/issues/37
+    - cargo fmt --version || rustup component add rustfmt || cargo +nightly install --git https://github.com/rust-lang/rustfmt.git --branch master --force --features "rustfmt cargo-fmt" rustfmt-nightly
+    - cargo clippy --version || rustup component add clippy || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
+    - ./check-all.sh
+  allow_failure: true
