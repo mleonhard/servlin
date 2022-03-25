@@ -1,0 +1,28 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Version
+        run: rustc --version && cargo --version
+      - name: Install cargo-readme
+        run: cargo install cargo-readme
+      - name: Install rustfmt
+        run: cargo fmt --version || rustup component add rustfmt
+      - name: Install clippy
+        run: cargo clippy --version || rustup component add clippy
+      - name: Check
+        run: ./check-all.sh
