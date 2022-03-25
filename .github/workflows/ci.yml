@@ -1,4 +1,4 @@
-name: Rust
+name: CI
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check-all:
+  check:
 
     runs-on: ubuntu-latest
 
@@ -25,4 +25,4 @@ jobs:
       - name: Install clippy
         run: cargo clippy --version || rustup component add clippy
       - name: Check
-        run: check.sh
+        run: ./check.sh
