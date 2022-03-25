@@ -25,4 +25,4 @@ jobs:
       - name: Install clippy
         run: cargo clippy --version || rustup component add clippy
       - name: Check
-        run: check-all.sh
+        run: check.sh
