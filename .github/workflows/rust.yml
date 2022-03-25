@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  check-all:
 
     runs-on: ubuntu-latest
 
@@ -25,4 +25,4 @@ jobs:
       - name: Install clippy
         run: cargo clippy --version || rustup component add clippy
       - name: Check
-        run: ./check-all.sh
+        run: check-all.sh
