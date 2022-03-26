@@ -26,11 +26,13 @@
 //!   - request timeouts
 //!   - chunked transfer-encoding for streaming uploads
 //!   - gzip
+//!   - brotli
 //!   - TLS
 //!   - automatically getting TLS certs via ACME
 //!   - Denial-of-Service mitigation: source throttling, minimum throughput
 //!   - Incomplete functional test suite
 //!   - Missing load tests
+//!   - Disk space usage limits
 //!
 //! # Examples
 //! Complete example: [`examples/demo.rs`](examples/demo.rs).
@@ -99,6 +101,37 @@
 //! ```
 //! # Cargo Geiger Safety Report
 //! # Alternatives
+//!
+//! |                     |    |    |     |    |    |    |    |    |     |    |
+//! |---------------------|----|----|-----|----|----|----|----|----|-----|----|
+//! |  | beatrice | [rouille](https://crates.io/crates/rouille) | [trillium](https://crates.io/crates/trillium) | [tide](https://crates.io/crates/tide) | [axum](https://crates.io/crates/axum) | [poem](https://crates.io/crates/poem) | [warp](https://crates.io/crates/warp) | [thruster](https://crates.io/crates/thruster) | [rocket](https://crates.io/crates/rocket) | [gotham](https://crates.io/crates/gotham) |
+//! | Well-tested         | ❓ | ❌ | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | Blocking handlers   | 🟢 | 🟢 | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | Async handlers      | ❌ | ❌ | 🟢 | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | 100-continue        | 🟢 | 🟢 | 🟢 | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | Thread limit        | 🟢 | ❌ | 🟢 | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+//! | Connection limit    | 🟢 | ❌ | ❌ | ❓ | ❓ | ❌ | ❓ | ❓ | ❓ | ❓ |
+//! | Caches payloads     | 🟢 | ❌ | ❌ | ❓ | ❓ | [❌](https://github.com/poem-web/poem/issues/75) | ❓ | ❓ | ❓ | ❓ |
+//! | Request timeouts    | ❌ | ❌ | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | Custom logging      | 🟢 | 🟢 | 🟢 | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | Contains no unsafe  | 🟢 | 🟢 | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | No unsafe deps      | ❌ | ❌ | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | age (years)         | 0  | 6  | 1   | 3  | 0  | 1  | ❓ | ❓ | ❓ | 5 |
+//! | TLS                 | ❌ | ❌ | 🟢 | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+//! | ACME certs          | ❌ | ❌ | ❌ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+//! | SSE                 | ❌ | ❌ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+//! | Websockets          | ❌ | 🟢 | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+//! | Streaming response: |    |    |     |    |    |    |    |    |     | ❓ |
+//! | - impl AsyncRead    | ❌ | ❌ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+//! | - AsyncWrite        | ❌ | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | - impl Read         | ❌ | 🟢 | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | - channel           | ❌ | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
+//! | Custom routing      | 🟢 | 🟢 | ❓ | ❓ | ❓ | ❌ | ❓ | ❓ | ❓ | ❓ |
+//! | Usable sans macros  | 🟢 | 🟢 | ❓ | ❓ | ❓ | ❌ | ❓ | ❓ | ❓ | ❓ |
+//! | Shutdown for tests  | ❓ | ❓ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+//! | Graceful shutdown   | ❓ | ❓ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+//! | Rust stable         | ❓ | ❓ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❌ | ❓ |
+//!
 //! - [`tide`](https://crates.io/crates/tide)
 //!   - Popular
 //!   - Does not support uploads (100-Continue): <https://github.com/http-rs/tide/issues/878>
