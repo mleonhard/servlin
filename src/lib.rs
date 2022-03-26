@@ -204,7 +204,12 @@ pub fn print_log_response(
 /// Some processes run with a limit on the number of file handles.
 /// The kernel also has a limit.
 ///
-/// Spawns `num_threads` to handle requests.
+/// Creates `num_threads` threads.
+/// Creates a safina-timer thread,
+/// one async executor thread,
+/// and one blocking threadpool thread.
+/// When `num_threads` is greater than three,
+/// we distribute extra threads between the executor and the threadpool.
 ///
 /// Automatically receives requesst bodies up to 64 KiB.
 ///
@@ -219,6 +224,8 @@ pub fn print_log_response(
 ///
 /// # Panics
 /// Panics when `max_conns` is zero.
+///
+/// Panics when `num_threads` is less than 3.
 pub fn run_http_server<F>(
     listen_addr: SocketAddr,
     num_threads: usize,
@@ -231,12 +238,13 @@ where
 {
     assert!(max_conns > 0, "max_conns is zero");
     let (num_async, num_blocking) = match num_threads {
-        n if n < 2 => panic!("num_threads is less than 2"),
+        n if n < 3 => panic!("num_threads is less than 3"),
         n if n < 10 => (1, n - 1),
         n if n < 20 => (2, n - 2),
         n if n < 30 => (3, n - 3),
         n => (4, n - 4),
     };
+    safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::new(num_async, num_blocking)?;
     executor.block_on(async move {
         let temp_dir = Arc::new(TempDir::new().unwrap());

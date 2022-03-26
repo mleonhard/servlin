@@ -29,7 +29,7 @@ if grep --quiet 'Cargo Geiger Safety Report' src/lib.rs; then
     # "--target not used?"
     # https://github.com/rust-secure-code/cargo-geiger/issues/95
     set -x
-    cargo geiger --update-readme --readme-path "$filename" --output-format GitHubMarkdown
+    cargo geiger --update-readme --readme-path "$filename" --output-format GitHubMarkdown --build-dependencies
     set +x
     echo -n "cargo geiger done."
   )

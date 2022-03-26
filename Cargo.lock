@@ -80,14 +80,12 @@ name = "beatrice"
 version = "0.1.0"
 dependencies = [
  "async-fs",
- "async-io",
  "async-net",
  "fixed-buffer",
  "futures-io",
  "futures-lite",
  "permit",
  "safe-regex",
- "safina-async-test",
  "safina-executor",
  "safina-sync",
  "safina-timer",
@@ -365,27 +363,6 @@ checksum = "96c2e96b5c03f158d1b16ba79af515137795f4ad4e8de3f790518aae91f1d127"
 dependencies = [
  "safe-proc-macro2",
  "safe-regex-compiler",
-]
-
-[[package]]
-name = "safina-async-test"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8b25bf5e23d19378c38c8acdf782c5fd0a3217fd5bee916b67a2421ddfc0098"
-dependencies = [
- "safina-async-test-core",
- "safina-executor",
- "safina-timer",
-]
-
-[[package]]
-name = "safina-async-test-core"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c120d809e5c4a8c52229e9e9491c9711d4d9223d294ae4f897e02821c8abb913"
-dependencies = [
- "safe-proc-macro2",
- "safe-quote",
 ]
 
 [[package]]

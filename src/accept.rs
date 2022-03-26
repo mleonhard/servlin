@@ -85,7 +85,7 @@ pub async fn accept_loop<F>(
         match FutureExt::or(
             async { Some(AcceptResult::new(listener.accept().await)) },
             async {
-                async_io::Timer::after(Duration::from_millis(500)).await;
+                safina_timer::sleep_for(Duration::from_millis(500)).await;
                 None
             },
         )
@@ -95,7 +95,7 @@ pub async fn accept_loop<F>(
                 conn_handler.clone()(permit.new_sub(), token, stream, addr);
             }
             Some(AcceptResult::TooManyOpenFiles) => {
-                async_io::Timer::after(Duration::from_millis(500)).await;
+                safina_timer::sleep_for(Duration::from_millis(500)).await;
             }
             Some(AcceptResult::Err(e)) => panic!("error accepting connection: {}", e),
             None => {}
