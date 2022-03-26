@@ -1,9 +1,11 @@
-use beatrice::{print_log_response, run_http_server, socket_addr_127_0_0_1, Request, Response};
+use beatrice::reexport::{safina_executor, safina_timer};
+use beatrice::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 use serde::Deserialize;
 use serde_json::json;
 use std::io::Read;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use temp_dir::TempDir;
 
 pub struct State {
     upload_count: AtomicUsize,
@@ -53,6 +55,9 @@ fn handle_req(state: &Arc<State>, req: Request) -> Result<Response, Response> {
 }
 
 pub fn main() {
+    safina_timer::start_timer_thread();
+    let executor = safina_executor::Executor::default();
+    let cache_dir = TempDir::new().unwrap();
     let state = Arc::new(State {
         upload_count: AtomicUsize::new(0),
     });
@@ -63,12 +68,14 @@ pub fn main() {
             handle_req(&state, req),
         )
     };
-    run_http_server(
-        socket_addr_127_0_0_1(8000),
-        4,
-        10,
-        64 * 1024,
-        request_handler,
-    )
-    .unwrap();
+    executor
+        .block_on(
+            HttpServerBuilder::new()
+                .listen_addr(socket_addr_127_0_0_1(8000))
+                .max_conns(100)
+                .small_body_len(64 * 1024)
+                .receive_large_bodies(cache_dir.path())
+                .spawn_and_join(request_handler),
+        )
+        .unwrap();
 }

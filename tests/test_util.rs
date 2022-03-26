@@ -1,3 +1,4 @@
+#![cfg(test)]
 #![cfg(feature = "internals")]
 use beatrice::internals::listen_127_0_0_1_any_port;
 use std::future::Future;

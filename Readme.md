@@ -41,14 +41,16 @@ Simple example:
 ```rust
 use beatrice::{
     print_log_response,
-    run_http_server,
     socket_addr_127_0_0_1,
+    HttpServerBuilder,
     Request,
     Response
 };
+use beatrice::reexport::{safina_executor, safina_timer};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
+use temp_dir::TempDir;
 
 struct State {}
 
@@ -83,18 +85,17 @@ let request_handler = move |req: Request| {
         handle_req(state, req),
     )
 };
-let listen_addr = socket_addr_127_0_0_1(8000);
-let num_threads = 10;
-let max_conns = 1000;
-let max_vec_body_len = 64 * 1024;
-run_http_server(
-    listen_addr,
-    num_threads,
-    max_conns,
-    max_vec_body_len,
-    request_handler,
-)
-.unwrap();
+let cache_dir = TempDir::new().unwrap();
+safina_timer::start_timer_thread();
+let executor = safina_executor::Executor::new(1, 9).unwrap();
+executor.block_on(
+    HttpServerBuilder::new()
+        .listen_addr(socket_addr_127_0_0_1(8000))
+        .max_conns(1000)
+        .small_body_len(64 * 1024)
+        .receive_large_bodies(cache_dir.path())
+        .spawn_and_join(request_handler)
+).unwrap();
 ```
 # Cargo Geiger Safety Report
 ```

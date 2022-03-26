@@ -41,14 +41,16 @@
 //! ```rust
 //! use beatrice::{
 //!     print_log_response,
-//!     run_http_server,
 //!     socket_addr_127_0_0_1,
+//!     HttpServerBuilder,
 //!     Request,
 //!     Response
 //! };
+//! use beatrice::reexport::{safina_executor, safina_timer};
 //! use serde::Deserialize;
 //! use serde_json::json;
 //! use std::sync::Arc;
+//! use temp_dir::TempDir;
 //!
 //! struct State {}
 //!
@@ -83,21 +85,24 @@
 //!         handle_req(state, req),
 //!     )
 //! };
-//! let listen_addr = socket_addr_127_0_0_1(8000);
-//! let num_threads = 10;
-//! let max_conns = 1000;
-//! let max_vec_body_len = 64 * 1024;
-//! # //#[allow(clippy::)]
-//! # if false {
-//! run_http_server(
-//!     listen_addr,
-//!     num_threads,
-//!     max_conns,
-//!     max_vec_body_len,
-//!     request_handler,
-//! )
-//! .unwrap();
-//! # }
+//! let cache_dir = TempDir::new().unwrap();
+//! safina_timer::start_timer_thread();
+//! let executor = safina_executor::Executor::new(1, 9).unwrap();
+//! # let permit = permit::Permit::new();
+//! # let server_permit = permit.new_sub();
+//! # std::thread::spawn(move || {
+//! #     std::thread::sleep(std::time::Duration::from_millis(100));
+//! #     drop(permit);
+//! # });
+//! executor.block_on(
+//!     HttpServerBuilder::new()
+//! #       .permit(server_permit)
+//!         .listen_addr(socket_addr_127_0_0_1(8000))
+//!         .max_conns(1000)
+//!         .small_body_len(64 * 1024)
+//!         .receive_large_bodies(cache_dir.path())
+//!         .spawn_and_join(request_handler)
+//! ).unwrap();
 //! ```
 //! # Cargo Geiger Safety Report
 //! # Alternatives
@@ -180,6 +185,13 @@ pub use crate::http_conn::HttpConn;
 pub use crate::request::Request;
 pub use crate::response::Response;
 
+pub mod reexport {
+    pub use permit;
+    pub use safina_executor;
+    pub use safina_sync;
+    pub use safina_timer;
+}
+
 /// To use this module, enable cargo feature `"internals"`.
 #[cfg(feature = "internals")]
 pub mod internals {
@@ -200,9 +212,9 @@ use crate::http_conn::handle_http_conn;
 use crate::token_set::TokenSet;
 use async_net::TcpListener;
 use permit::Permit;
+use safina_sync::Receiver;
 use std::net::SocketAddr;
-use std::sync::Arc;
-use temp_dir::TempDir;
+use std::path::PathBuf;
 use url::Url;
 
 #[allow(clippy::module_name_repetitions)]
@@ -229,58 +241,153 @@ pub fn print_log_response(
     response
 }
 
-/// Run an HTTP server, listening for connections on `listen_addr`.
-///
-/// When the server is handling `max_conns` connections,
-/// it waits for a connection to drop before accepting new ones.
-/// Each connection uses a file handle.
-/// Some processes run with a limit on the number of file handles.
-/// The kernel also has a limit.
-///
-/// Creates `num_threads` threads.
-/// Creates a safina-timer thread,
-/// one async executor thread,
-/// and one blocking threadpool thread.
-/// When `num_threads` is greater than three,
-/// we distribute extra threads between the executor and the threadpool.
-///
-/// Automatically receives requesst bodies up to 64 KiB.
-///
-/// If your `request_handler` must handle larger uploads,
-/// it should call `Request::body().is_pending()`
-/// and return `Response::GetBodyAndReprocess(..)`.
-/// Then the server will save the request body to a temporary file
-/// and call `request_handler` again.
-///
-/// # Errors
-/// Returns an error when it fails to bind to the `listen_addr` or fails to initially start threads.
-///
-/// # Panics
-/// Panics when `max_conns` is zero.
-///
-/// Panics when `num_threads` is less than 3.
-pub fn run_http_server<F>(
+/// Builds an HTTP server.
+pub struct HttpServerBuilder {
+    opt_cache_dir: Option<PathBuf>,
     listen_addr: SocketAddr,
-    num_threads: usize,
     max_conns: usize,
-    max_vec_body_len: usize,
-    request_handler: F,
-) -> Result<(), std::io::Error>
-where
-    F: FnOnce(Request) -> Response + 'static + Clone + Send + Sync,
-{
-    assert!(max_conns > 0, "max_conns is zero");
-    let (num_async, num_blocking) = match num_threads {
-        n if n < 3 => panic!("num_threads is less than 3"),
-        n if n < 10 => (1, n - 1),
-        n if n < 20 => (2, n - 2),
-        n if n < 30 => (3, n - 3),
-        n => (4, n - 4),
-    };
-    safina_timer::start_timer_thread();
-    let executor = safina_executor::Executor::new(num_async, num_blocking)?;
-    executor.block_on(async move {
-        let temp_dir = Arc::new(TempDir::new().unwrap());
+    small_body_len: usize,
+    permit: Permit,
+}
+impl HttpServerBuilder {
+    #[allow(clippy::new_without_default)]
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            opt_cache_dir: None,
+            listen_addr: socket_addr_127_0_0_1_any_port(),
+            max_conns: 100,
+            small_body_len: 64 * 1024,
+            permit: Permit::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn listen_addr(mut self, addr: SocketAddr) -> Self {
+        self.listen_addr = addr;
+        self
+    }
+
+    /// Sets the maximum number of connections to handle at one time.
+    ///
+    /// When the server is handling the maximum number of connections,
+    /// it waits for a connection to drop before accepting new ones.
+    ///
+    /// Each connection uses a file handle.
+    /// Some processes run with a limit on the number of file handles.
+    /// The OS kernel also has a limit for all processes combined.
+    ///
+    /// # Panics
+    /// Panics when `n` is zero.
+    #[must_use]
+    pub fn max_conns(mut self, n: usize) -> Self {
+        assert!(n > 0, "refusing to set max_conns to zero");
+        self.max_conns = n;
+        self
+    }
+
+    /// Save large request bodies to this directory.
+    ///
+    /// If you do not call this method, the server will refuse all
+    /// requests with bodies larger than `small_body_len` with `413 Payload Too Large`.
+    /// It will also refuse all bodies with unknown length.
+    ///
+    /// # Example
+    /// ```
+    /// use std::io::Read;
+    /// use beatrice::{HttpServerBuilder, Request, Response};
+    /// use beatrice::reexport::{safina_executor, safina_timer};
+    ///
+    /// let cache_dir = temp_dir::TempDir::new().unwrap();
+    /// let handler = move |req: Request| {
+    ///     if req.body().is_pending() {
+    ///         return Response::GetBodyAndReprocess(1024 * 1024, req);
+    ///     }
+    ///     let len = req.body().reader().unwrap().bytes().count();
+    ///     Response::text(200, format!("body len={}", len))
+    /// };
+    /// # let permit = permit::Permit::new();
+    /// # let server_permit = permit.new_sub();
+    /// # std::thread::spawn(move || {
+    /// #     std::thread::sleep(std::time::Duration::from_millis(100));
+    /// #     drop(permit);
+    /// # });
+    /// safina_timer::start_timer_thread();
+    /// safina_executor::Executor::default().block_on(
+    ///     HttpServerBuilder::new()
+    /// #       .permit(server_permit)
+    ///         .receive_large_bodies(cache_dir.path())
+    ///         .spawn_and_join(handler)
+    /// ).unwrap();
+    /// ```
+    #[must_use]
+    pub fn receive_large_bodies(mut self, cache_dir: &std::path::Path) -> Self {
+        self.opt_cache_dir = Some(cache_dir.to_path_buf());
+        self
+    }
+
+    /// Automatically receive request bodies up to length `n`,
+    /// saving them in memory.
+    ///
+    /// The default value is 64 KiB.
+    ///
+    /// Reject larger requests with `413 Payload Too Large`.
+    /// See [`receive_large_bodies`](ServerBuilder::receive_large_bodies).
+    ///
+    /// You can estimate the server memory usage with:
+    /// `small_body_len * max_conns`.
+    /// Using the default settings: 64 KiB * 100 connections => 6.4 MiB.
+    #[must_use]
+    pub fn small_body_len(mut self, n: usize) -> Self {
+        self.small_body_len = n;
+        self
+    }
+
+    /// Sets the permit used by the server.
+    ///
+    /// Revoke the permit to make the server gracefully shut down.
+    ///
+    /// # Example
+    /// ```
+    /// use std::net::SocketAddr;
+    /// use permit::Permit;
+    /// use beatrice::{Response, HttpServerBuilder};
+    /// use beatrice::reexport::{safina_executor, safina_timer};
+    /// # fn do_some_requests(addr: SocketAddr) -> Result<(),()> { Ok(()) }
+    ///
+    /// safina_timer::start_timer_thread();
+    /// let executor = safina_executor::Executor::default();
+    /// let permit = Permit::new();
+    /// let (addr, stopped_receiver) = executor.block_on(
+    ///     HttpServerBuilder::new()
+    ///         .permit(permit.new_sub())
+    ///         .spawn(move |req| Response::text(200, "yo"))
+    /// ).unwrap();
+    /// do_some_requests(addr).unwrap();
+    /// drop(permit); // Tell server to shut down.
+    /// stopped_receiver.recv(); // Wait for server to stop.
+    /// ```
+    #[must_use]
+    pub fn permit(mut self, p: Permit) -> Self {
+        self.permit = p;
+        self
+    }
+
+    /// Spawns the server task.
+    ///
+    /// Returns `(addr, stopped_receiver)`.
+    /// The server is listening on `addr`.
+    /// After the server gracefully shuts down, it sends a message on `stopped_receiver`.
+    ///
+    /// # Errors
+    /// Returns an error when it fails to bind to the [`listen_addr`](ServerBuilder::listen_addr).
+    pub async fn spawn<F>(
+        self,
+        request_handler: F,
+    ) -> Result<(SocketAddr, Receiver<()>), std::io::Error>
+    where
+        F: FnOnce(Request) -> Response + 'static + Clone + Send + Sync,
+    {
         let async_request_handler = |req: Request| async move {
             let request_handler_clone = request_handler.clone();
             safina_executor::schedule_blocking(move || request_handler_clone(req))
@@ -289,21 +396,37 @@ where
         };
         let conn_handler = move |permit, token, stream: async_net::TcpStream, addr| {
             let http_conn = HttpConn::new(addr, stream);
-            let body_dir = temp_dir.path().to_path_buf();
             safina_executor::spawn(handle_http_conn(
                 permit,
                 token,
                 http_conn,
-                body_dir,
-                max_vec_body_len,
+                self.opt_cache_dir,
+                self.small_body_len,
                 async_request_handler,
             ));
         };
-        safina_executor::block_on(async move {
-            let listener = TcpListener::bind(listen_addr).await?;
-            let token_set = TokenSet::new(max_conns);
-            accept_loop(Permit::new(), listener, token_set, conn_handler).await;
-            Ok(())
-        })
-    })
+        let listener = TcpListener::bind(self.listen_addr).await?;
+        let addr = listener.local_addr()?;
+        let token_set = TokenSet::new(self.max_conns);
+        let (sender, receiver) = safina_sync::oneshot();
+        safina_executor::spawn(async move {
+            accept_loop(self.permit, listener, token_set, conn_handler).await;
+            // TODO: Wait for connection tokens to return.
+            let _ignored = sender.send(());
+        });
+        Ok((addr, receiver))
+    }
+
+    /// Spawns the server task and waits for it to shutdown gracefully.
+    ///
+    /// # Errors
+    /// Returns an error when it fails to bind to the [`listen_addr`](ServerBuilder::listen_addr).
+    pub async fn spawn_and_join<F>(self, request_handler: F) -> Result<(), std::io::Error>
+    where
+        F: FnOnce(Request) -> Response + 'static + Clone + Send + Sync,
+    {
+        let (_addr, mut stopped_receiver) = self.spawn(request_handler).await?;
+        let _ignored = stopped_receiver.async_recv().await;
+        Ok(())
+    }
 }

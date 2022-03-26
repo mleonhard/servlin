@@ -268,8 +268,8 @@ impl HttpConn {
 /// - we fail to send the response
 pub async fn handle_http_conn_once<F, Fut>(
     http_conn: &mut HttpConn,
-    body_dir: &Path,
-    max_vec_body_len: usize,
+    opt_cache_dir: Option<&Path>,
+    small_body_len: usize,
     request_handler: F,
 ) -> Result<(), HttpError>
 where
@@ -278,7 +278,7 @@ where
 {
     dbg!("handle_http_conn_once");
     let mut req = http_conn.read_request().await?;
-    if req.body.is_pending() && req.body.len() <= (max_vec_body_len as u64) {
+    if req.body.is_pending() && req.body.len() <= (small_body_len as u64) {
         req.body = http_conn.read_body_to_vec().await?;
     }
     dbg!("request_handler", &req);
@@ -286,11 +286,12 @@ where
     dbg!(&response);
     let response = match response {
         Response::GetBodyAndReprocess(max_len, mut req) => {
+            let cache_dir = opt_cache_dir.ok_or(HttpError::CacheDirNotConfigured)?;
             if max_len < req.body.len() {
                 dbg!("returning HttpError::BodyTooLong");
                 return Err(HttpError::BodyTooLong);
             }
-            req.body = http_conn.read_body_to_file(body_dir, max_len).await?;
+            req.body = http_conn.read_body_to_file(cache_dir, max_len).await?;
             dbg!("request_handler", &req);
             request_handler.clone()(req).await
         }
@@ -306,8 +307,8 @@ pub async fn handle_http_conn<F, Fut>(
     permit: Permit,
     _token: Token,
     mut http_conn: HttpConn,
-    body_dir: PathBuf,
-    max_vec_body_len: usize,
+    opt_cache_dir: Option<PathBuf>,
+    small_body_len: usize,
     async_request_handler: F,
 ) where
     Fut: Future<Output = Response>,
@@ -322,8 +323,8 @@ pub async fn handle_http_conn<F, Fut>(
         }
         match handle_http_conn_once(
             &mut http_conn,
-            body_dir.as_path(),
-            max_vec_body_len,
+            opt_cache_dir.as_deref(),
+            small_body_len,
             async_request_handler.clone(),
         )
         .await

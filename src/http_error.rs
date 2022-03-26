@@ -8,6 +8,7 @@ pub enum HttpError {
     BodyNotRead,
     BodyNotUtf8,
     BodyTooLong,
+    CacheDirNotConfigured,
     Disconnected,
     ErrorReadingFile(ErrorKind, String),
     ErrorSavingFile(ErrorKind, String),
@@ -30,6 +31,7 @@ impl HttpError {
         match self {
             HttpError::BodyNotAvailable
             | HttpError::BodyNotRead
+            | HttpError::CacheDirNotConfigured
             | HttpError::ErrorReadingFile(_, _)
             | HttpError::ErrorSavingFile(_, _)
             | HttpError::ResponseAlreadySent
@@ -57,6 +59,7 @@ impl HttpError {
             HttpError::BodyNotRead => "HttpError::BodyNotRead".to_string(),
             HttpError::BodyNotUtf8 => "HttpError::BodyNotUtf8".to_string(),
             HttpError::BodyTooLong => "HttpError::BodyTooLong".to_string(),
+            HttpError::CacheDirNotConfigured => "HttpError::CacheDirNotConfigured".to_string(),
             HttpError::Disconnected => "HttpError::Disconnected".to_string(),
             HttpError::ErrorReadingFile(kind, s) | HttpError::ErrorSavingFile(kind, s) => {
                 format!("{:?}: {}", kind, s)
@@ -107,6 +110,7 @@ impl From<HttpError> for Response {
             HttpError::UnsupportedProtocol => Response::text(505, e.description()),
             HttpError::BodyNotAvailable
             | HttpError::BodyNotRead
+            | HttpError::CacheDirNotConfigured
             | HttpError::ErrorReadingFile(..)
             | HttpError::ErrorSavingFile(..)
             | HttpError::ResponseAlreadySent
@@ -141,6 +145,7 @@ impl From<HttpError> for std::io::Error {
             }
             HttpError::BodyNotAvailable
             | HttpError::BodyNotRead
+            | HttpError::CacheDirNotConfigured
             | HttpError::ResponseAlreadySent
             | HttpError::ResponseNotSent
             | HttpError::UnwritableResponse => {

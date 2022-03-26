@@ -27,7 +27,7 @@ where
             Permit::new(),
             Token::new(),
             HttpConn::new(addr, stream0),
-            temp_dir.path().to_path_buf(),
+            Some(temp_dir.path().to_path_buf()),
             64 * 1024,
             request_handler,
         )
