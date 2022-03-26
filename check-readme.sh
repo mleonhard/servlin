@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
+cd "$(basename "$PWD")"
+echo PWD=$PWD
 set -e
 set -x
-cargo readme >Readme.md.tmp
+rm -f Readme.md.tmp
+./update-readme.sh --filename Readme.md.tmp
 diff Readme.md Readme.md.tmp || (
   echo "ERROR: Readme.md is stale" >&2
   exit 1

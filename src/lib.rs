@@ -1,3 +1,5 @@
+//! Beatrice
+//! ========
 //! [![crates.io version](https://img.shields.io/crates/v/beatrice.svg)](https://crates.io/crates/beatrice)
 //! [![license: Apache 2.0](https://raw.githubusercontent.com/mleonhard/beatrice-rs/main/license-apache-2.0.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 //! [![unsafe forbidden](https://raw.githubusercontent.com/mleonhard/beatrice-rs/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
@@ -95,6 +97,7 @@
 //! .unwrap();
 //! # }
 //! ```
+//! # Cargo Geiger Safety Report
 //!
 //! # Alternatives
 //! - [`tide`](https://crates.io/crates/tide)

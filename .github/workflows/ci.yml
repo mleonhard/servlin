@@ -26,12 +26,12 @@ jobs:
       - run: du -sh cargo/ target/ || true
       - name: Version
         run: rustc --version && cargo --version
-      - name: Install cargo-readme
-        run: cargo install cargo-readme
       - name: Install rustfmt
         run: cargo fmt --version || rustup component add rustfmt
       - name: Install clippy
         run: cargo clippy --version || rustup component add clippy
+      - run: cargo install cargo-readme
+      - run: cargo install cargo-geiger --features vendored-openssl
       - name: Check
         run: ./check.sh
       - run: du -sh cargo/ target/ || true
