@@ -15,6 +15,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/cache@v3
+        with:
+          path: |
+            .cargo/
+            target/
+          key: ${{ runner.os }}-gen1
+      - run: du -sh .cargo/ target/ || true
       - uses: actions/checkout@v2
       - name: Version
         run: rustc --version && cargo --version
@@ -26,3 +33,4 @@ jobs:
         run: cargo clippy --version || rustup component add clippy
       - name: Check
         run: ./check.sh
+      - run: du -sh .cargo/ target/ || true
