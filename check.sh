@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-cd "$(basename "$PWD")"
 echo PWD=$PWD
 set -e
 set -x

@@ -31,7 +31,6 @@ jobs:
       - name: Install clippy
         run: cargo clippy --version || rustup component add clippy
       - run: cargo install cargo-readme
-      - run: cargo install cargo-geiger --features vendored-openssl
       - name: Check
         run: ./check.sh
       - run: du -sh cargo/ target/ || true

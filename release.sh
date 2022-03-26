@@ -24,10 +24,8 @@ if ! (echo "$version" | grep -q -E '^[0-9]+\.[0-9]+\.[0-9]+$'); then
   exit 1
 fi
 
-package_name=$(basename ${PWD})
-
 # Create git tag pointing at HEAD, if it doesn't already exist.
-tag="$package_name-v$version"
+tag="v$version"
 if [ -n "$(git tag --list "$tag")" ]; then
   if [ -n "$(git tag --list "$tag" --points-at HEAD)" ]; then
     echo "git tag '$tag' already exists and points at HEAD"

@@ -98,7 +98,6 @@
 //! # }
 //! ```
 //! # Cargo Geiger Safety Report
-//!
 //! # Alternatives
 //! - [`tide`](https://crates.io/crates/tide)
 //!   - Popular
