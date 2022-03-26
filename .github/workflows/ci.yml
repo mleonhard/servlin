@@ -8,7 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_HOME: "$GITHUB_WORKSPACE/cargo/"
+  CARGO_HOME: cargo/
 
 jobs:
   check:
@@ -20,9 +20,9 @@ jobs:
       - uses: actions/cache@v3
         with:
           path: |
-            $CARGO_HOME
-            "$GITHUB_WORKSPACE/target/"
-          key: ${{ runner.os }}-gen2
+            cargo/
+            target/
+          key: ${{ runner.os }}-gen3
       - run: du -sh cargo/ target/ || true
       - name: Version
         run: rustc --version && cargo --version
