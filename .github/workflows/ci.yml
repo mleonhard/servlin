@@ -16,14 +16,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v2
       - uses: actions/cache@v3
         with:
           path: |
             $CARGO_HOME
             "$GITHUB_WORKSPACE/target/"
-          key: ${{ runner.os }}-gen1
+          key: ${{ runner.os }}-gen2
       - run: du -sh cargo/ target/ || true
-      - uses: actions/checkout@v2
       - name: Version
         run: rustc --version && cargo --version
       - name: Install cargo-readme
