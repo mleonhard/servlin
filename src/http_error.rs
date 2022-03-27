@@ -10,6 +10,8 @@ pub enum HttpError {
     BodyTooLong,
     CacheDirNotConfigured,
     Disconnected,
+    DuplicateContentLengthHeader,
+    DuplicateContentTypeHeader,
     ErrorReadingFile(ErrorKind, String),
     ErrorSavingFile(ErrorKind, String),
     HeadTooLong,
@@ -32,6 +34,8 @@ impl HttpError {
             HttpError::BodyNotAvailable
             | HttpError::BodyNotRead
             | HttpError::CacheDirNotConfigured
+            | HttpError::DuplicateContentLengthHeader
+            | HttpError::DuplicateContentTypeHeader
             | HttpError::ErrorReadingFile(_, _)
             | HttpError::ErrorSavingFile(_, _)
             | HttpError::ResponseAlreadySent
@@ -60,6 +64,12 @@ impl HttpError {
             HttpError::BodyNotUtf8 => "HttpError::BodyNotUtf8".to_string(),
             HttpError::BodyTooLong => "HttpError::BodyTooLong".to_string(),
             HttpError::CacheDirNotConfigured => "HttpError::CacheDirNotConfigured".to_string(),
+            HttpError::DuplicateContentLengthHeader => {
+                "HttpError::DuplicateContentLengthHeader".to_string()
+            }
+            HttpError::DuplicateContentTypeHeader => {
+                "HttpError::DuplicateContentTypeHeader".to_string()
+            }
             HttpError::Disconnected => "HttpError::Disconnected".to_string(),
             HttpError::ErrorReadingFile(kind, s) | HttpError::ErrorSavingFile(kind, s) => {
                 format!("{:?}: {}", kind, s)
@@ -111,6 +121,8 @@ impl From<HttpError> for Response {
             HttpError::BodyNotAvailable
             | HttpError::BodyNotRead
             | HttpError::CacheDirNotConfigured
+            | HttpError::DuplicateContentLengthHeader
+            | HttpError::DuplicateContentTypeHeader
             | HttpError::ErrorReadingFile(..)
             | HttpError::ErrorSavingFile(..)
             | HttpError::ResponseAlreadySent
@@ -145,6 +157,8 @@ impl From<HttpError> for std::io::Error {
             }
             HttpError::BodyNotAvailable
             | HttpError::BodyNotRead
+            | HttpError::DuplicateContentLengthHeader
+            | HttpError::DuplicateContentTypeHeader
             | HttpError::CacheDirNotConfigured
             | HttpError::ResponseAlreadySent
             | HttpError::ResponseNotSent

@@ -367,9 +367,9 @@ dependencies = [
 
 [[package]]
 name = "safina-executor"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8babed91e31002f156ba16e37d1bc9c2ed5411554c80c34bd58f8ca2f3baae5"
+checksum = "b59e42eaaa04f5daedd9f5fe7f85a0c236801105a1ae98065e6eaaae9b327190"
 dependencies = [
  "safina-sync",
  "safina-threadpool",

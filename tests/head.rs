@@ -1,13 +1,29 @@
 #![cfg(feature = "internals")]
 mod test_util;
 
+use crate::test_util::TestServer;
 use beatrice::internals::{read_http_head, Head, HeadError, HttpError};
+use beatrice::Response;
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
 use safina_sync::Receiver;
 use safina_timer::sleep_for;
 use std::time::Duration;
 use test_util::{async_test, connected_streams};
+
+#[test]
+fn request_line() {
+    let server = TestServer::start(|_req| Response::new(200)).unwrap();
+    assert_eq!(server.exchange("").unwrap().as_str(), "",);
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap().as_str(),
+        "HTTP/1.1 200 OK\r\n\r\n",
+    );
+    assert_eq!(
+        server.exchange(" / HTTP/1.1\r\n\r\n").unwrap().as_str(),
+        "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 31\r\n\r\nHttpError::MalformedRequestLine",
+    );
+}
 
 #[test]
 fn try_read_request_line() {

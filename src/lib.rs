@@ -212,7 +212,6 @@ use crate::http_conn::handle_http_conn;
 use crate::token_set::TokenSet;
 use async_net::TcpListener;
 use permit::Permit;
-use safina_sync::Receiver;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use url::Url;
@@ -384,7 +383,7 @@ impl HttpServerBuilder {
     pub async fn spawn<F>(
         self,
         request_handler: F,
-    ) -> Result<(SocketAddr, Receiver<()>), std::io::Error>
+    ) -> Result<(SocketAddr, reexport::safina_sync::Receiver<()>), std::io::Error>
     where
         F: FnOnce(Request) -> Response + 'static + Clone + Send + Sync,
     {

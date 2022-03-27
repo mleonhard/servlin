@@ -22,9 +22,11 @@ futures-io = "^0.3.21"
 futures-lite = "^1.12.0"
 #libflate = "1"
 permit = "^0.1.4"
-safina-executor = { version = "^0.3.2" }
 safe-regex = "^0.2.5"
-safina-sync = { version = "^0.2.2" }
+#safina-executor = { version = "^0.3.3", path = "../safina-rs/safina-executor" }
+safina-executor = { version = "^0.3.3" }
+#safina-sync = { version = "^0.2.2", path = "../safina-rs/safina-sync" }
+safina-sync = { version = "^0.2.3" }
 safina-timer = { version = "^0.1.11" }
 serde = { version = "1", optional = true, features = ["derive"] }
 serde_json = { version = "1", optional = true }

@@ -6,6 +6,7 @@ use crate::http_error::HttpError;
 use crate::request::read_http_request;
 use crate::response::write_http_response;
 use crate::token_set::Token;
+use crate::util::AsyncWriteCounter;
 use crate::{Body, Request, Response};
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncReadExt;
@@ -113,6 +114,7 @@ impl HttpConn {
                 }
                 ReadState::Shutdown => return Err(HttpError::Disconnected),
             }
+            self.write_state = WriteState::Response;
             let req = read_http_request(self.remote_addr, &mut self.buf, &mut self.stream).await?;
             if req.body().is_pending() {
                 // This code is complicated because HTTP/1.1 defines 3 ways to frame a body and
@@ -133,7 +135,6 @@ impl HttpConn {
             } else {
                 self.read_state = ReadState::Ready;
             }
-            self.write_state = WriteState::Response;
             Ok(req)
         };
         self.shutdown_read_on_err(result)
@@ -254,9 +255,19 @@ impl HttpConn {
             WriteState::Response => {}
             WriteState::Shutdown => return Err(HttpError::Disconnected),
         }
-        let result = write_http_response(&mut self.stream, response).await;
-        self.write_state = WriteState::None;
-        self.shutdown_on_err(result)
+        let mut write_counter = AsyncWriteCounter::new(&mut self.stream);
+        match write_http_response(&mut write_counter, response).await {
+            Ok(()) => {
+                self.write_state = WriteState::None;
+                Ok(())
+            }
+            Err(e) => {
+                if write_counter.num_bytes_written() > 0 {
+                    self.shutdown_write();
+                }
+                Err(e)
+            }
+        }
     }
 }
 

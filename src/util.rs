@@ -1,6 +1,8 @@
 use fixed_buffer::FixedBuf;
 use futures_io::{AsyncRead, AsyncWrite};
 use futures_lite::{AsyncReadExt, AsyncWriteExt};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 pub enum CopyResult {
     Ok(u64),
@@ -68,5 +70,39 @@ pub fn escape_and_elide(input: &[u8], max_len: usize) -> String {
         escape_ascii(&input[..max_len]) + "..."
     } else {
         escape_ascii(input)
+    }
+}
+
+pub struct AsyncWriteCounter<W>(W, u64);
+impl<W: AsyncWrite + Unpin> AsyncWriteCounter<W> {
+    pub fn new(writer: W) -> Self {
+        Self(writer, 0)
+    }
+
+    pub fn num_bytes_written(&self) -> u64 {
+        self.1
+    }
+}
+impl<W: AsyncWrite + Unpin> AsyncWrite for AsyncWriteCounter<W> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<Result<usize, std::io::Error>> {
+        match Pin::new(&mut self.0).poll_write(cx, buf) {
+            Poll::Ready(Ok(n)) => {
+                self.1 += n as u64;
+                Poll::Ready(Ok(n))
+            }
+            other => other,
+        }
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.0).poll_flush(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.0).poll_close(cx)
     }
 }

@@ -4,10 +4,11 @@ use crate::{Body, ContentType, Response};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::net::SocketAddr;
 use url::Url;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Request {
     pub remote_addr: SocketAddr,
     pub method: String,
@@ -85,6 +86,33 @@ impl Request {
                 Category::Data => Response::text(400, format!("unexpected json: {}", e)),
             })
         }
+    }
+}
+impl Debug for Request {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        let mut headers: Vec<String> = self
+            .headers_lowercase
+            .iter()
+            .map(|(n, v)| format!("{}: {:?}", n, v))
+            .collect();
+        headers.sort();
+        write!(
+            f,
+            "Request{{{}, {}, {:?}, headers={{{}}}, {:?}{}{}{}, {:?}}}",
+            self.remote_addr,
+            self.method(),
+            self.url().path(),
+            headers.join(", "),
+            self.content_type(),
+            if self.expect_continue { ", expect" } else { "" },
+            if self.chunked { ", chunked" } else { "" },
+            if let Some(len) = &self.content_length {
+                format!(", {}", len)
+            } else {
+                String::new()
+            },
+            *self.body()
+        )
     }
 }
 

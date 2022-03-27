@@ -8,6 +8,7 @@ use crate::http_error::HttpError;
 use crate::util::{copy_async, CopyResult};
 use crate::{Body, ContentType, Request};
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::ops::Deref;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -20,12 +21,13 @@ impl<'x> Deref for BodyWrapper<'x> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Response {
     Drop,
-    /// `GetBodyAndReprocess(max_len: u64)`<br>
+    /// `GetBodyAndReprocess(max_len: u64, Request)`<br>
     /// Read the body from the client, but only up to the specified `u64` bytes.
     GetBodyAndReprocess(u64, Request),
+    /// Normal(code: u16, ContentType, headers: HashMap<String, String>, Body)
     Normal(u16, ContentType, HashMap<String, String>, Body),
 }
 impl Response {
@@ -91,9 +93,12 @@ impl Response {
     }
 
     #[must_use]
-    pub fn with_header(self, name: &impl ToString, value: &impl ToString) -> Self {
+    pub fn with_header(self, name: impl AsRef<str>, value: impl AsRef<str>) -> Self {
         let (c, t, mut h, b) = self.into_tuple();
-        h.insert(name.to_string(), value.to_string());
+        h.insert(
+            name.as_ref().to_ascii_lowercase(),
+            value.as_ref().to_string(),
+        );
         Response::Normal(c, t, h, b)
     }
 
@@ -248,6 +253,33 @@ impl From<std::io::Error> for Response {
         }
     }
 }
+impl Debug for Response {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        match self {
+            Response::Drop => write!(f, "Response::Drop"),
+            Response::GetBodyAndReprocess(max_len, _req) => {
+                write!(f, "Response::GetBodyAndReprocess({},..)", max_len)
+            }
+            Response::Normal(.., body) => {
+                let mut headers: Vec<String> = self
+                    .headers()
+                    .iter()
+                    .map(|(n, v)| format!("{}: {:?}", n, v))
+                    .collect();
+                headers.sort();
+                write!(
+                    f,
+                    "Response::Normal({} {}, {:?}, headers={{{}}}, {:?})",
+                    self.code(),
+                    self.reason_phrase(),
+                    self.content_type(),
+                    headers.join(", "),
+                    body
+                )
+            }
+        }
+    }
+}
 
 /// # Errors
 /// Returns an error when:
@@ -260,7 +292,7 @@ pub async fn write_http_response(
     mut writer: impl AsyncWrite + Unpin,
     response: &Response,
 ) -> Result<(), HttpError> {
-    dbg!("write_http_response");
+    dbg!("write_http_response", &response);
     if !response.is_normal() {
         return Err(HttpError::UnwritableResponse);
     }
@@ -275,6 +307,9 @@ pub async fn write_http_response(
     )
     .into_bytes();
     if response.content_type() != &ContentType::None {
+        if response.headers().contains_key("content-type") {
+            return Err(HttpError::DuplicateContentTypeHeader);
+        }
         write!(
             head_bytes,
             "content-type: {}\r\n",
@@ -283,6 +318,9 @@ pub async fn write_http_response(
         .unwrap();
     }
     if response.body().len() > 0 {
+        if response.headers().contains_key("content-length") {
+            return Err(HttpError::DuplicateContentLengthHeader);
+        }
         write!(head_bytes, "content-length: {}\r\n", response.body().len()).unwrap();
     }
     for (name, value) in response.headers() {
