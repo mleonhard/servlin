@@ -178,7 +178,7 @@ impl HttpConn {
     /// - we fail to read the request body
     pub async fn read_body_to_vec(&mut self) -> Result<Body, HttpError> {
         let result = {
-            dbg!("read_body_to_vec");
+            //dbg!("read_body_to_vec");
             match self.read_state {
                 ReadState::Ready => return Err(HttpError::BodyNotAvailable),
                 ReadState::Bytes(len_u64) => {
@@ -297,16 +297,23 @@ where
     //dbg!(&response);
     let response = match response {
         Response::GetBodyAndReprocess(max_len, mut req) => {
+            if !req.body().is_pending() {
+                return Err(HttpError::AlreadyGotBody);
+            }
             let cache_dir = opt_cache_dir.ok_or(HttpError::CacheDirNotConfigured)?;
             if max_len < req.body.len() {
                 //dbg!("returning HttpError::BodyTooLong");
                 return Err(HttpError::BodyTooLong);
             }
             req.body = http_conn.read_body_to_file(cache_dir, max_len).await?;
-            dbg!("request_handler", &req);
-            request_handler.clone()(req).await
+            //dbg!("request_handler", &req);
+            match request_handler.clone()(req).await {
+                Response::GetBodyAndReprocess(..) => return Err(HttpError::AlreadyGotBody),
+                Response::Drop => return Err(HttpError::Disconnected),
+                normal_response @ Response::Normal(..) => normal_response,
+            }
         }
-        Response::Drop => return Ok(()),
+        Response::Drop => return Err(HttpError::Disconnected),
         normal_response @ Response::Normal(..) => normal_response,
     };
     //dbg!(&response);

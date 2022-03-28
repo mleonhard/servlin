@@ -1,8 +1,10 @@
 #![cfg(feature = "internals")]
 
-use crate::test_util::{assert_starts_with, TestServer};
-use beatrice::Response;
+use crate::test_util::{assert_starts_with, check_elapsed, TestServer};
+use beatrice::{ContentType, Response};
 use serde_json::json;
+use std::io::Read;
+use std::time::{Duration, Instant};
 
 mod test_util;
 
@@ -16,7 +18,7 @@ fn panics() {
 }
 
 #[test]
-fn return_empty() {
+fn empty() {
     let server = TestServer::start(|_req| Response::new(200)).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
@@ -51,6 +53,82 @@ fn text() {
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
         "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 31\r\n\r\nabc def\tghi\rjkl\nmno\r\npqr\r\n\r\nstu",
+    );
+}
+
+#[test]
+fn with_status() {
+    let server = TestServer::start(|_req| Response::new(200).with_status(201)).unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
+        "HTTP/1.1 201 Created\r\n\r\n",
+    );
+}
+
+#[test]
+fn with_type() {
+    let server =
+        TestServer::start(|_req| Response::new(200).with_type(ContentType::EventStream)).unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
+        "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\n\r\n",
+    );
+}
+
+#[test]
+fn with_type_and_body() {
+    let server =
+        TestServer::start(|_req| Response::text(200, "yo").with_type(ContentType::Markdown))
+            .unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
+        "HTTP/1.1 200 OK\r\ncontent-type: text/markdown; charset=UTF-8\r\ncontent-length: 2\r\n\r\nyo",
+    );
+}
+
+#[test]
+fn with_body() {
+    let server = TestServer::start(|_req| Response::new(200).with_body("abc")).unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
+        "HTTP/1.1 200 OK\r\ncontent-length: 3\r\n\r\nabc",
+    );
+}
+
+#[test]
+fn with_header() {
+    let server = TestServer::start(|_req| Response::new(200).with_header("h1", "v1")).unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
+        "HTTP/1.1 200 OK\r\nh1: v1\r\n\r\n",
+    );
+}
+
+#[test]
+fn with_duplicate_header() {
+    let server = TestServer::start(|_req| {
+        Response::new(200)
+            .with_header("h1", "v1")
+            .with_header("h1", "v2")
+    })
+    .unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
+        "HTTP/1.1 200 OK\r\nh1: v2\r\n\r\n",
+    );
+}
+
+#[test]
+fn with_duplicate_header_different_case() {
+    let server = TestServer::start(|_req| {
+        Response::new(200)
+            .with_header("h1", "v1")
+            .with_header("H1", "v2")
+    })
+    .unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
+        "HTTP/1.1 200 OK\r\nh1: v2\r\n\r\n",
     );
 }
 
@@ -90,4 +168,91 @@ fn duplicate_content_length_header() {
 fn return_drop() {
     let server = TestServer::start(|_req| Response::Drop).unwrap();
     assert_eq!(server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(), "");
+}
+
+#[test]
+fn small_body() {
+    let server = TestServer::start(|req| {
+        if req.body().is_pending() {
+            return Response::GetBodyAndReprocess(100, req);
+        } else {
+            let len = req.body().reader().unwrap().bytes().count();
+            Response::text(200, format!("body len={}", len))
+        }
+    })
+    .unwrap();
+    assert_eq!(
+        server
+            .exchange("M / HTTP/1.1\r\ncontent-length:3\r\n\r\nabc")
+            .unwrap(),
+        "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 10\r\n\r\nbody len=3",
+    );
+}
+
+#[test]
+fn large_body() {
+    let server = TestServer::start(|req| {
+        if req.body().is_pending() {
+            return Response::GetBodyAndReprocess(100, req);
+        } else {
+            let len = req.body().reader().unwrap().bytes().count();
+            Response::text(200, format!("body len={}", len))
+        }
+    })
+    .unwrap();
+    assert_eq!(
+        server
+            .exchange(
+                "M / HTTP/1.1\r\ncontent-length:65537\r\n\r\n"
+                    .chars()
+                    .chain(std::iter::repeat('a').take(65537))
+                    .collect::<String>()
+            )
+            .unwrap(),
+        "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 10\r\n\r\nbody len=3",
+    );
+}
+
+#[test]
+fn body_not_pending() {
+    let server = TestServer::start(|req| Response::GetBodyAndReprocess(100, req)).unwrap();
+    assert_eq!(
+        server
+            .exchange("M / HTTP/1.1\r\ncontent-length:3\r\n\r\nabc")
+            .unwrap(),
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
+    );
+}
+
+#[test]
+fn already_got_body() {
+    let server = TestServer::start(|req| Response::GetBodyAndReprocess(100, req)).unwrap();
+    assert_eq!(
+        server
+            .exchange("M / HTTP/1.1\r\ncontent-length:3\r\nexpect:100-continue\r\n\r\nabc")
+            .unwrap(),
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
+    );
+}
+
+#[test]
+fn fast_reply() {
+    let server = TestServer::start(|_req| Response::new(200)).unwrap();
+    let before = Instant::now();
+    let reply = server.exchange("M / HTTP/1.1\r\n\r\n").unwrap();
+    check_elapsed(before, 0..100).unwrap();
+    assert_eq!(reply, "HTTP/1.1 200 OK\r\n\r\n",);
+}
+
+#[test]
+fn slow_reply() {
+    let server = TestServer::start(|_req| {
+        std::thread::sleep(Duration::from_millis(100));
+        Response::new(200)
+    })
+    .unwrap();
+    let before = Instant::now();
+    let reply = server.exchange("M / HTTP/1.1\r\n\r\n").unwrap();
+    check_elapsed(before, 100..200).unwrap();
+    assert_eq!(reply, "HTTP/1.1 200 OK\r\n\r\n",);
 }

@@ -4,6 +4,7 @@ use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub enum HttpError {
+    AlreadyGotBody,
     BodyNotAvailable,
     BodyNotRead,
     BodyNotUtf8,
@@ -31,7 +32,8 @@ impl HttpError {
     #[must_use]
     pub fn is_server_error(&self) -> bool {
         match self {
-            HttpError::BodyNotAvailable
+            HttpError::AlreadyGotBody
+            | HttpError::BodyNotAvailable
             | HttpError::BodyNotRead
             | HttpError::CacheDirNotConfigured
             | HttpError::DuplicateContentLengthHeader
@@ -59,6 +61,7 @@ impl HttpError {
     #[must_use]
     pub fn description(&self) -> String {
         match self {
+            HttpError::AlreadyGotBody => "HttpError::AlreadyGotBody".to_string(),
             HttpError::BodyNotAvailable => "HttpError::BodyNotAvailable".to_string(),
             HttpError::BodyNotRead => "HttpError::BodyNotRead".to_string(),
             HttpError::BodyNotUtf8 => "HttpError::BodyNotUtf8".to_string(),
@@ -118,7 +121,8 @@ impl From<HttpError> for Response {
             HttpError::BodyTooLong => Response::text(413, "Uploaded data is too big."),
             HttpError::HeadTooLong => Response::text(431, e.description()),
             HttpError::UnsupportedProtocol => Response::text(505, e.description()),
-            HttpError::BodyNotAvailable
+            HttpError::AlreadyGotBody
+            | HttpError::BodyNotAvailable
             | HttpError::BodyNotRead
             | HttpError::CacheDirNotConfigured
             | HttpError::DuplicateContentLengthHeader
@@ -137,7 +141,8 @@ impl From<HttpError> for std::io::Error {
             HttpError::Truncated => {
                 std::io::Error::new(ErrorKind::UnexpectedEof, "Incomplete request")
             }
-            HttpError::BodyNotUtf8
+            HttpError::AlreadyGotBody
+            | HttpError::BodyNotUtf8
             | HttpError::BodyTooLong
             | HttpError::HeadTooLong
             | HttpError::InvalidContentLength

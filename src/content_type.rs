@@ -52,7 +52,7 @@ impl ContentType {
         match self {
             ContentType::Css => "text/css; charset=UTF-8",
             ContentType::Csv => "text/csv; charset=UTF-8",
-            ContentType::EventStream => "text/event-stream; charset=UTF-8",
+            ContentType::EventStream => "text/event-stream",
             ContentType::FormUrlEncoded => "application/x-www-form-urlencoded; charset=UTF-8",
             ContentType::Gif => "image/gif",
             ContentType::Html => "text/html; charset=UTF-8",

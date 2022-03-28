@@ -160,6 +160,8 @@
 //!
 //! # TO DO
 //! - Fix limitations above
+//! - Support [HEAD](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD)
+//!   responses that have Content-Length set and no body.
 //!
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.
