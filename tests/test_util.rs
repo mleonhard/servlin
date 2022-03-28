@@ -155,7 +155,6 @@ impl TestServer {
         let mut string = String::new();
         match tcp_stream.read_to_string(&mut string) {
             Ok(_) => Ok(string),
-            Err(e) if e.kind() == ErrorKind::ConnectionReset => Ok(string),
             Err(e) => Err(ExchangeErr::read(e)),
         }
     }

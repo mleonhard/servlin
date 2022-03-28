@@ -178,7 +178,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      🔒  │           ├── safe-proc-macro2 1.0.36
 0/0        0/0          0/0    0/0     0/0      🔒  │           └── safe-quote 1.0.15
 0/0        0/0          0/0    0/0     0/0      🔒  │               └── safe-proc-macro2 1.0.36
-0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-executor 0.3.2
+0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-executor 0.3.3
 0/0        0/0          0/0    0/0     0/0      🔒  │   ├── safina-sync 0.2.3
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-threadpool 0.2.3
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-sync 0.2.3
@@ -265,6 +265,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 # TO DO
 - Fix limitations above
+- Support [HEAD](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD)
+  responses that have Content-Length set and no body.
 
 # Release Process
 1. Edit `Cargo.toml` and bump version number.
