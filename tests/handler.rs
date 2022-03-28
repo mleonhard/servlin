@@ -1,12 +1,26 @@
-#![cfg(feature = "internals")]
-
-use crate::test_util::{assert_ends_with, assert_starts_with, check_elapsed, TestServer};
+use crate::test_util::{
+    assert_ends_with, assert_starts_with, check_elapsed, read_to_string, TestServer,
+};
 use beatrice::{ContentType, Response};
 use serde_json::json;
 use std::io::Read;
 use std::time::{Duration, Instant};
 
 mod test_util;
+
+fn req_with_len(body_len: usize) -> String {
+    format!("M / HTTP/1.1\r\ncontent-length:{}\r\n\r\n", body_len)
+        .chars()
+        .chain(std::iter::repeat('a').take(body_len))
+        .collect::<String>()
+}
+
+fn req_without_len(body_len: usize) -> String {
+    "POST / HTTP/1.1\r\n\r\n"
+        .chars()
+        .chain(std::iter::repeat('a').take(body_len))
+        .collect::<String>()
+}
 
 #[test]
 fn panics() {
@@ -172,18 +186,6 @@ fn return_drop() {
 
 #[test]
 fn get_body() {
-    fn req_with_len(body_len: usize) -> String {
-        format!("M / HTTP/1.1\r\ncontent-length:{}\r\n\r\n", body_len)
-            .chars()
-            .chain(std::iter::repeat('a').take(body_len))
-            .collect::<String>()
-    }
-    fn req_without_len(body_len: usize) -> String {
-        "POST / HTTP/1.1\r\n\r\n"
-            .chars()
-            .chain(std::iter::repeat('a').take(body_len))
-            .collect::<String>()
-    }
     let server = TestServer::start(|req| {
         if req.body().is_pending() {
             Response::GetBodyAndReprocess(70_000, req)
@@ -244,6 +246,46 @@ fn already_got_body() {
             .exchange("M / HTTP/1.1\r\ncontent-length:3\r\nexpect:100-continue\r\n\r\nabc")
             .unwrap(),
         "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
+    );
+}
+
+#[test]
+fn error_writing_body_file() {
+    let mut server = TestServer::start(|req| {
+        if req.body().is_pending() {
+            Response::GetBodyAndReprocess(70_000, req)
+        } else {
+            let len = req.body().reader().unwrap().bytes().count();
+            Response::text(200, format!("len={}", len))
+        }
+    })
+    .unwrap();
+    server.cache_dir.take();
+    std::thread::sleep(Duration::from_millis(100));
+    assert_eq!(
+        server.exchange(req_with_len(66000)).unwrap(),
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
+    );
+}
+
+#[test]
+fn error_reading_body_file() {
+    let mut server = TestServer::start(|req| {
+        if req.body().is_pending() {
+            Response::GetBodyAndReprocess(70_000, req)
+        } else {
+            std::thread::sleep(Duration::from_millis(200));
+            let len = req.body().reader().unwrap().bytes().count();
+            Response::text(200, format!("len={}", len))
+        }
+    })
+    .unwrap();
+    let tcp_stream = server.connect_and_send(req_with_len(66000)).unwrap();
+    std::thread::sleep(Duration::from_millis(100));
+    server.cache_dir.take();
+    assert_eq!(
+        read_to_string(tcp_stream).unwrap(),
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 12\r\n\r\nServer error",
     );
 }
 

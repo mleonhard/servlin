@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Deref;
 
+// TODO: Rename to HttpBody.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BodyWrapper<'x>(&'x Body);
 impl<'x> Deref for BodyWrapper<'x> {
@@ -122,6 +123,7 @@ impl Response {
         }
     }
 
+    // TODO: Change this to return Option<u16>.
     /// # Panics
     /// Panics when called on `Response::Drop` or `Response::GetBodyAndReprocess(..)`.
     #[must_use]
@@ -130,6 +132,26 @@ impl Response {
             Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
             Response::Normal(c, _t, _h, _b) => *c,
         }
+    }
+
+    #[must_use]
+    pub fn is_2xx(&self) -> bool {
+        self.code() / 100 == 2
+    }
+
+    #[must_use]
+    pub fn is_3xx(&self) -> bool {
+        self.code() / 100 == 3
+    }
+
+    #[must_use]
+    pub fn is_4xx(&self) -> bool {
+        self.code() / 100 == 4
+    }
+
+    #[must_use]
+    pub fn is_5xx(&self) -> bool {
+        self.code() / 100 == 5
     }
 
     /// # Panics

@@ -256,6 +256,7 @@ pub async fn handle_http_conn_once<F, Fut>(
 ) -> Result<(), HttpError>
 where
     Fut: Future<Output = Response>,
+    // TODO: Change from FnOnce to Fn and remove clone() calls below.
     F: FnOnce(Request) -> Fut + 'static + Send + Clone,
 {
     //dbg!("handle_http_conn_once");
@@ -278,7 +279,9 @@ where
             }
             req.body = http_conn.read_body_to_file(cache_dir, max_len).await?;
             //dbg!("request_handler", &req);
-            match request_handler.clone()(req).await {
+            let response = request_handler.clone()(req).await;
+            //dbg!(&response);
+            match response {
                 Response::GetBodyAndReprocess(..) => return Err(HttpError::AlreadyGotBody),
                 Response::Drop => return Err(HttpError::Disconnected),
                 normal_response @ Response::Normal(..) => normal_response,
@@ -288,9 +291,14 @@ where
         normal_response @ Response::Normal(..) => normal_response,
     };
     //dbg!(&response);
-    let result = http_conn.write_response(&response).await;
-    //dbg!(&result);
-    result
+    if response.is_normal() && (response.is_4xx() || response.is_5xx()) {
+        let _ignored = http_conn.write_response(&response).await;
+        Err(HttpError::Disconnected)
+    } else {
+        let result = http_conn.write_response(&response).await;
+        //dbg!(&result);
+        result
+    }
 }
 
 #[allow(clippy::module_name_repetitions)]

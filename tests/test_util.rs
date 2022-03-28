@@ -1,7 +1,5 @@
-#![cfg(feature = "internals")]
 #![allow(dead_code)]
 
-use beatrice::internals::listen_127_0_0_1_any_port;
 use beatrice::{socket_addr_127_0_0_1_any_port, HttpServerBuilder, Request, Response};
 use permit::Permit;
 use safina_executor::Executor;
@@ -49,6 +47,32 @@ pub fn check_elapsed(before: Instant, range_ms: Range<u64>) -> Result<(), String
             elapsed, duration_range
         ))
     }
+}
+
+#[allow(clippy::missing_errors_doc)]
+pub fn read_to_string(mut reader: std::net::TcpStream) -> Result<String, std::io::Error> {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut bytes = Vec::new();
+    loop {
+        let mut buf = [0_u8; 1024];
+        let now = Instant::now();
+        let timeout = if deadline < now {
+            Duration::ZERO
+        } else {
+            deadline.duration_since(now)
+        };
+        reader.set_read_timeout(Some(timeout)).unwrap();
+        match reader.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => bytes.extend_from_slice(&buf[..n]),
+            Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                return Err(std::io::Error::new(ErrorKind::TimedOut, "timed out"))
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    String::from_utf8(bytes)
+        .map_err(|_| std::io::Error::new(ErrorKind::InvalidData, "bytes are not UTF-8"))
 }
 
 #[allow(clippy::missing_panics_doc)]
@@ -109,7 +133,7 @@ impl ExchangeErr {
 }
 
 pub struct TestServer {
-    pub cache_dir: TempDir,
+    pub cache_dir: Option<TempDir>,
     pub executor: Arc<Executor>,
     pub addr: SocketAddr,
     pub opt_permit: Option<Permit>,
@@ -135,12 +159,26 @@ impl TestServer {
                 .spawn(handler),
         )?;
         Ok(Self {
-            cache_dir,
+            cache_dir: Some(cache_dir),
             executor,
             addr,
             opt_permit: Some(permit),
             opt_stopped_receiver: Some(stopped_receiver),
         })
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn connect_and_send(
+        &self,
+        send: impl AsRef<[u8]>,
+    ) -> Result<std::net::TcpStream, ExchangeErr> {
+        let mut tcp_stream =
+            std::net::TcpStream::connect_timeout(&self.addr, Duration::from_millis(500))
+                .map_err(ExchangeErr::connect)?;
+        tcp_stream
+            .write_all(send.as_ref())
+            .map_err(ExchangeErr::write)?;
+        Ok(tcp_stream)
     }
 
     #[allow(clippy::missing_errors_doc)]
@@ -178,7 +216,9 @@ impl Drop for TestServer {
 
 #[allow(clippy::missing_panics_doc)]
 pub async fn connected_streams() -> (async_net::TcpStream, async_net::TcpStream) {
-    let listener = listen_127_0_0_1_any_port().await.unwrap();
+    let listener = async_net::TcpListener::bind(socket_addr_127_0_0_1_any_port())
+        .await
+        .unwrap();
     let listen_addr = listener.local_addr().unwrap();
     let (sender, mut receiver) = safina_sync::oneshot();
     safina_executor::spawn(async move {
