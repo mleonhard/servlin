@@ -8,6 +8,7 @@ use std::fmt::Debug;
 use std::net::SocketAddr;
 use url::Url;
 
+#[cfg(feature = "internals")]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Request {
     pub remote_addr: SocketAddr,
@@ -20,6 +21,20 @@ pub struct Request {
     // pub gzip: bool,
     pub content_length: Option<u64>,
     pub body: Body,
+}
+#[cfg(not(feature = "internals"))]
+#[derive(Clone, Eq, PartialEq)]
+pub struct Request {
+    remote_addr: SocketAddr,
+    method: String,
+    url: Url,
+    headers_lowercase: HashMap<String, String>,
+    content_type: ContentType,
+    expect_continue: bool,
+    chunked: bool,
+    // gzip: bool,
+    content_length: Option<u64>,
+    body: Body,
 }
 impl Request {
     #[must_use]
