@@ -25,16 +25,16 @@ pub struct Request {
 #[cfg(not(feature = "internals"))]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Request {
-    remote_addr: SocketAddr,
-    method: String,
-    url: Url,
-    headers_lowercase: HashMap<String, String>,
-    content_type: ContentType,
-    expect_continue: bool,
-    chunked: bool,
-    // gzip: bool,
-    content_length: Option<u64>,
-    body: Body,
+    pub(crate) remote_addr: SocketAddr,
+    pub(crate) method: String,
+    pub(crate) url: Url,
+    pub(crate) headers_lowercase: HashMap<String, String>,
+    pub(crate) content_type: ContentType,
+    pub(crate) expect_continue: bool,
+    pub(crate) chunked: bool,
+    // pub(crate) gzip: bool,
+    pub(crate) content_length: Option<u64>,
+    pub(crate) body: Body,
 }
 impl Request {
     #[must_use]
