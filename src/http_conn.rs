@@ -1,6 +1,6 @@
 use crate::body::{
     read_http_body_to_file, read_http_body_to_vec, read_http_unsized_body_to_file,
-    read_http_unsized_body_to_vec, write_http_continue,
+    read_http_unsized_body_to_vec,
 };
 use crate::http_error::HttpError;
 use crate::request::read_http_request;
@@ -95,6 +95,7 @@ impl HttpConn {
         }
         self.write_state = WriteState::Response;
         let req = read_http_request(self.remote_addr, &mut self.buf, &mut self.stream).await?;
+        self.expect_continue = req.expect_continue;
         if req.body().is_pending() {
             // This code is complicated because HTTP/1.1 defines 3 ways to frame a body and
             // complicated rules for deciding which framing method to expect:
@@ -128,15 +129,12 @@ impl HttpConn {
             WriteState::Response => {}
             WriteState::Shutdown => return Err(HttpError::Disconnected),
         }
-        let result = {
-            //dbg!("write_http_continue_if_needed");
-            if self.expect_continue {
-                write_http_continue(&mut self.stream).await?;
-                self.expect_continue = false;
-            }
-            Ok(())
-        };
-        self.shutdown_write_on_err(result)
+        //dbg!("write_http_continue_if_needed");
+        if self.expect_continue {
+            self.write_response(&Response::new(100)).await?;
+            self.expect_continue = false;
+        }
+        Ok(())
     }
 
     #[must_use]
@@ -227,18 +225,15 @@ impl HttpConn {
             WriteState::Shutdown => return Err(HttpError::Disconnected),
         }
         let mut write_counter = AsyncWriteCounter::new(&mut self.stream);
-        match write_http_response(&mut write_counter, response).await {
-            Ok(()) => {
+        let result = write_http_response(&mut write_counter, response).await;
+        if result.is_ok() {
+            if !response.is_1xx() {
                 self.write_state = WriteState::None;
-                Ok(())
             }
-            Err(e) => {
-                if write_counter.num_bytes_written() > 0 {
-                    self.shutdown_write();
-                }
-                Err(e)
-            }
+        } else if write_counter.num_bytes_written() > 0 {
+            self.shutdown_write();
         }
+        result
     }
 }
 
@@ -261,10 +256,12 @@ where
 {
     //dbg!("handle_http_conn_once");
     let mut req = http_conn.read_request().await?;
+    //dbg!(&req);
     if req.body.is_pending() && !req.body.is_empty() && req.body.len() <= (small_body_len as u64) {
         req.body = http_conn.read_body_to_vec().await?;
+        //dbg!(&req);
     }
-    //dbg!("request_handler", &req);
+    //dbg!("request_handler");
     let response = request_handler.clone()(req).await;
     //dbg!(&response);
     let response = match response {

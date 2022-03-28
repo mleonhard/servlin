@@ -135,6 +135,11 @@ impl Response {
     }
 
     #[must_use]
+    pub fn is_1xx(&self) -> bool {
+        self.code() / 100 == 1
+    }
+
+    #[must_use]
     pub fn is_2xx(&self) -> bool {
         self.code() / 100 == 2
     }

@@ -50,24 +50,54 @@ pub fn check_elapsed(before: Instant, range_ms: Range<u64>) -> Result<(), String
 }
 
 #[allow(clippy::missing_errors_doc)]
-pub fn read_to_string(mut reader: std::net::TcpStream) -> Result<String, std::io::Error> {
+pub fn read_to_string(reader: &mut std::net::TcpStream) -> Result<String, std::io::Error> {
     let deadline = Instant::now() + Duration::from_secs(10);
     let mut bytes = Vec::new();
     loop {
-        let mut buf = [0_u8; 1024];
         let now = Instant::now();
         let timeout = if deadline < now {
             Duration::ZERO
         } else {
             deadline.duration_since(now)
         };
-        reader.set_read_timeout(Some(timeout)).unwrap();
+        reader.set_read_timeout(Some(timeout))?;
+        let mut buf = [0_u8; 1024];
         match reader.read(&mut buf) {
             Ok(0) => break,
             Ok(n) => bytes.extend_from_slice(&buf[..n]),
             Err(e) if e.kind() == ErrorKind::WouldBlock => {
                 return Err(std::io::Error::new(ErrorKind::TimedOut, "timed out"))
             }
+            Err(e) => return Err(e),
+        }
+    }
+    String::from_utf8(bytes)
+        .map_err(|_| std::io::Error::new(ErrorKind::InvalidData, "bytes are not UTF-8"))
+}
+
+#[allow(clippy::missing_errors_doc)]
+pub fn read_for(
+    reader: &mut std::net::TcpStream,
+    duration: Duration,
+) -> Result<String, std::io::Error> {
+    let deadline = Instant::now() + duration;
+    let mut bytes = Vec::new();
+    loop {
+        let now = Instant::now();
+        if deadline < now {
+            break;
+        }
+        reader.set_read_timeout(Some(deadline.duration_since(now)))?;
+        let mut buf = [0_u8; 1024];
+        match reader.read(&mut buf) {
+            Ok(0) => {
+                return Err(std::io::Error::new(
+                    ErrorKind::NotConnected,
+                    "connection closed",
+                ))
+            }
+            Ok(n) => bytes.extend_from_slice(&buf[..n]),
+            Err(e) if e.kind() == ErrorKind::WouldBlock => break,
             Err(e) => return Err(e),
         }
     }
@@ -165,6 +195,11 @@ impl TestServer {
             opt_permit: Some(permit),
             opt_stopped_receiver: Some(stopped_receiver),
         })
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn connect(&self) -> Result<std::net::TcpStream, std::io::Error> {
+        std::net::TcpStream::connect_timeout(&self.addr, Duration::from_millis(500))
     }
 
     #[allow(clippy::missing_errors_doc)]

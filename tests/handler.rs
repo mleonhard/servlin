@@ -1,9 +1,9 @@
 use crate::test_util::{
-    assert_ends_with, assert_starts_with, check_elapsed, read_to_string, TestServer,
+    assert_ends_with, assert_starts_with, check_elapsed, read_for, read_to_string, TestServer,
 };
 use beatrice::{ContentType, Response};
 use serde_json::json;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::time::{Duration, Instant};
 
 mod test_util;
@@ -42,10 +42,10 @@ fn empty() {
 
 #[test]
 fn unknown_code() {
-    let server = TestServer::start(|_req| Response::new(123)).unwrap();
+    let server = TestServer::start(|_req| Response::new(9999)).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 123 Response\r\n\r\n",
+        "HTTP/1.1 9999 Response\r\n\r\n",
     );
 }
 
@@ -240,13 +240,24 @@ fn body_not_pending() {
 
 #[test]
 fn already_got_body() {
-    let server = TestServer::start(|req| Response::GetBodyAndReprocess(100, req)).unwrap();
+    let server = TestServer::start(|req| Response::GetBodyAndReprocess(70_000, req)).unwrap();
     assert_eq!(
-        server
-            .exchange("M / HTTP/1.1\r\ncontent-length:3\r\nexpect:100-continue\r\n\r\nabc")
-            .unwrap(),
+        server.exchange(req_with_len(66_000)).unwrap(),
         "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
     );
+}
+
+#[test]
+fn get_body_then_drop() {
+    let server = TestServer::start(|req| {
+        if req.body().is_pending() {
+            Response::GetBodyAndReprocess(70_000, req)
+        } else {
+            Response::Drop
+        }
+    })
+    .unwrap();
+    assert_eq!(server.exchange(req_with_len(66_000)).unwrap(), "",);
 }
 
 #[test]
@@ -263,7 +274,7 @@ fn error_writing_body_file() {
     server.cache_dir.take();
     std::thread::sleep(Duration::from_millis(100));
     assert_eq!(
-        server.exchange(req_with_len(66000)).unwrap(),
+        server.exchange(req_with_len(66_000)).unwrap(),
         "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
     );
 }
@@ -280,11 +291,11 @@ fn error_reading_body_file() {
         }
     })
     .unwrap();
-    let tcp_stream = server.connect_and_send(req_with_len(66000)).unwrap();
+    let mut tcp_stream = server.connect_and_send(req_with_len(66_000)).unwrap();
     std::thread::sleep(Duration::from_millis(100));
     server.cache_dir.take();
     assert_eq!(
-        read_to_string(tcp_stream).unwrap(),
+        read_to_string(&mut tcp_stream).unwrap(),
         "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 12\r\n\r\nServer error",
     );
 }
@@ -309,4 +320,46 @@ fn slow_reply() {
     let reply = server.exchange("M / HTTP/1.1\r\n\r\n").unwrap();
     check_elapsed(before, 100..200).unwrap();
     assert_eq!(reply, "HTTP/1.1 200 OK\r\n\r\n",);
+}
+
+#[test]
+fn expect_100_continue() {
+    let server = TestServer::start(|req| {
+        if req.body().is_pending() {
+            Response::GetBodyAndReprocess(70_000, req)
+        } else {
+            let len = req.body().reader().unwrap().bytes().count();
+            Response::text(200, format!("len={}", len))
+        }
+    })
+    .unwrap();
+    let mut tcp_stream = server.connect().unwrap();
+    tcp_stream
+        .write_all(b"M / HTTP/1.1\r\ncontent-length:100\r\nexpect: 100-continue\r\n\r\n")
+        .unwrap();
+    assert_eq!(
+        read_for(&mut tcp_stream, Duration::from_millis(100)).unwrap(),
+        "HTTP/1.1 100 Continue\r\n\r\n"
+    );
+    tcp_stream.write_all(&[b'a'; 100]).unwrap();
+    assert_ends_with(
+        read_for(&mut tcp_stream, Duration::from_millis(100)).unwrap(),
+        "len=100",
+    );
+}
+
+#[test]
+fn client_incomplete_read() {
+    let server = TestServer::start(|_req| {
+        Response::text(
+            200,
+            std::iter::repeat(b'a').take(1_000_000).collect::<Vec<u8>>(),
+        )
+    })
+    .unwrap();
+    let mut tcp_stream = server.connect_and_send("M / HTTP/1.1\r\n\r\n").unwrap();
+    // read_to_string(&mut tcp_stream).unwrap();
+    tcp_stream.read_exact(&mut [0_u8; 10]).unwrap();
+    drop(tcp_stream);
+    std::thread::sleep(Duration::from_millis(100));
 }

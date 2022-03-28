@@ -1,7 +1,7 @@
 use crate::http_error::HttpError;
 use crate::util::{copy_async, escape_and_elide, CopyResult};
 use crate::Response;
-use futures_io::{AsyncRead, AsyncWrite};
+use futures_io::AsyncRead;
 use futures_lite::{AsyncReadExt, AsyncWriteExt, FutureExt};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
@@ -191,6 +191,16 @@ impl From<Vec<u8>> for Body {
         Body::Vec(v)
     }
 }
+impl<const LEN: usize> From<[u8; LEN]> for Body {
+    fn from(b: [u8; LEN]) -> Self {
+        Body::Vec(b.to_vec())
+    }
+}
+impl From<&[u8]> for Body {
+    fn from(b: &[u8]) -> Self {
+        Body::Vec(b.to_vec())
+    }
+}
 impl TryFrom<Body> for String {
     type Error = std::io::Error;
 
@@ -239,16 +249,6 @@ impl Debug for Body {
             ),
         }
     }
-}
-
-/// # Errors
-/// Returns an error when we fail to write the response on the connection
-pub async fn write_http_continue(mut stream: impl AsyncWrite + Unpin) -> Result<(), HttpError> {
-    //dbg!("write_http_continue");
-    stream
-        .write_all(b"100 Continue\r\n\r\n")
-        .await
-        .map_err(|_| HttpError::Disconnected)
 }
 
 /// # Errors
