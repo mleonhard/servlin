@@ -129,7 +129,7 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
     buf: &mut FixedBuf<BUF_SIZE>,
     reader: impl AsyncRead + Unpin,
 ) -> Result<Request, HttpError> {
-    dbg!("read_http_request");
+    //dbg!("read_http_request");
     buf.shift();
     let head = read_http_head(buf, reader).await?;
     let content_type = head

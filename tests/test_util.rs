@@ -162,7 +162,6 @@ impl Drop for TestServer {
         if std::thread::panicking() {
             return;
         }
-        println!("TestServer::Drop");
         self.opt_permit.take();
         if let Some(stopped_receiver) = self.opt_stopped_receiver.take() {
             match stopped_receiver.recv_timeout(Duration::from_secs(5)) {

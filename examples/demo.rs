@@ -19,7 +19,7 @@ fn upload(state: &Arc<State>, req: Request) -> Result<Response, Response> {
     println!("upload receiving");
     let mut body_string = String::new();
     req.body().reader()?.read_to_string(&mut body_string)?;
-    dbg!(&body_string);
+    //dbg!(&body_string);
     state.upload_count.fetch_add(1, Ordering::AcqRel);
     Ok(Response::text(
         200,

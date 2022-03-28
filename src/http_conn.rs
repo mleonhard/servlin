@@ -64,13 +64,13 @@ impl HttpConn {
     }
 
     pub fn shutdown_read(&mut self) {
-        dbg!("shutdown_read");
+        //dbg!("shutdown_read");
         let _ignored = self.stream.shutdown(Shutdown::Read);
         self.read_state = ReadState::Shutdown;
     }
 
     pub fn shutdown_write(&mut self) {
-        dbg!("shutdown_write");
+        //dbg!("shutdown_write");
         let _ignored = self.stream.shutdown(Shutdown::Write);
         self.write_state = WriteState::Shutdown;
     }
@@ -101,7 +101,7 @@ impl HttpConn {
     /// - we fail to parse the request
     pub async fn read_request(&mut self) -> Result<Request, HttpError> {
         let result = {
-            dbg!("read_request");
+            //dbg!("read_request");
             match self.write_state {
                 WriteState::None => {}
                 WriteState::Response => return Err(HttpError::ResponseNotSent),
@@ -152,7 +152,7 @@ impl HttpConn {
             WriteState::Shutdown => return Err(HttpError::Disconnected),
         }
         let result = {
-            dbg!("write_http_continue_if_needed");
+            //dbg!("write_http_continue_if_needed");
             if self.expect_continue {
                 write_http_continue(&mut self.stream).await?;
                 self.expect_continue = false;
@@ -215,7 +215,7 @@ impl HttpConn {
     /// - we fail to create or write the temporary file
     pub async fn read_body_to_file(&mut self, dir: &Path, max_len: u64) -> Result<Body, HttpError> {
         let result = {
-            dbg!("read_body_to_file", max_len, dir);
+            //dbg!("read_body_to_file", max_len, dir);
             match self.read_state {
                 ReadState::Ready => return Err(HttpError::BodyNotAvailable),
                 ReadState::Bytes(len) => {
@@ -249,7 +249,7 @@ impl HttpConn {
     /// Returns an error when a response was already sent, the connection is closed,
     /// or it fails to send the response bytes over the network connection.
     pub async fn write_response(&mut self, response: &Response) -> Result<(), HttpError> {
-        dbg!("write_response");
+        //dbg!("write_response");
         match self.write_state {
             WriteState::None => return Err(HttpError::ResponseAlreadySent),
             WriteState::Response => {}
@@ -287,19 +287,19 @@ where
     Fut: Future<Output = Response>,
     F: FnOnce(Request) -> Fut + 'static + Send + Clone,
 {
-    dbg!("handle_http_conn_once");
+    //dbg!("handle_http_conn_once");
     let mut req = http_conn.read_request().await?;
     if req.body.is_pending() && req.body.len() <= (small_body_len as u64) {
         req.body = http_conn.read_body_to_vec().await?;
     }
-    dbg!("request_handler", &req);
+    //dbg!("request_handler", &req);
     let response = request_handler.clone()(req).await;
-    dbg!(&response);
+    //dbg!(&response);
     let response = match response {
         Response::GetBodyAndReprocess(max_len, mut req) => {
             let cache_dir = opt_cache_dir.ok_or(HttpError::CacheDirNotConfigured)?;
             if max_len < req.body.len() {
-                dbg!("returning HttpError::BodyTooLong");
+                //dbg!("returning HttpError::BodyTooLong");
                 return Err(HttpError::BodyTooLong);
             }
             req.body = http_conn.read_body_to_file(cache_dir, max_len).await?;
@@ -309,7 +309,7 @@ where
         Response::Drop => return Ok(()),
         normal_response @ Response::Normal(..) => normal_response,
     };
-    dbg!(&response);
+    //dbg!(&response);
     http_conn.write_response(&response).await
 }
 
@@ -325,7 +325,7 @@ pub async fn handle_http_conn<F, Fut>(
     Fut: Future<Output = Response>,
     F: FnOnce(Request) -> Fut + 'static + Send + Clone,
 {
-    dbg!("handle_http_conn");
+    //dbg!("handle_http_conn");
     while !permit.is_revoked() {
         if !http_conn.is_ready() {
             // Previous request did not download body.

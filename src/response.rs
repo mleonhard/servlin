@@ -292,7 +292,7 @@ pub async fn write_http_response(
     mut writer: impl AsyncWrite + Unpin,
     response: &Response,
 ) -> Result<(), HttpError> {
-    dbg!("write_http_response", &response);
+    //dbg!("write_http_response", &response);
     if !response.is_normal() {
         return Err(HttpError::UnwritableResponse);
     }

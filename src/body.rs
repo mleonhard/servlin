@@ -244,7 +244,7 @@ impl Debug for Body {
 /// # Errors
 /// Returns an error when we fail to write the response on the connection
 pub async fn write_http_continue(mut stream: impl AsyncWrite + Unpin) -> Result<(), HttpError> {
-    dbg!("write_http_continue");
+    //dbg!("write_http_continue");
     stream
         .write_all(b"100 Continue\r\n\r\n")
         .await
@@ -257,7 +257,7 @@ pub async fn read_http_body_to_vec(
     reader: impl AsyncRead + Unpin,
     len: usize,
 ) -> Result<Body, HttpError> {
-    dbg!("read_http_body_to_vec", len);
+    //dbg!("read_http_body_to_vec", len);
     let mut body_vec = Vec::with_capacity(len);
     AsyncReadExt::take(reader, len as u64)
         .read_to_end(&mut body_vec)
@@ -276,7 +276,7 @@ pub async fn read_http_body_to_vec(
 pub async fn read_http_unsized_body_to_vec(
     mut reader: impl AsyncRead + Unpin,
 ) -> Result<Body, HttpError> {
-    dbg!("read_http_unsized_body_to_vec");
+    //dbg!("read_http_unsized_body_to_vec");
     let mut body_vec = Vec::new();
     reader
         .read_to_end(&mut body_vec)
@@ -295,7 +295,7 @@ pub async fn read_http_body_to_file(
     len: u64,
     dir: &Path,
 ) -> Result<Body, HttpError> {
-    dbg!("read_http_body_to_file", len, dir);
+    //dbg!("read_http_body_to_file", len, dir);
     // TODO: Add async support to `temp_file` and use it here.
     let temp_file =
         TempFile::in_dir(dir).map_err(|e| HttpError::ErrorSavingFile(e.kind(), e.to_string()))?;
@@ -326,7 +326,7 @@ pub async fn read_http_unsized_body_to_file(
     dir: &Path,
     max_len: u64,
 ) -> Result<Body, HttpError> {
-    dbg!("read_http_body_to_file", max_len, dir);
+    //dbg!("read_http_body_to_file", max_len, dir);
     let temp_file =
         TempFile::in_dir(dir).map_err(|e| HttpError::ErrorSavingFile(e.kind(), e.to_string()))?;
     let mut file = async_fs::File::create(temp_file.path())
