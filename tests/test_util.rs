@@ -108,6 +108,7 @@ impl ExchangeErr {
 }
 
 pub struct TestServer {
+    pub cache_dir: TempDir,
     pub executor: Arc<Executor>,
     pub addr: SocketAddr,
     pub opt_permit: Option<Permit>,
@@ -133,6 +134,7 @@ impl TestServer {
                 .spawn(handler),
         )?;
         Ok(Self {
+            cache_dir,
             executor,
             addr,
             opt_permit: Some(permit),
@@ -151,10 +153,11 @@ impl TestServer {
             .map_err(ExchangeErr::write)?;
         tcp_stream.shutdown(Shutdown::Write).unwrap();
         let mut string = String::new();
-        tcp_stream
-            .read_to_string(&mut string)
-            .map_err(ExchangeErr::read)?;
-        Ok(string)
+        match tcp_stream.read_to_string(&mut string) {
+            Ok(_) => Ok(string),
+            Err(e) if e.kind() == ErrorKind::ConnectionReset => Ok(string),
+            Err(e) => Err(ExchangeErr::read(e)),
+        }
     }
 }
 impl Drop for TestServer {

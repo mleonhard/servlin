@@ -335,18 +335,22 @@ pub async fn write_http_response(
         .await
         .map_err(|_| HttpError::Disconnected)?;
     drop(head_bytes);
-    match copy_async(
-        AsyncReadExt::take(response.body().async_reader(), response.body().len()),
-        &mut writer,
-    )
-    .await
-    {
-        CopyResult::Ok(len) if len == response.body().len() => Ok(()),
-        CopyResult::Ok(_len) => Err(HttpError::ErrorReadingFile(
-            ErrorKind::UnexpectedEof,
-            "body file is smaller than expected".to_string(),
-        )),
-        CopyResult::ReaderErr(e) => Err(HttpError::ErrorReadingFile(e.kind(), e.to_string())),
-        CopyResult::WriterErr(..) => Err(HttpError::Disconnected),
+    if response.body().len() > 0 {
+        match copy_async(
+            AsyncReadExt::take(response.body().async_reader(), response.body().len()),
+            &mut writer,
+        )
+        .await
+        {
+            CopyResult::Ok(len) if len == response.body().len() => Ok(()),
+            CopyResult::Ok(_len) => Err(HttpError::ErrorReadingFile(
+                ErrorKind::UnexpectedEof,
+                "body file is smaller than expected".to_string(),
+            )),
+            CopyResult::ReaderErr(e) => Err(HttpError::ErrorReadingFile(e.kind(), e.to_string())),
+            CopyResult::WriterErr(..) => Err(HttpError::Disconnected),
+        }
+    } else {
+        Ok(())
     }
 }

@@ -219,7 +219,7 @@ impl HttpConn {
             match self.read_state {
                 ReadState::Ready => return Err(HttpError::BodyNotAvailable),
                 ReadState::Bytes(len) => {
-                    if len < max_len {
+                    if max_len < len {
                         return Err(HttpError::BodyTooLong);
                     }
                     self.write_http_continue_if_needed().await?;
@@ -289,7 +289,7 @@ where
 {
     //dbg!("handle_http_conn_once");
     let mut req = http_conn.read_request().await?;
-    if req.body.is_pending() && req.body.len() <= (small_body_len as u64) {
+    if req.body.is_pending() && req.body.len() > 0 && req.body.len() <= (small_body_len as u64) {
         req.body = http_conn.read_body_to_vec().await?;
     }
     //dbg!("request_handler", &req);
