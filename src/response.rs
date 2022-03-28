@@ -60,7 +60,7 @@ impl Response {
         Response::Normal(
             405,
             ContentType::None,
-            [("Allow".to_string(), allowed_methods.join(","))].into(),
+            [("allow".to_string(), allowed_methods.join(","))].into(),
             Body::Empty,
         )
     }
@@ -199,7 +199,7 @@ impl Response {
             508 => "Loop Detected",
             510 => "Not Extended",
             511 => "Network Authentication Required",
-            _ => "unknown",
+            _ => "Response",
         }
     }
 
