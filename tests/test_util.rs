@@ -35,6 +35,7 @@ pub fn assert_ends_with(value: impl AsRef<str>, suffix: impl AsRef<str>) {
     );
 }
 
+#[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 pub fn check_elapsed(before: Instant, range_ms: Range<u64>) -> Result<(), String> {
     assert!(!range_ms.is_empty(), "invalid range {:?}", range_ms);

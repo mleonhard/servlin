@@ -260,7 +260,7 @@ where
 {
     //dbg!("handle_http_conn_once");
     let mut req = http_conn.read_request().await?;
-    if req.body.is_pending() && req.body.len() > 0 && req.body.len() <= (small_body_len as u64) {
+    if req.body.is_pending() && !req.body.is_empty() && req.body.len() <= (small_body_len as u64) {
         req.body = http_conn.read_body_to_vec().await?;
     }
     //dbg!("request_handler", &req);

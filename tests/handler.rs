@@ -172,21 +172,28 @@ fn return_drop() {
 
 #[test]
 fn get_body() {
-    let server = TestServer::start(|req| {
-        if req.body().is_pending() {
-            return Response::GetBodyAndReprocess(70_000, req);
-        } else {
-            let len = req.body().reader().unwrap().bytes().count();
-            Response::text(200, format!("len={}", len))
-        }
-    })
-    .unwrap();
     fn req_with_len(body_len: usize) -> String {
         format!("M / HTTP/1.1\r\ncontent-length:{}\r\n\r\n", body_len)
             .chars()
             .chain(std::iter::repeat('a').take(body_len))
             .collect::<String>()
     }
+    fn req_without_len(body_len: usize) -> String {
+        "POST / HTTP/1.1\r\n\r\n"
+            .chars()
+            .chain(std::iter::repeat('a').take(body_len))
+            .collect::<String>()
+    }
+    let server = TestServer::start(|req| {
+        if req.body().is_pending() {
+            Response::GetBodyAndReprocess(70_000, req)
+        } else {
+            let len = req.body().reader().unwrap().bytes().count();
+            Response::text(200, format!("len={}", len))
+        }
+    })
+    .unwrap();
+    // With content-length
     assert_ends_with(server.exchange(req_with_len(0)).unwrap(), "len=0");
     assert_ends_with(server.exchange(req_with_len(1)).unwrap(), "len=1");
     assert_ends_with(server.exchange(req_with_len(65_536)).unwrap(), "len=65536");
@@ -197,12 +204,7 @@ fn get_body() {
         "HTTP/1.1 413 Payload Too Large\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 25\r\n\r\nUploaded data is too big.",
     );
 
-    fn req_without_len(body_len: usize) -> String {
-        format!("POST / HTTP/1.1\r\n\r\n")
-            .chars()
-            .chain(std::iter::repeat('a').take(body_len))
-            .collect::<String>()
-    }
+    // Without content-length
     assert_ends_with(server.exchange(req_without_len(0)).unwrap(), "len=0");
     assert_ends_with(server.exchange(req_without_len(1)).unwrap(), "len=1");
     assert_ends_with(
