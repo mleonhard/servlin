@@ -1,4 +1,5 @@
 use crate::http_error::HttpError;
+use crate::util::find_slice;
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
 use futures_lite::AsyncReadExt;
@@ -51,21 +52,10 @@ pub struct Head {
     pub headers_lowercase: HashMap<String, String>,
 }
 impl Head {
-    fn find(needle: &[u8], haystack: &[u8]) -> Option<usize> {
-        if needle.len() <= haystack.len() {
-            for n in 0..=(haystack.len() - needle.len()) {
-                if &haystack[n..(n + needle.len())] == needle {
-                    return Some(n);
-                }
-            }
-        }
-        None
-    }
-
     fn read_head_bytes<const BUF_SIZE: usize>(
         buf: &mut FixedBuf<BUF_SIZE>,
     ) -> Result<&[u8], HeadError> {
-        let head_len = Self::find(b"\r\n\r\n", buf.readable()).ok_or(HeadError::Truncated)?;
+        let head_len = find_slice(b"\r\n\r\n", buf.readable()).ok_or(HeadError::Truncated)?;
         let head_bytes_with_delim = buf.try_read_exact(head_len + 4).unwrap();
         let head_bytes = &head_bytes_with_delim[0..head_len];
         Ok(head_bytes)

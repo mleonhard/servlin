@@ -2,6 +2,7 @@
 
 use beatrice::{socket_addr_127_0_0_1_any_port, HttpServerBuilder, Request, Response};
 use permit::Permit;
+use safe_regex::{Matcher0, Matcher1};
 use safina_executor::Executor;
 use safina_sync::Receiver;
 use std::future::Future;
@@ -47,6 +48,59 @@ pub fn check_elapsed(before: Instant, range_ms: Range<u64>) -> Result<(), String
             elapsed, duration_range
         ))
     }
+}
+
+#[allow(clippy::missing_errors_doc)]
+#[allow(clippy::missing_panics_doc)]
+pub fn read_response(tcp_stream: &mut std::net::TcpStream) -> Result<String, std::io::Error> {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut bytes = Vec::new();
+    loop {
+        let now = Instant::now();
+        if deadline < now {
+            return Err(std::io::Error::new(ErrorKind::TimedOut, "timed out"));
+        }
+        tcp_stream.set_read_timeout(Some(deadline.duration_since(now)))?;
+        let mut buf = [0_u8; 1];
+        match tcp_stream.read(&mut buf) {
+            Ok(0) => break,
+            Ok(1) => bytes.push(buf[0]),
+            Ok(_) => unreachable!(),
+            Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                return Err(std::io::Error::new(ErrorKind::TimedOut, "timed out"))
+            }
+            Err(e) => return Err(e),
+        }
+        //dbg!(escape_ascii(bytes.as_slice()));
+        if bytes.len() >= 4 && &bytes.as_slice()[(bytes.len() - 4)..] == b"\r\n\r\n".as_slice() {
+            break;
+        }
+    }
+    let head_len = bytes.len();
+    //dbg!(head_len);
+    let status_100_matcher: Matcher0<_> = safe_regex::regex!(br"HTTP/1.1 1.*");
+    if !status_100_matcher.is_match(bytes.as_slice()) {
+        //dbg!("not-100");
+        #[allow(clippy::assign_op_pattern)]
+        #[allow(clippy::range_plus_one)]
+        let content_length_matcher: Matcher1<_> =
+            safe_regex::regex!(br".*\ncontent-length:([^\r]+).*");
+        if let Some((content_length_bytes,)) = content_length_matcher.match_slices(bytes.as_slice())
+        {
+            //dbg!(escape_ascii(content_length_bytes));
+            let content_length_string: String =
+                String::from_utf8(content_length_bytes.to_vec()).unwrap();
+            let content_length: usize = content_length_string.trim().parse().unwrap();
+            tcp_stream
+                .take(content_length as u64)
+                .read_to_end(&mut bytes)?;
+            assert_eq!(head_len + content_length, bytes.len());
+        } else {
+            tcp_stream.read_to_end(&mut bytes)?;
+        }
+    }
+    String::from_utf8(bytes)
+        .map_err(|_| std::io::Error::new(ErrorKind::InvalidData, "bytes are not UTF-8"))
 }
 
 #[allow(clippy::missing_errors_doc)]

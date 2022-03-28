@@ -115,6 +115,11 @@ impl Body {
     }
 
     #[must_use]
+    pub fn length_is_known(&self) -> bool {
+        !matches!(self, Body::Pending(None))
+    }
+
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

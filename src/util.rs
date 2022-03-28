@@ -73,6 +73,17 @@ pub fn escape_and_elide(input: &[u8], max_len: usize) -> String {
     }
 }
 
+pub fn find_slice<T: std::cmp::PartialEq>(needle: &[T], haystack: &[T]) -> Option<usize> {
+    if needle.len() <= haystack.len() {
+        for n in 0..=(haystack.len() - needle.len()) {
+            if &haystack[n..(n + needle.len())] == needle {
+                return Some(n);
+            }
+        }
+    }
+    None
+}
+
 pub struct AsyncWriteCounter<W>(W, u64);
 impl<W: AsyncWrite + Unpin> AsyncWriteCounter<W> {
     pub fn new(writer: W) -> Self {

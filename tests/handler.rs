@@ -1,5 +1,6 @@
 use crate::test_util::{
-    assert_ends_with, assert_starts_with, check_elapsed, read_for, read_to_string, TestServer,
+    assert_ends_with, assert_starts_with, check_elapsed, read_for, read_response, read_to_string,
+    TestServer,
 };
 use beatrice::{ContentType, Response};
 use serde_json::json;
@@ -263,12 +264,8 @@ fn get_body_then_drop() {
 #[test]
 fn error_writing_body_file() {
     let mut server = TestServer::start(|req| {
-        if req.body().is_pending() {
-            Response::GetBodyAndReprocess(70_000, req)
-        } else {
-            let len = req.body().reader().unwrap().bytes().count();
-            Response::text(200, format!("len={}", len))
-        }
+        assert!(req.body().is_pending());
+        Response::GetBodyAndReprocess(70_000, req)
     })
     .unwrap();
     server.cache_dir.take();
@@ -286,8 +283,8 @@ fn error_reading_body_file() {
             Response::GetBodyAndReprocess(70_000, req)
         } else {
             std::thread::sleep(Duration::from_millis(200));
-            let len = req.body().reader().unwrap().bytes().count();
-            Response::text(200, format!("len={}", len))
+            req.body().reader().unwrap();
+            unreachable!();
         }
     })
     .unwrap();
@@ -326,6 +323,7 @@ fn slow_reply() {
 fn expect_100_continue() {
     let server = TestServer::start(|req| {
         if req.body().is_pending() {
+            std::thread::sleep(Duration::from_millis(100));
             Response::GetBodyAndReprocess(70_000, req)
         } else {
             let len = req.body().reader().unwrap().bytes().count();
@@ -333,7 +331,9 @@ fn expect_100_continue() {
         }
     })
     .unwrap();
+    // Small body
     let mut tcp_stream = server.connect().unwrap();
+    let before = Instant::now();
     tcp_stream
         .write_all(b"M / HTTP/1.1\r\ncontent-length:100\r\nexpect: 100-continue\r\n\r\n")
         .unwrap();
@@ -341,11 +341,25 @@ fn expect_100_continue() {
         read_for(&mut tcp_stream, Duration::from_millis(100)).unwrap(),
         "HTTP/1.1 100 Continue\r\n\r\n"
     );
+    check_elapsed(before, 100..200).unwrap();
     tcp_stream.write_all(&[b'a'; 100]).unwrap();
     assert_ends_with(
         read_for(&mut tcp_stream, Duration::from_millis(100)).unwrap(),
         "len=100",
     );
+    // Large body
+    let mut tcp_stream = server.connect().unwrap();
+    let before = Instant::now();
+    tcp_stream
+        .write_all(b"M / HTTP/1.1\r\ncontent-length:66000\r\nexpect: 100-continue\r\n\r\n")
+        .unwrap();
+    assert_eq!(
+        read_response(&mut tcp_stream).unwrap(),
+        "HTTP/1.1 100 Continue\r\n\r\n"
+    );
+    check_elapsed(before, 100..200).unwrap();
+    tcp_stream.write_all(&[b'a'; 66_000]).unwrap();
+    assert_ends_with(read_response(&mut tcp_stream).unwrap(), "len=66000");
 }
 
 #[test]
@@ -362,4 +376,22 @@ fn client_incomplete_read() {
     tcp_stream.read_exact(&mut [0_u8; 10]).unwrap();
     drop(tcp_stream);
     std::thread::sleep(Duration::from_millis(100));
+}
+
+#[test]
+fn unsupported_transfer_encoding() {
+    let server = TestServer::start(|_req| Response::new(200)).unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\ntransfer-encoding: unknown1\r\n\r\n").unwrap(),
+        "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 38\r\n\r\nHttpError::UnsupportedTransferEncoding",
+    );
+}
+
+#[test]
+fn chunked_not_supported() {
+    let server = TestServer::start(|req| Response::GetBodyAndReprocess(100, req)).unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\ntransfer-encoding:chunked\r\n\r\n3\r\nabc\r\n0\r\n\r\n").unwrap(),
+        "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 38\r\n\r\nHttpError::UnsupportedTransferEncoding",
+    );
 }
