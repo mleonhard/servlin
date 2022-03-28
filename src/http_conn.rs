@@ -273,10 +273,6 @@ where
                 return Err(HttpError::AlreadyGotBody);
             }
             let cache_dir = opt_cache_dir.ok_or(HttpError::CacheDirNotConfigured)?;
-            if max_len < req.body.len() {
-                //dbg!("returning HttpError::BodyTooLong");
-                return Err(HttpError::BodyTooLong);
-            }
             req.body = http_conn.read_body_to_file(cache_dir, max_len).await?;
             //dbg!("request_handler", &req);
             let response = request_handler.clone()(req).await;
