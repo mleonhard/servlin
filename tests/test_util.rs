@@ -9,9 +9,10 @@ use safina_sync::Receiver;
 use std::future::Future;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr};
+use std::ops::Range;
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use temp_dir::TempDir;
 
 #[allow(clippy::missing_panics_doc)]
@@ -32,6 +33,21 @@ pub fn assert_ends_with(value: impl AsRef<str>, suffix: impl AsRef<str>) {
         value.as_ref(),
         suffix.as_ref()
     );
+}
+
+#[allow(clippy::missing_panics_doc)]
+pub fn check_elapsed(before: Instant, range_ms: Range<u64>) -> Result<(), String> {
+    assert!(!range_ms.is_empty(), "invalid range {:?}", range_ms);
+    let elapsed = before.elapsed();
+    let duration_range = Duration::from_millis(range_ms.start)..Duration::from_millis(range_ms.end);
+    if duration_range.contains(&elapsed) {
+        Ok(())
+    } else {
+        Err(format!(
+            "{:?} elapsed, out of range {:?}",
+            elapsed, duration_range
+        ))
+    }
 }
 
 #[allow(clippy::missing_panics_doc)]

@@ -70,7 +70,7 @@ impl AcceptResult {
 /// Panics on other errors.
 #[allow(clippy::module_name_repetitions)]
 pub async fn accept_loop<F>(
-    permit: Permit,
+    mut permit: Permit,
     listener: async_net::TcpListener,
     mut token_set: TokenSet,
     conn_handler: F,
@@ -85,7 +85,7 @@ pub async fn accept_loop<F>(
         match FutureExt::or(
             async { Some(AcceptResult::new(listener.accept().await)) },
             async {
-                safina_timer::sleep_for(Duration::from_millis(500)).await;
+                (&mut permit).await;
                 None
             },
         )
