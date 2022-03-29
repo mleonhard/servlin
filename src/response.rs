@@ -34,7 +34,7 @@ pub enum Response {
 impl Response {
     #[must_use]
     pub fn new(code: u16) -> Self {
-        Response::Normal(code, ContentType::None, HashMap::new(), Body::Empty)
+        Response::Normal(code, ContentType::None, HashMap::new(), Body::empty())
     }
 
     /// # Errors
@@ -62,7 +62,7 @@ impl Response {
             405,
             ContentType::None,
             [("allow".to_string(), allowed_methods.join(","))].into(),
-            Body::Empty,
+            Body::empty(),
         )
     }
 

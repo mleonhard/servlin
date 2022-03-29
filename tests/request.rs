@@ -96,7 +96,7 @@ fn expect_continue() {
     async_test(async {
         let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
         assert!(!req.expect_continue);
-        assert_eq!(&Body::Empty, req.body());
+        assert_eq!(&Body::empty(), req.body());
 
         let req = call_read("M / HTTP/1.1\r\nExpect: 100-continue\r\n\r\nabc")
             .await
@@ -118,7 +118,7 @@ fn transfer_encoding() {
         let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
         assert!(!req.chunked);
         assert!(!req.gzip);
-        assert_eq!(&Body::Empty, req.body());
+        assert_eq!(&Body::empty(), req.body());
 
         let req = call_read("POST / HTTP/1.1\r\n\r\n").await.unwrap();
         assert!(!req.chunked);
@@ -160,13 +160,13 @@ fn content_length() {
     async_test(async {
         let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
         assert_eq!(None, req.content_length);
-        assert_eq!(&Body::Empty, req.body());
+        assert_eq!(&Body::empty(), req.body());
 
         let req = call_read("M / HTTP/1.1\r\ncontent-length: 0\r\n\r\n")
             .await
             .unwrap();
         assert_eq!(Some(0), req.content_length);
-        assert_eq!(&Body::Empty, req.body());
+        assert_eq!(&Body::empty(), req.body());
 
         let req = call_read("M / HTTP/1.1\r\ncontent-length: 3\r\n\r\nabc")
             .await
@@ -200,7 +200,7 @@ fn content_length() {
 fn method() {
     async_test(async {
         let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
-        assert_eq!(&Body::Empty, req.body());
+        assert_eq!(&Body::empty(), req.body());
 
         let req = call_read("POST / HTTP/1.1\r\n\r\n").await.unwrap();
         assert_eq!(&Body::PendingUnknown, req.body());

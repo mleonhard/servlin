@@ -179,11 +179,11 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
     // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3
     let body = match (chunked, &content_length, head.method.as_str()) {
         (true, _, _) => Body::PendingUnknown,
-        (false, Some(0), _) => Body::Empty,
+        (false, Some(0), _) => Body::empty(),
         (false, Some(len), _) => Body::PendingKnown(*len),
         (false, None, "POST" | "PUT") => Body::PendingUnknown,
         (false, None, _) if expect_continue || gzip => Body::PendingUnknown,
-        (false, None, _) => Body::Empty,
+        (false, None, _) => Body::empty(),
     };
     Ok(Request {
         remote_addr,
