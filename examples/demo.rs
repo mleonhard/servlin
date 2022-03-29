@@ -11,10 +11,10 @@ pub struct State {
     upload_count: AtomicUsize,
 }
 
-fn upload(state: &Arc<State>, req: Request) -> Result<Response, Response> {
+fn upload(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
     if req.body().is_pending() {
         println!("continue");
-        return Ok(Response::GetBodyAndReprocess(1024 * 1024, req));
+        return Ok(Response::get_body_and_reprocess(1024 * 1024));
     }
     println!("upload receiving");
     let mut body_string = String::new();
@@ -48,7 +48,7 @@ fn handle_req(state: &Arc<State>, req: Request) -> Result<Response, Response> {
     match (req.method(), req.url().path(), req.content_type()) {
         ("GET", "/ping", _) => Ok(Response::text(200, "ok")),
         ("POST", "/hello", _) => hello(&req),
-        ("POST", "/upload", _) => upload(state, req.recv_body(1024 * 1024)?),
+        ("POST", "/upload", _) => upload(state, &req.recv_body(1024 * 1024)?),
         (_, "/upload", _) => Ok(Response::method_not_allowed_405(&["POST"])),
         _ => Ok(Response::text(404, "Not found")),
     }

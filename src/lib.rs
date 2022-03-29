@@ -235,15 +235,15 @@ pub fn print_log_response(
     let response = result.unwrap_or_else(|e| e);
     println!(
         "{} {} {} => {} len={}",
-        if response.code() / 100 == 5 {
+        if response.code / 100 == 5 {
             "ERROR"
         } else {
             "INFO"
         },
         method,
         url.path(),
-        response.code(),
-        response.body().len(),
+        response.code,
+        response.body.len(),
     );
     response
 }
@@ -308,7 +308,7 @@ impl HttpServerBuilder {
     /// let cache_dir = temp_dir::TempDir::new().unwrap();
     /// let handler = move |req: Request| {
     ///     if req.body().is_pending() {
-    ///         return Response::GetBodyAndReprocess(1024 * 1024, req);
+    ///         return Response::get_body_and_reprocess(1024 * 1024);
     ///     }
     ///     let len = req.body().reader().unwrap().bytes().count();
     ///     Response::text(200, format!("body len={}", len))

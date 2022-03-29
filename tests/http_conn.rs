@@ -126,7 +126,7 @@ fn handle_http_conn_upload_large() {
     async_test(async {
         let mut stream = handle_http_conn_task(|req: Request| async move {
             if req.body.is_pending() {
-                return Response::GetBodyAndReprocess(10_000_000, req);
+                return Response::get_body_and_reprocess(10_000_000);
             }
             let mut body_string = String::new();
             req.body()

@@ -67,14 +67,14 @@ impl Request {
     /// # Errors
     /// Returns an error when the request body length is known and it is larger than `max_len`.
     ///
-    /// When the request body is not known, this returns `Response::GetBodyAndReprocess`.
-    /// The connection handler (the internal `HttpConn` struct) then tries to read the request body.
+    /// When the request body is not known, this returns `Response::get_body_and_reprocess(max_len)`.
+    /// The server then tries to read the request body.
     /// If it reads more than `max_len` bytes, it stops and returns `413 Payload Too Large`.
     pub fn recv_body(self, max_len: u64) -> Result<Request, Response> {
         if self.body.len() > max_len {
             Err(Response::payload_too_large_413())
         } else if self.body().is_pending() {
-            Err(Response::GetBodyAndReprocess(max_len, self))
+            Err(Response::get_body_and_reprocess(max_len))
         } else {
             Ok(self)
         }

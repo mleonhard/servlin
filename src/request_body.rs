@@ -13,7 +13,7 @@ use temp_file::TempFile;
 fn cannot_read_pending_body_error() -> std::io::Error {
     std::io::Error::new(
         ErrorKind::InvalidInput,
-        "cannot read pending body; your handler did not return Response::GetBodyAndReprocess",
+        "cannot read pending body; your handler did not return Response::get_body_and_reprocess()",
     )
 }
 

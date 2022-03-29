@@ -172,7 +172,7 @@ fn duplicate_content_length_header() {
 
 #[test]
 fn return_drop() {
-    let server = TestServer::start(|_req| Response::Drop).unwrap();
+    let server = TestServer::start(|_req| Response::drop_connection()).unwrap();
     assert_eq!(server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(), "");
 }
 
@@ -180,7 +180,7 @@ fn return_drop() {
 fn get_body() {
     let server = TestServer::start(|req| {
         if req.body().is_pending() {
-            Response::GetBodyAndReprocess(70_000, req)
+            Response::get_body_and_reprocess(70_000)
         } else {
             let len = req.body().reader().unwrap().bytes().count();
             Response::text(200, format!("len={}", len))
@@ -221,7 +221,7 @@ fn get_body() {
 
 #[test]
 fn body_not_pending() {
-    let server = TestServer::start(|req| Response::GetBodyAndReprocess(100, req)).unwrap();
+    let server = TestServer::start(|_req| Response::get_body_and_reprocess(100)).unwrap();
     assert_eq!(
         server
             .exchange("M / HTTP/1.1\r\ncontent-length:3\r\n\r\nabc")
@@ -232,7 +232,7 @@ fn body_not_pending() {
 
 #[test]
 fn already_got_body() {
-    let server = TestServer::start(|req| Response::GetBodyAndReprocess(70_000, req)).unwrap();
+    let server = TestServer::start(|_req| Response::get_body_and_reprocess(70_000)).unwrap();
     assert_eq!(
         server.exchange(req_with_len(66_000)).unwrap(),
         "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
@@ -243,9 +243,9 @@ fn already_got_body() {
 fn get_body_then_drop() {
     let server = TestServer::start(|req| {
         if req.body().is_pending() {
-            Response::GetBodyAndReprocess(70_000, req)
+            Response::get_body_and_reprocess(70_000)
         } else {
-            Response::Drop
+            Response::drop_connection()
         }
     })
     .unwrap();
@@ -256,7 +256,7 @@ fn get_body_then_drop() {
 fn error_writing_body_file() {
     let mut server = TestServer::start(|req| {
         assert!(req.body().is_pending());
-        Response::GetBodyAndReprocess(70_000, req)
+        Response::get_body_and_reprocess(70_000)
     })
     .unwrap();
     server.cache_dir.take();
@@ -271,7 +271,7 @@ fn error_writing_body_file() {
 fn error_reading_body_file() {
     let mut server = TestServer::start(|req| {
         if req.body().is_pending() {
-            Response::GetBodyAndReprocess(70_000, req)
+            Response::get_body_and_reprocess(70_000)
         } else {
             std::thread::sleep(Duration::from_millis(200));
             req.body().reader().unwrap();
@@ -315,7 +315,7 @@ fn expect_100_continue() {
     let server = TestServer::start(|req| {
         if req.body().is_pending() {
             std::thread::sleep(Duration::from_millis(100));
-            Response::GetBodyAndReprocess(70_000, req)
+            Response::get_body_and_reprocess(70_000)
         } else {
             let len = req.body().reader().unwrap().bytes().count();
             Response::text(200, format!("len={}", len))
@@ -380,7 +380,7 @@ fn unsupported_transfer_encoding() {
 
 #[test]
 fn chunked_not_supported() {
-    let server = TestServer::start(|req| Response::GetBodyAndReprocess(100, req)).unwrap();
+    let server = TestServer::start(|_req| Response::get_body_and_reprocess(100)).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\ntransfer-encoding:chunked\r\n\r\n3\r\nabc\r\n0\r\n\r\n").unwrap(),
         "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 38\r\n\r\nHttpError::UnsupportedTransferEncoding",

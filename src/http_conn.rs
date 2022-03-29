@@ -4,7 +4,7 @@ use crate::request_body::{
     read_http_body_to_file, read_http_body_to_vec, read_http_unsized_body_to_file,
     read_http_unsized_body_to_vec,
 };
-use crate::response::write_http_response;
+use crate::response::{write_http_response, ResponseKind};
 use crate::token_set::Token;
 use crate::util::AsyncWriteCounter;
 use crate::{Request, RequestBody, Response};
@@ -243,36 +243,33 @@ where
     //dbg!("handle_http_conn_once");
     let mut req = http_conn.read_request().await?;
     //dbg!(&req);
-    if req.body.is_pending()
-        && req.body.length_is_known()
-        && req.body.len() <= (small_body_len as u64)
-    {
-        req.body = http_conn.read_body_to_vec().await?;
-        //dbg!(&req);
-    }
-    //dbg!("request_handler");
-    let response = request_handler.clone()(req).await;
-    //dbg!(&response);
-    let response = match response {
-        Response::GetBodyAndReprocess(max_len, mut req) => {
-            if !req.body().is_pending() {
-                return Err(HttpError::AlreadyGotBody);
-            }
-            let cache_dir = opt_cache_dir.ok_or(HttpError::CacheDirNotConfigured)?;
-            req.body = http_conn.read_body_to_file(cache_dir, max_len).await?;
-            //dbg!("request_handler", &req);
-            let response = request_handler.clone()(req).await;
+    if req.body.is_pending() {
+        if req.body.length_is_known() && req.body.len() <= (small_body_len as u64) {
+            req.body = http_conn.read_body_to_vec().await?;
+            //dbg!(&req);
+        } else {
+            //dbg!("request_handler");
+            let response = request_handler.clone()(req.clone()).await;
             //dbg!(&response);
-            match response {
-                Response::GetBodyAndReprocess(..) => return Err(HttpError::AlreadyGotBody),
-                Response::Drop => return Err(HttpError::Disconnected),
-                normal_response @ Response::Normal(..) => normal_response,
+            match response.kind {
+                ResponseKind::Normal => {}
+                ResponseKind::DropConnection => return Err(HttpError::Disconnected),
+                ResponseKind::GetBodyAndReprocess(max_len) => {
+                    let cache_dir = opt_cache_dir.ok_or(HttpError::CacheDirNotConfigured)?;
+                    req.body = http_conn.read_body_to_file(cache_dir, max_len).await?;
+                    //dbg!(&req);
+                }
             }
         }
-        Response::Drop => return Err(HttpError::Disconnected),
-        normal_response @ Response::Normal(..) => normal_response,
-    };
+    }
+    //dbg!("request_handler");
+    let response = request_handler(req).await;
     //dbg!(&response);
+    match response.kind {
+        ResponseKind::Normal => {}
+        ResponseKind::DropConnection => return Err(HttpError::Disconnected),
+        ResponseKind::GetBodyAndReprocess(..) => return Err(HttpError::AlreadyGotBody),
+    }
     if response.is_normal() && (response.is_4xx() || response.is_5xx()) {
         let _ignored = http_conn.write_response(&response).await;
         Err(HttpError::Disconnected)

@@ -129,7 +129,7 @@ impl From<HttpError> for Response {
             | HttpError::MissingRequestLine
             | HttpError::Truncated
             | HttpError::UnsupportedTransferEncoding => Response::text(400, e.description()),
-            HttpError::Disconnected => Response::Drop,
+            HttpError::Disconnected => Response::drop_connection(),
             HttpError::BodyTooLong => Response::text(413, "Uploaded data is too big."),
             HttpError::HeadTooLong => Response::text(431, e.description()),
             HttpError::UnsupportedProtocol => Response::text(505, e.description()),
