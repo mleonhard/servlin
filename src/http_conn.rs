@@ -234,7 +234,6 @@ pub async fn handle_http_conn_once<F, Fut>(
 ) -> Result<(), HttpError>
 where
     Fut: Future<Output = Response>,
-    // TODO: Change from FnOnce to Fn and remove clone() calls below.
     F: FnOnce(Request) -> Fut + 'static + Send + Clone,
 {
     //dbg!("handle_http_conn_once");
