@@ -374,6 +374,7 @@ impl HttpServerBuilder {
         self
     }
 
+    // TODO: Make this take a function that returns Result<Response,Response>.
     /// Spawns the server task.
     ///
     /// Returns `(addr, stopped_receiver)`.

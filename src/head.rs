@@ -186,6 +186,7 @@ pub async fn read_http_head<const BUF_SIZE: usize>(
     mut stream: impl AsyncRead + Unpin,
 ) -> Result<Head, HttpError> {
     loop {
+        //dbg!(&buf);
         match Head::try_read(buf) {
             Ok(head) => return Ok(head),
             Err(HeadError::Truncated) => {}

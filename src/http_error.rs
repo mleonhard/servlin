@@ -29,6 +29,14 @@ pub enum HttpError {
     UnwritableResponse,
 }
 impl HttpError {
+    pub fn error_reading_file(e: std::io::Error) -> Self {
+        HttpError::ErrorReadingFile(e.kind(), e.to_string())
+    }
+
+    pub fn error_saving_file(e: std::io::Error) -> Self {
+        HttpError::ErrorSavingFile(e.kind(), e.to_string())
+    }
+
     #[must_use]
     pub fn is_server_error(&self) -> bool {
         match self {

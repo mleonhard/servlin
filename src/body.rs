@@ -309,21 +309,16 @@ pub async fn read_http_body_to_file(
 ) -> Result<Body, HttpError> {
     //dbg!("read_http_body_to_file", len, dir);
     // TODO: Add async support to `temp_file` and use it here.
-    let temp_file =
-        TempFile::in_dir(dir).map_err(|e| HttpError::ErrorSavingFile(e.kind(), e.to_string()))?;
+    let temp_file = TempFile::in_dir(dir).map_err(HttpError::error_saving_file)?;
     let mut file = async_fs::File::create(temp_file.path())
         .await
-        .map_err(|e| HttpError::ErrorSavingFile(e.kind(), e.to_string()))?;
+        .map_err(HttpError::error_saving_file)?;
     match copy_async(&mut AsyncReadExt::take(reader, len), &mut file).await {
         CopyResult::Ok(num_copied) if num_copied == len => {}
         CopyResult::Ok(..) | CopyResult::ReaderErr(..) => return Err(HttpError::Truncated),
-        CopyResult::WriterErr(e) => {
-            return Err(HttpError::ErrorSavingFile(e.kind(), e.to_string()))
-        }
+        CopyResult::WriterErr(e) => return Err(HttpError::error_saving_file(e)),
     }
-    file.close()
-        .await
-        .map_err(|e| HttpError::ErrorSavingFile(e.kind(), e.to_string()))?;
+    file.close().await.map_err(HttpError::error_saving_file)?;
     Ok(Body::TempFile(temp_file, len))
 }
 
@@ -339,21 +334,16 @@ pub async fn read_http_unsized_body_to_file(
     max_len: u64,
 ) -> Result<Body, HttpError> {
     //dbg!("read_http_body_to_file", max_len, dir);
-    let temp_file =
-        TempFile::in_dir(dir).map_err(|e| HttpError::ErrorSavingFile(e.kind(), e.to_string()))?;
+    let temp_file = TempFile::in_dir(dir).map_err(HttpError::error_saving_file)?;
     let mut file = async_fs::File::create(temp_file.path())
         .await
-        .map_err(|e| HttpError::ErrorSavingFile(e.kind(), e.to_string()))?;
+        .map_err(HttpError::error_saving_file)?;
     let len = match copy_async(AsyncReadExt::take(reader, max_len + 1), &mut file).await {
         CopyResult::Ok(len) => len,
         CopyResult::ReaderErr(..) => return Err(HttpError::Truncated),
-        CopyResult::WriterErr(e) => {
-            return Err(HttpError::ErrorSavingFile(e.kind(), e.to_string()))
-        }
+        CopyResult::WriterErr(e) => return Err(HttpError::error_saving_file(e)),
     };
-    file.close()
-        .await
-        .map_err(|e| HttpError::ErrorSavingFile(e.kind(), e.to_string()))?;
+    file.close().await.map_err(HttpError::error_saving_file)?;
     if max_len < len {
         return Err(HttpError::BodyTooLong);
     }
