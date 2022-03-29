@@ -3,7 +3,6 @@ use crate::test_util::{
     TestServer,
 };
 use beatrice::{ContentType, Response};
-use serde_json::json;
 use std::io::{Read, Write};
 use std::time::{Duration, Instant};
 
@@ -37,7 +36,7 @@ fn empty() {
     let server = TestServer::start(|_req| Response::new(200)).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 200 OK\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n",
     );
 }
 
@@ -46,17 +45,7 @@ fn unknown_code() {
     let server = TestServer::start(|_req| Response::new(9999)).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 9999 Response\r\n\r\n",
-    );
-}
-
-#[test]
-fn json() {
-    let server =
-        TestServer::start(|_req| Response::json(200, json!({"key":123})).unwrap()).unwrap();
-    assert_eq!(
-        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 200 OK\r\ncontent-type: application/json; charset=UTF-8\r\ncontent-length: 11\r\n\r\n{\"key\":123}",
+        "HTTP/1.1 9999 Response\r\ncontent-length: 0\r\n\r\n",
     );
 }
 
@@ -76,7 +65,7 @@ fn with_status() {
     let server = TestServer::start(|_req| Response::new(200).with_status(201)).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 201 Created\r\n\r\n",
+        "HTTP/1.1 201 Created\r\ncontent-length: 0\r\n\r\n",
     );
 }
 
@@ -86,7 +75,7 @@ fn with_type() {
         TestServer::start(|_req| Response::new(200).with_type(ContentType::EventStream)).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncontent-length: 0\r\n\r\n",
     );
 }
 
@@ -115,7 +104,7 @@ fn with_header() {
     let server = TestServer::start(|_req| Response::new(200).with_header("h1", "v1")).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 200 OK\r\nh1: v1\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nh1: v1\r\n\r\n",
     );
 }
 
@@ -129,7 +118,7 @@ fn with_duplicate_header() {
     .unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 200 OK\r\nh1: v2\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nh1: v2\r\n\r\n",
     );
 }
 
@@ -143,7 +132,7 @@ fn with_duplicate_header_different_case() {
     .unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 200 OK\r\nh1: v2\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nh1: v2\r\n\r\n",
     );
 }
 
@@ -152,7 +141,7 @@ fn method_not_allowed_405() {
     let server = TestServer::start(|_req| Response::method_not_allowed_405(&["GET"])).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 405 Method Not Allowed\r\nallow: GET\r\n\r\n",
+        "HTTP/1.1 405 Method Not Allowed\r\ncontent-length: 0\r\nallow: GET\r\n\r\n",
     );
 }
 
@@ -303,7 +292,7 @@ fn fast_reply() {
     let before = Instant::now();
     let reply = server.exchange("M / HTTP/1.1\r\n\r\n").unwrap();
     check_elapsed(before, 0..100).unwrap();
-    assert_eq!(reply, "HTTP/1.1 200 OK\r\n\r\n",);
+    assert_eq!(reply, "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n",);
 }
 
 #[test]
@@ -316,7 +305,7 @@ fn slow_reply() {
     let before = Instant::now();
     let reply = server.exchange("M / HTTP/1.1\r\n\r\n").unwrap();
     check_elapsed(before, 100..200).unwrap();
-    assert_eq!(reply, "HTTP/1.1 200 OK\r\n\r\n",);
+    assert_eq!(reply, "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n",);
 }
 
 #[test]
@@ -339,7 +328,7 @@ fn expect_100_continue() {
         .unwrap();
     assert_eq!(
         read_for(&mut tcp_stream, Duration::from_millis(100)).unwrap(),
-        "HTTP/1.1 100 Continue\r\n\r\n"
+        "HTTP/1.1 100 Continue\r\ncontent-length: 0\r\n\r\n"
     );
     check_elapsed(before, 100..200).unwrap();
     tcp_stream.write_all(&[b'a'; 100]).unwrap();
@@ -355,7 +344,7 @@ fn expect_100_continue() {
         .unwrap();
     assert_eq!(
         read_response(&mut tcp_stream).unwrap(),
-        "HTTP/1.1 100 Continue\r\n\r\n"
+        "HTTP/1.1 100 Continue\r\ncontent-length: 0\r\n\r\n"
     );
     check_elapsed(before, 100..200).unwrap();
     tcp_stream.write_all(&[b'a'; 66_000]).unwrap();
@@ -403,6 +392,6 @@ fn content_length_zero() {
         server
             .exchange("M / HTTP/1.1\r\ncontent-length:0\r\n\r\n")
             .unwrap(),
-        "HTTP/1.1 200 OK\r\n\r\n"
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n"
     );
 }

@@ -10,8 +10,9 @@ repository = "https://github.com/mleonhard/beatrice-rs"
 version = "0.1.0"
 
 [features]
-default = ["json"]
+default = []
 json = ["serde", "serde_json"]
+urlencoded = ["serde", "serde_urlencoded"]
 internals = []
 
 [dependencies]
@@ -30,8 +31,21 @@ safina-sync = { version = "^0.2.3" }
 safina-timer = { version = "^0.1.11" }
 serde = { version = "1", optional = true, features = ["derive"] }
 serde_json = { version = "1", optional = true }
+serde_urlencoded = { version = "0.7", optional = true }
 temp-dir = "^0.1.11"
 temp-file = "^0.1.7"
 url = "2"
 
 [dev-dependencies]
+
+[[example]]
+name = "demo"
+required-features = ["json"]
+
+[[example]]
+name = "html_form"
+required-features = ["urlencoded"]
+
+[[example]]
+name = "json_api"
+required-features = ["json"]

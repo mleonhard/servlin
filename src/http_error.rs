@@ -29,10 +29,14 @@ pub enum HttpError {
     UnwritableResponse,
 }
 impl HttpError {
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn error_reading_file(e: std::io::Error) -> Self {
         HttpError::ErrorReadingFile(e.kind(), e.to_string())
     }
 
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn error_saving_file(e: std::io::Error) -> Self {
         HttpError::ErrorSavingFile(e.kind(), e.to_string())
     }

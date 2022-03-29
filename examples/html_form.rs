@@ -1,41 +1,28 @@
-//! JSON-RPC API Server Example
+//! HTML Form Example
 //! ===========================
 //!
 //! Start the server:
 //! ```
-//! % cargo run --package beatrice --example json-api
-//      Running `target/debug/examples/json-api`
-// INFO GET /get => 200 len=11
-// INFO POST /increment => 200 len=11
-// INFO POST /add => 200 len=11
-// ^C
+//! % cargo run --package beatrice --features urlencoded --example html_form
+//!    Compiling beatrice v0.1.0 (/x/beatrice-rs)
+//!     Finished dev [unoptimized + debuginfo] target(s) in 2.35s
+//!      Running `target/debug/examples/html_form`
+//! Access the server at http://127.0.0.1:8000/
+//! INFO GET / => 200 len=370
+//! INFO POST /increment => 303 len=0
+//! INFO GET / => 200 len=370
+//! INFO POST /increment => 303 len=0
+//! INFO GET / => 200 len=370
+//! INFO POST /add => 303 len=0
+//! INFO GET / => 200 len=370
+//! ^C
 //! ```
 //!
-//! Make requests to it:
-//! ```
-//! $ echo -ne 'GET /get HTTP/1.1\r\n\r\n' |nc 127.0.0.1 8000                                                        
-//! HTTP/1.1 200 OK
-//! content-type: application/json; charset=UTF-8
-//! content-length: 11
-//!
-//! {"count":0}
-//! $ echo -ne 'POST /increment HTTP/1.1\r\n\r\n' |nc 127.0.0.1 8000
-//! HTTP/1.1 200 OK
-//! content-type: application/json; charset=UTF-8
-//! content-length: 11
-//!
-//! {"count":1}
-//! $ echo -ne 'POST /add HTTP/1.1\r\nContent-type:application/json\r\nContent-length:9\r\n\r\n{"num":3}' |nc 127.0.0.1 8000
-//! HTTP/1.1 200 OK
-//! content-type: application/json; charset=UTF-8
-//! content-length: 11
-//!
-//! {"count":4}
-//! ```
+//! Access the form with your web browser:
+//! <http://127.0.0.1:8000/>
 use beatrice::reexport::{safina_executor, safina_timer};
 use beatrice::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 use serde::Deserialize;
-use serde_json::json;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -62,13 +49,32 @@ impl State {
     }
 }
 
-fn get_count(state: &Arc<State>) -> Response {
-    Response::json(200, json!({ "count": state.get() })).unwrap()
+fn index(state: &Arc<State>) -> Response {
+    Response::html(
+        200,
+        format!(
+            "<html>
+<head><title>Example</title></head>
+<body>
+  <h1>Example</h1>
+  <p>Count: {}</p>
+  <form action='/increment' method='post'>
+    <input type='submit' value='Increment'/><br/>
+  </form>
+  <form action='/add' method='post'>
+    <label>Num <input type='number' autofocus name='num' /></label>
+    <input type='submit' name='add' value='Add'/>
+  </form>
+</body>
+</html>",
+            state.get()
+        ),
+    )
 }
 
 fn increment(state: &Arc<State>) -> Response {
     state.increment();
-    Response::json(200, json!({ "count": state.get() })).unwrap()
+    Response::redirect_303("/")
 }
 
 fn add(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
@@ -76,20 +82,20 @@ fn add(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
     struct Input {
         num: usize,
     }
-    let input: Input = req.json()?;
+    let input: Input = req.urlencoded()?;
     let num = if input.num > 5 {
         return Err(Response::text(400, "num is too big"));
     } else {
         input.num
     };
     state.add(num);
-    Ok(Response::json(200, json!({ "count": state.get() })).unwrap())
+    Ok(Response::redirect_303("/"))
 }
 
 fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
     match (req.method(), req.url().path()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
-        ("GET", "/get") => Ok(get_count(state)),
+        ("GET", "/") => Ok(index(state)),
         ("POST", "/increment") => Ok(increment(state)),
         ("POST", "/add") => add(state, req),
         _ => Ok(Response::text(404, "Not found")),
@@ -97,6 +103,7 @@ fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
 }
 
 pub fn main() {
+    println!("Access the server at http://127.0.0.1:8000/");
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();
     let state = Arc::new(State::new());

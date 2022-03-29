@@ -210,7 +210,9 @@ impl HttpConn {
         let mut write_counter = AsyncWriteCounter::new(&mut self.stream);
         let result = write_http_response(&mut write_counter, response).await;
         if result.is_ok() {
-            if !response.is_1xx() {
+            if !response.body().length_is_known() {
+                self.shutdown_write();
+            } else if !response.is_1xx() {
                 self.write_state = WriteState::None;
             }
         } else if write_counter.num_bytes_written() > 0 {

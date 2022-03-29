@@ -80,9 +80,59 @@ impl Request {
         }
     }
 
+    /// Checks that the request body has type `application/x-www-form-urlencoded`
+    /// and deserializes it into type `T`.
+    ///
     /// # Errors
-    /// Returns an error when it fails to parse the request body as JSON and deserialize it
-    /// into a `T`.
+    /// Returns an error when:
+    /// - the request has no body
+    /// - the request body was not received
+    /// - the request content type is not `application/x-www-form-urlencoded`
+    /// - we fail to parse the body as URL-encoded data
+    /// - we fail to deserialize the body into a `T`
+    ///
+    /// # Panics
+    /// Panics when the request body was saved to a file and it fails to read the file.
+    #[cfg(feature = "urlencoded")]
+    pub fn urlencoded<T: serde::de::DeserializeOwned>(&self) -> Result<T, Response> {
+        use crate::util::escape_and_elide;
+        use std::io::Read;
+        if self.content_type != ContentType::FormUrlEncoded {
+            Err(Response::text(
+                400,
+                "expected x-www-form-urlencoded request body",
+            ))
+        } else if self.body.is_pending() {
+            if self.body.length_is_known() {
+                Err(Response::payload_too_large_413())
+            } else {
+                Err(Response::length_required_411())
+            }
+        } else {
+            let mut buf = Vec::new();
+            if let Err(e) = self.body.reader()?.read_to_end(&mut buf) {
+                panic!("error reading body: {}", e);
+            }
+            serde_urlencoded::from_bytes(&buf).map_err(|e| {
+                // Does this make a cross-site-scripting (XSS) vulnerability?
+                Response::text(
+                    400,
+                    format!(
+                        "error processing form data: {}",
+                        escape_and_elide(e.to_string().as_bytes(), 100)
+                    ),
+                )
+            })
+        }
+    }
+
+    /// # Errors
+    /// Returns an error when:
+    /// - the request has no body
+    /// - the request body was not received
+    /// - the request content type is not `application/json`
+    /// - we fail to parse the body as JSON data
+    /// - we fail to deserialize the body into a `T`
     ///
     /// # Panics
     /// Panics when the request body was saved to a file and it fails to read the file.
@@ -148,9 +198,10 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
     buf: &mut FixedBuf<BUF_SIZE>,
     reader: impl AsyncRead + Unpin,
 ) -> Result<Request, HttpError> {
-    //dbg!("read_http_request");
+    //dbg!("read_http_request", &buf);
     buf.shift();
     let head = read_http_head(buf, reader).await?;
+    //dbg!(&head);
     let content_type = head
         .headers_lowercase
         .get("content-type")

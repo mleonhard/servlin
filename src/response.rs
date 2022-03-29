@@ -37,6 +37,11 @@ impl Response {
         Response::Normal(code, ContentType::None, HashMap::new(), Body::empty())
     }
 
+    #[must_use]
+    pub fn html(code: u16, body: impl Into<Body>) -> Self {
+        Response::Normal(code, ContentType::Html, HashMap::new(), body.into())
+    }
+
     /// # Errors
     /// Returns an error when it fails to serialize `v`.
     #[cfg(feature = "json")]
@@ -54,6 +59,16 @@ impl Response {
     #[must_use]
     pub fn text(code: u16, body: impl Into<Body>) -> Self {
         Response::Normal(code, ContentType::PlainText, HashMap::new(), body.into())
+    }
+
+    /// Tell the client to GET `location`.
+    ///
+    /// The client should not store this redirect.
+    ///
+    /// A PUT or POST handler usually returns this.
+    #[must_use]
+    pub fn redirect_303(location: impl AsRef<str>) -> Self {
+        Response::new(303).with_header("location", location.as_ref())
     }
 
     #[must_use]
@@ -349,7 +364,7 @@ pub async fn write_http_response(
         )
         .unwrap();
     }
-    if response.body().len() > 0 {
+    if response.body().length_is_known() {
         if response.headers().contains_key("content-length") {
             return Err(HttpError::DuplicateContentLengthHeader);
         }
@@ -362,6 +377,7 @@ pub async fn write_http_response(
         head_bytes.extend(b"\r\n");
     }
     head_bytes.extend(b"\r\n");
+    //dbg!(escape_ascii(head_bytes.as_slice()));
     writer
         .write_all(head_bytes.as_slice())
         .await
@@ -384,9 +400,7 @@ pub async fn write_http_response(
                     "body file is smaller than expected".to_string(),
                 ))
             }
-            CopyResult::ReaderErr(e) => {
-                return Err(HttpError::ErrorReadingFile(e.kind(), e.to_string()))
-            }
+            CopyResult::ReaderErr(e) => return Err(HttpError::error_reading_file(e)),
             CopyResult::WriterErr(..) => return Err(HttpError::Disconnected),
         };
     }

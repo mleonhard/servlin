@@ -9,7 +9,7 @@ time cargo build --all-targets --all-features
 time cargo fmt -- --check
 time cargo clippy -- -D clippy::pedantic
 time cargo clippy --all-targets --all-features -- -D clippy::pedantic
-time cargo test
+time cargo test --tests
 time cargo test --all-targets --all-features
 ./check-readme.sh
 time cargo publish --dry-run "$@"

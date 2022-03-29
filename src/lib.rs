@@ -60,12 +60,7 @@
 //!         name: String,
 //!     }
 //!     let input: Input = req.json()?;
-//!     Ok(Response::json(
-//!         200,
-//!         json!({
-//!             "message": format!("Hello, {}!", input.name)
-//!         }),
-//!     )
+//!     Ok(Response::json(200, json!({"message": format!("Hello, {}!", input.name)}))
 //!     .unwrap())
 //! }
 //!

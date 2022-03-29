@@ -60,12 +60,7 @@ fn hello(_state: Arc<State>, req: Request) -> Result<Response, Response> {
         name: String,
     }
     let input: Input = req.json()?;
-    Ok(Response::json(
-        200,
-        json!({
-            "message": format!("Hello, {}!", input.name)
-        }),
-    )
+    Ok(Response::json(200, json!({"message": format!("Hello, {}!", input.name)}))
     .unwrap())
 }
 
@@ -189,12 +184,17 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        7/7          0/0    0/0     0/0      ☢️  │   ├── itoa 1.0.1
 7/9        587/723      0/0    0/0     2/2      ☢️  │   ├── ryu 1.0.9
 0/0        5/5          0/0    0/0     0/0      ☢️  │   └── serde 1.0.136
+0/0        0/0          0/0    0/0     0/0      🔒  ├── serde_urlencoded 0.7.1
+0/0        2/2          0/0    0/0     0/0      ☢️  │   ├── form_urlencoded 1.0.1
+0/0        0/0          0/0    0/0     0/0      ❓  │   │   ├── matches 0.1.9
+0/0        3/3          0/0    0/0     0/0      ☢️  │   │   └── percent-encoding 2.1.0
+0/0        7/7          0/0    0/0     0/0      ☢️  │   ├── itoa 1.0.1
+7/9        587/723      0/0    0/0     2/2      ☢️  │   ├── ryu 1.0.9
+0/0        5/5          0/0    0/0     0/0      ☢️  │   └── serde 1.0.136
 0/0        0/0          0/0    0/0     0/0      🔒  ├── temp-dir 0.1.11
 0/0        0/0          0/0    0/0     0/0      🔒  ├── temp-file 0.1.7
 0/0        0/0          0/0    0/0     0/0      ❓  └── url 2.2.2
 0/0        2/2          0/0    0/0     0/0      ☢️      ├── form_urlencoded 1.0.1
-0/0        0/0          0/0    0/0     0/0      ❓      │   ├── matches 0.1.9
-0/0        3/3          0/0    0/0     0/0      ☢️      │   └── percent-encoding 2.1.0
 0/0        0/0          0/0    0/0     0/0      ❓      ├── idna 0.2.3
 0/0        0/0          0/0    0/0     0/0      ❓      │   ├── matches 0.1.9
 0/0        0/0          0/0    0/0     0/0      🔒      │   ├── unicode-bidi 0.3.7

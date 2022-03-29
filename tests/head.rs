@@ -17,7 +17,7 @@ fn request_line() {
     assert_eq!(server.exchange("").unwrap().as_str(), "",);
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap().as_str(),
-        "HTTP/1.1 200 OK\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n",
     );
     assert_eq!(
         server.exchange(" / HTTP/1.1\r\n\r\n").unwrap().as_str(),
