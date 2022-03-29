@@ -1,6 +1,6 @@
 use crate::head::read_http_head;
 use crate::http_error::HttpError;
-use crate::{Body, ContentType, Response};
+use crate::{ContentType, RequestBody, Response};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
 use std::collections::{HashMap, HashSet};
@@ -20,7 +20,7 @@ pub struct Request {
     pub chunked: bool,
     pub gzip: bool,
     pub content_length: Option<u64>,
-    pub body: Body,
+    pub body: RequestBody,
 }
 #[cfg(not(feature = "internals"))]
 #[derive(Clone, Eq, PartialEq)]
@@ -34,11 +34,11 @@ pub struct Request {
     pub(crate) chunked: bool,
     pub(crate) gzip: bool,
     pub(crate) content_length: Option<u64>,
-    pub(crate) body: Body,
+    pub(crate) body: RequestBody,
 }
 impl Request {
     #[must_use]
-    pub fn body(&self) -> &Body {
+    pub fn body(&self) -> &RequestBody {
         &self.body
     }
 
@@ -233,12 +233,12 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
     #[allow(clippy::match_same_arms)]
     // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3
     let body = match (chunked, &content_length, head.method.as_str()) {
-        (true, _, _) => Body::PendingUnknown,
-        (false, Some(0), _) => Body::empty(),
-        (false, Some(len), _) => Body::PendingKnown(*len),
-        (false, None, "POST" | "PUT") => Body::PendingUnknown,
-        (false, None, _) if expect_continue || gzip => Body::PendingUnknown,
-        (false, None, _) => Body::empty(),
+        (true, _, _) => RequestBody::PendingUnknown,
+        (false, Some(0), _) => RequestBody::empty(),
+        (false, Some(len), _) => RequestBody::PendingKnown(*len),
+        (false, None, "POST" | "PUT") => RequestBody::PendingUnknown,
+        (false, None, _) if expect_continue || gzip => RequestBody::PendingUnknown,
+        (false, None, _) => RequestBody::empty(),
     };
     Ok(Request {
         remote_addr,

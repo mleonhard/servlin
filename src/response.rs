@@ -6,21 +6,8 @@ use std::io::Write;
 
 use crate::http_error::HttpError;
 use crate::util::{copy_async, CopyResult};
-use crate::{AsciiString, Body, ContentType, Request};
+use crate::{AsciiString, ContentType, Request, ResponseBody};
 use std::fmt::Debug;
-use std::ops::Deref;
-
-// TODO: Eliminate this somehow.  One way is to use only `Body`, prefix methods with `internal_`,
-//       and doc(hidden) those internal methods when not feature `internals`.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct BodyWrapper<'x>(&'x Body);
-impl<'x> Deref for BodyWrapper<'x> {
-    type Target = &'x Body;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 #[derive(Clone, Eq, PartialEq)]
 pub enum Response {
@@ -28,17 +15,22 @@ pub enum Response {
     /// `GetBodyAndReprocess(max_len: u64, Request)`<br>
     /// Read the body from the client, but only up to the specified `u64` bytes.
     GetBodyAndReprocess(u64, Request),
-    /// Normal(code: u16, ContentType, headers: Vec<String,String>, Body)
-    Normal(u16, ContentType, Vec<(AsciiString, AsciiString)>, Body),
+    /// Normal(code: u16, ContentType, headers: Vec<String,String>, ResponseBody)
+    Normal(
+        u16,
+        ContentType,
+        Vec<(AsciiString, AsciiString)>,
+        ResponseBody,
+    ),
 }
 impl Response {
     #[must_use]
     pub fn new(code: u16) -> Self {
-        Response::Normal(code, ContentType::None, Vec::new(), Body::empty())
+        Response::Normal(code, ContentType::None, Vec::new(), ResponseBody::empty())
     }
 
     #[must_use]
-    pub fn html(code: u16, body: impl Into<Body>) -> Self {
+    pub fn html(code: u16, body: impl Into<ResponseBody>) -> Self {
         Response::Normal(code, ContentType::Html, Vec::new(), body.into())
     }
 
@@ -52,12 +44,12 @@ impl Response {
             code,
             ContentType::Json,
             Vec::new(),
-            Body::Vec(body_vec),
+            ResponseBody::Vec(body_vec),
         ))
     }
 
     #[must_use]
-    pub fn text(code: u16, body: impl Into<Body>) -> Self {
+    pub fn text(code: u16, body: impl Into<ResponseBody>) -> Self {
         Response::Normal(code, ContentType::PlainText, Vec::new(), body.into())
     }
 
@@ -91,8 +83,6 @@ impl Response {
         Response::text(413, "Uploaded data is too big.")
     }
 
-    //     #[cfg_attr(not(feature = "internals"), doc(hidden))]
-
     #[must_use]
     fn mut_tuple(
         &mut self,
@@ -100,7 +90,7 @@ impl Response {
         &mut u16,
         &mut ContentType,
         &mut Vec<(AsciiString, AsciiString)>,
-        &mut Body,
+        &mut ResponseBody,
     ) {
         match self {
             Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
@@ -108,30 +98,56 @@ impl Response {
         }
     }
 
-    // TODO: Name these `internal_` and set `doc(hidden)` when not feature `internal`.
-    #[must_use]
-    fn mut_code(&mut self) -> &mut u16 {
-        self.mut_tuple().0
+    pub fn set_body(&mut self, b: ResponseBody) {
+        *self.mut_tuple().3 = b;
+    }
+
+    pub fn set_code(&mut self, c: u16) {
+        *self.mut_tuple().0 = c;
+    }
+
+    pub fn set_content_type(&mut self, t: ContentType) {
+        *self.mut_tuple().1 = t;
+    }
+
+    /// Adds a header.
+    ///
+    /// You can call this multiple times to add multiple headers with the same name.
+    ///
+    /// The [HTTP spec](https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.4)
+    /// limits header names to US-ASCII and header values to US-ASCII or ISO-8859-1.
+    ///
+    /// # Panics
+    /// Panics when `name` is not US-ASCII.
+    pub fn add_header(&mut self, name: impl AsRef<str>, value: AsciiString) {
+        self.mut_tuple()
+            .2
+            .push((name.as_ref().try_into().unwrap(), value));
+    }
+
+    /// Removes the first header that matches `name` with a case-insensitive comparison and
+    /// has `value`.
+    ///
+    /// Returns `None` if the no name matched.
+    pub fn remove_header(
+        &mut self,
+        name: impl AsRef<str>,
+        value: impl AsRef<str>,
+    ) -> Option<(AsciiString, AsciiString)> {
+        let headers = self.mut_tuple().2;
+        for (n, (header_name, header_value)) in headers.iter().enumerate() {
+            if header_name.eq_ignore_ascii_case(name.as_ref())
+                && header_value.as_str() == value.as_ref()
+            {
+                return Some(headers.remove(n));
+            }
+        }
+        None
     }
 
     #[must_use]
-    fn mut_content_type(&mut self) -> &mut ContentType {
-        self.mut_tuple().1
-    }
-
-    #[must_use]
-    fn mut_headers(&mut self) -> &mut Vec<(AsciiString, AsciiString)> {
-        self.mut_tuple().2
-    }
-
-    #[must_use]
-    fn mut_body(&mut self) -> &mut Body {
-        self.mut_tuple().3
-    }
-
-    #[must_use]
-    pub fn with_body(mut self, b: impl Into<Body>) -> Self {
-        *self.mut_body() = b.into();
+    pub fn with_body(mut self, b: impl Into<ResponseBody>) -> Self {
+        self.set_body(b.into());
         self
     }
 
@@ -159,20 +175,19 @@ impl Response {
     /// ```
     #[must_use]
     pub fn with_header(mut self, name: impl AsRef<str>, value: AsciiString) -> Self {
-        self.mut_headers()
-            .push((name.as_ref().try_into().unwrap(), value));
+        self.add_header(name, value);
         self
     }
 
     #[must_use]
     pub fn with_status(mut self, c: u16) -> Self {
-        *self.mut_code() = c;
+        self.set_code(c);
         self
     }
 
     #[must_use]
     pub fn with_type(mut self, t: ContentType) -> Self {
-        *self.mut_content_type() = t;
+        self.set_content_type(t);
         self
     }
 
@@ -181,6 +196,16 @@ impl Response {
         match self {
             Response::Drop | Response::GetBodyAndReprocess(..) => false,
             Response::Normal(..) => true,
+        }
+    }
+
+    /// # Panics
+    /// Panics when called on `Response::Drop` or `Response::GetBodyAndReprocess(..)`.
+    #[must_use]
+    pub fn body(&self) -> &ResponseBody {
+        match self {
+            Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
+            Response::Normal(_c, _t, _h, b) => b,
         }
     }
 
@@ -193,31 +218,6 @@ impl Response {
             Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
             Response::Normal(c, _t, _h, _b) => *c,
         }
-    }
-
-    #[must_use]
-    pub fn is_1xx(&self) -> bool {
-        self.code() / 100 == 1
-    }
-
-    #[must_use]
-    pub fn is_2xx(&self) -> bool {
-        self.code() / 100 == 2
-    }
-
-    #[must_use]
-    pub fn is_3xx(&self) -> bool {
-        self.code() / 100 == 3
-    }
-
-    #[must_use]
-    pub fn is_4xx(&self) -> bool {
-        self.code() / 100 == 4
-    }
-
-    #[must_use]
-    pub fn is_5xx(&self) -> bool {
-        self.code() / 100 == 5
     }
 
     /// # Panics
@@ -313,26 +313,29 @@ impl Response {
         }
     }
 
-    /// # Panics
-    /// Panics when called on `Response::Drop` or `Response::GetBodyAndReprocess(..)`.
     #[must_use]
-    pub fn body(&self) -> BodyWrapper<'_> {
-        match self {
-            Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
-            Response::Normal(_c, _t, _h, b) => BodyWrapper(b),
-        }
+    pub fn is_1xx(&self) -> bool {
+        self.code() / 100 == 1
     }
 
-    /// To use this method, enable cargo feature `"internals"`.
-    /// # Panics
-    /// Panics when called on `Response::Drop` or `Response::GetBodyAndReprocess(..)`.
-    #[cfg(feature = "internals")]
     #[must_use]
-    pub fn internal_body(&self) -> &Body {
-        match self {
-            Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
-            Response::Normal(_c, _t, _h, b) => b,
-        }
+    pub fn is_2xx(&self) -> bool {
+        self.code() / 100 == 2
+    }
+
+    #[must_use]
+    pub fn is_3xx(&self) -> bool {
+        self.code() / 100 == 3
+    }
+
+    #[must_use]
+    pub fn is_4xx(&self) -> bool {
+        self.code() / 100 == 4
+    }
+
+    #[must_use]
+    pub fn is_5xx(&self) -> bool {
+        self.code() / 100 == 5
     }
 }
 impl From<std::io::Error> for Response {
@@ -409,14 +412,13 @@ pub async fn write_http_response(
         )
         .unwrap();
     }
-    if response.body().length_is_known() {
-        for (name, _value) in response.headers() {
-            if name.as_str().eq_ignore_ascii_case("content-length") {
-                return Err(HttpError::DuplicateContentLengthHeader);
-            }
+    let body_len = response.body().len();
+    for (name, _value) in response.headers() {
+        if name.as_str().eq_ignore_ascii_case("content-length") {
+            return Err(HttpError::DuplicateContentLengthHeader);
         }
-        write!(head_bytes, "content-length: {}\r\n", response.body().len()).unwrap();
     }
+    write!(head_bytes, "content-length: {}\r\n", body_len).unwrap();
     for (name, value) in response.headers() {
         // Convert headers from UTF-8 back to ISO-8859-1, with 0xFF for a replacement byte.
         write!(head_bytes, "{}: ", name).unwrap();
@@ -430,15 +432,18 @@ pub async fn write_http_response(
         .await
         .map_err(|_| HttpError::Disconnected)?;
     drop(head_bytes);
-    if response.body().len() > 0 {
-        //dbg!(response.body().len());
-        match copy_async(
-            AsyncReadExt::take(response.body().async_reader(), response.body().len()),
-            &mut writer,
-        )
-        .await
-        {
-            CopyResult::Ok(len) if len == response.body().len() => {
+    if body_len > 0 {
+        //dbg!(body_len);
+        let mut reader = AsyncReadExt::take(
+            response
+                .body()
+                .async_reader()
+                .await
+                .map_err(HttpError::error_reading_file)?,
+            body_len,
+        );
+        match copy_async(&mut reader, &mut writer).await {
+            CopyResult::Ok(len) if len == body_len => {
                 //dbg!(len);
             }
             CopyResult::Ok(_len) => {

@@ -164,13 +164,16 @@
 #![forbid(unsafe_code)]
 mod accept;
 mod ascii_string;
-mod body;
+mod body_async_reader;
+mod body_reader;
 mod content_type;
 mod head;
 mod http_conn;
 mod http_error;
 mod request;
+mod request_body;
 mod response;
+mod response_body;
 mod token_set;
 mod util;
 
@@ -178,11 +181,14 @@ pub use crate::accept::{
     socket_addr_127_0_0_1, socket_addr_127_0_0_1_any_port, socket_addr_all_interfaces,
 };
 pub use crate::ascii_string::AsciiString;
-pub use crate::body::{Body, BodyAsyncReader, BodyReader};
+pub use crate::body_async_reader::BodyAsyncReader;
+pub use crate::body_reader::BodyReader;
 pub use crate::content_type::ContentType;
 pub use crate::http_conn::HttpConn;
 pub use crate::request::Request;
+pub use crate::request_body::RequestBody;
 pub use crate::response::Response;
+pub use crate::response_body::ResponseBody;
 
 pub mod reexport {
     pub use permit;
@@ -195,13 +201,16 @@ pub mod reexport {
 #[cfg(feature = "internals")]
 pub mod internals {
     pub use crate::accept::*;
-    pub use crate::body::*;
+    pub use crate::body_async_reader::*;
+    pub use crate::body_reader::*;
     pub use crate::content_type::*;
     pub use crate::head::*;
     pub use crate::http_conn::*;
     pub use crate::http_error::*;
     pub use crate::request::*;
+    pub use crate::request_body::*;
     pub use crate::response::*;
+    pub use crate::response_body::*;
     pub use crate::token_set::*;
     pub use crate::util::*;
 }

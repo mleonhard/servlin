@@ -96,7 +96,14 @@ fn handle_http_conn_shutdown() {
 fn handle_http_conn_upload() {
     async_test(async {
         let mut stream = handle_http_conn_task(|req: Request| async move {
-            let body_string = req.body().async_read_as_string().await.unwrap();
+            let mut body_string = String::new();
+            req.body()
+                .async_reader()
+                .await
+                .unwrap()
+                .read_to_string(&mut body_string)
+                .await
+                .unwrap();
             Response::text(200, format!("read {:?}", body_string))
         })
         .await;
@@ -121,7 +128,14 @@ fn handle_http_conn_upload_large() {
             if req.body.is_pending() {
                 return Response::GetBodyAndReprocess(10_000_000, req);
             }
-            let body_string = req.body().async_read_as_string().await.unwrap();
+            let mut body_string = String::new();
+            req.body()
+                .async_reader()
+                .await
+                .unwrap()
+                .read_to_string(&mut body_string)
+                .await
+                .unwrap();
             Response::text(200, format!("got {}", body_string.len()))
         })
         .await;

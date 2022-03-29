@@ -1,13 +1,13 @@
-use crate::body::{
+use crate::http_error::HttpError;
+use crate::request::read_http_request;
+use crate::request_body::{
     read_http_body_to_file, read_http_body_to_vec, read_http_unsized_body_to_file,
     read_http_unsized_body_to_vec,
 };
-use crate::http_error::HttpError;
-use crate::request::read_http_request;
 use crate::response::write_http_response;
 use crate::token_set::Token;
 use crate::util::AsyncWriteCounter;
-use crate::{Body, Request, Response};
+use crate::{Request, RequestBody, Response};
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncReadExt;
 use permit::Permit;
@@ -91,10 +91,10 @@ impl HttpConn {
         self.write_state = WriteState::Response;
         let req = read_http_request(self.remote_addr, &mut self.buf, &mut self.stream).await?;
         self.read_state = match &req.body {
-            Body::PendingKnown(len) => {
+            RequestBody::PendingKnown(len) => {
                 ReadState::Body(Some(*len), req.expect_continue, req.chunked, req.gzip)
             }
-            Body::PendingUnknown => {
+            RequestBody::PendingUnknown => {
                 ReadState::Body(None, req.expect_continue, req.chunked, req.gzip)
             }
             _ => ReadState::Head,
@@ -123,7 +123,7 @@ impl HttpConn {
     /// - the request body was already read from the client
     /// - the client used an unsupported transfer encoding
     /// - we fail to read the request body
-    pub async fn read_body_to_vec(&mut self) -> Result<Body, HttpError> {
+    pub async fn read_body_to_vec(&mut self) -> Result<RequestBody, HttpError> {
         //dbg!("read_body_to_vec");
         match self.read_state {
             ReadState::Head => Err(HttpError::BodyNotAvailable),
@@ -161,7 +161,11 @@ impl HttpConn {
     /// - the client sends a request body that is larger than `max_len`
     /// - we fail to read the request body
     /// - we fail to create or write the temporary file
-    pub async fn read_body_to_file(&mut self, dir: &Path, max_len: u64) -> Result<Body, HttpError> {
+    pub async fn read_body_to_file(
+        &mut self,
+        dir: &Path,
+        max_len: u64,
+    ) -> Result<RequestBody, HttpError> {
         //dbg!("read_body_to_file", max_len, dir);
         match self.read_state {
             ReadState::Head => Err(HttpError::BodyNotAvailable),
@@ -210,9 +214,7 @@ impl HttpConn {
         let mut write_counter = AsyncWriteCounter::new(&mut self.stream);
         let result = write_http_response(&mut write_counter, response).await;
         if result.is_ok() {
-            if !response.body().length_is_known() {
-                self.shutdown_write();
-            } else if !response.is_1xx() {
+            if !response.is_1xx() {
                 self.write_state = WriteState::None;
             }
         } else if write_counter.num_bytes_written() > 0 {
