@@ -395,3 +395,14 @@ fn chunked_not_supported() {
         "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 38\r\n\r\nHttpError::UnsupportedTransferEncoding",
     );
 }
+
+#[test]
+fn content_length_zero() {
+    let server = TestServer::start(|_req| Response::new(200)).unwrap();
+    assert_eq!(
+        server
+            .exchange("M / HTTP/1.1\r\ncontent-length:0\r\n\r\n")
+            .unwrap(),
+        "HTTP/1.1 200 OK\r\n\r\n"
+    );
+}

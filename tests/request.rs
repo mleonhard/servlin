@@ -94,91 +94,86 @@ fn content_type() {
 #[test]
 fn expect_continue() {
     async_test(async {
-        assert!(
-            !call_read("M / HTTP/1.1\r\n\r\n")
-                .await
-                .unwrap()
-                .expect_continue
-        );
-        assert!(
-            call_read("M / HTTP/1.1\r\nExpect: 100-continue\r\n\r\nabc")
-                .await
-                .unwrap()
-                .expect_continue
-        );
-        assert!(
-            call_read("M / HTTP/1.1\r\nExpect: 100-continue\r\nContent-Length: 3\r\n\r\nabc")
-                .await
-                .unwrap()
-                .expect_continue
-        );
+        let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
+        assert!(!req.expect_continue);
+        assert_eq!(&Body::Empty, req.body());
+
+        let req = call_read("M / HTTP/1.1\r\nExpect: 100-continue\r\n\r\nabc")
+            .await
+            .unwrap();
+        assert!(req.expect_continue);
+        assert_eq!(&Body::PendingUnknown, req.body());
+
+        let req = call_read("M / HTTP/1.1\r\nexpect: 100-continue\r\ncontent-length: 3\r\n\r\nabc")
+            .await
+            .unwrap();
+        assert!(req.expect_continue);
+        assert_eq!(&Body::PendingKnown(3), req.body());
     });
 }
 
 #[test]
 fn transfer_encoding() {
     async_test(async {
-        assert!(!call_read("M / HTTP/1.1\r\n\r\n").await.unwrap().chunked);
-        assert!(
-            call_read("M / HTTP/1.1\r\ntransfer-encoding: chunked\r\n\r\n")
-                .await
-                .unwrap()
-                .chunked
-        );
-        assert_eq!(
-            Err(HttpError::UnsupportedTransferEncoding),
-            call_read("M / HTTP/1.1\r\ntransfer-encoding: gzip\r\n\r\n").await
-        );
-        assert_eq!(
-            Err(HttpError::UnsupportedTransferEncoding),
-            call_read("M / HTTP/1.1\r\ntransfer-encoding: gzip, chunked\r\n\r\n").await
-        );
-        assert_eq!(
-            Err(HttpError::UnsupportedTransferEncoding),
-            call_read("M / HTTP/1.1\r\ntransfer-encoding: encoding1\r\n\r\n").await
-        );
+        let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
+        assert!(!req.chunked);
+        assert!(!req.gzip);
+        assert_eq!(&Body::Empty, req.body());
+
+        let req = call_read("POST / HTTP/1.1\r\n\r\n").await.unwrap();
+        assert!(!req.chunked);
+        assert!(!req.gzip);
+        assert_eq!(&Body::PendingUnknown, req.body());
+
+        let req = call_read("M / HTTP/1.1\r\ntransfer-encoding: chunked\r\n\r\n")
+            .await
+            .unwrap();
+        assert!(req.chunked);
+        assert!(!req.gzip);
+        assert_eq!(&Body::PendingUnknown, req.body());
+
+        let req = call_read("M / HTTP/1.1\r\ntransfer-encoding: gzip\r\n\r\n")
+            .await
+            .unwrap();
+        assert!(!req.chunked);
+        assert!(req.gzip);
+        assert_eq!(&Body::PendingUnknown, req.body());
+
+        let req = call_read("M / HTTP/1.1\r\ntransfer-encoding: gzip, chunked\r\n\r\n")
+            .await
+            .unwrap();
+        assert!(req.chunked);
+        assert!(req.gzip);
+        assert_eq!(&Body::PendingUnknown, req.body());
+
+        let req = call_read("M / HTTP/1.1\r\ntransfer-encoding: gzip\r\ncontent-length:10\r\n\r\n")
+            .await
+            .unwrap();
+        assert!(!req.chunked);
+        assert!(req.gzip);
+        assert_eq!(&Body::PendingKnown(10), req.body());
     });
 }
 
 #[test]
-fn body() {
+fn content_length() {
     async_test(async {
-        assert_eq!(
-            &Body::Empty,
-            call_read("M / HTTP/1.1\r\n\r\n").await.unwrap().body()
-        );
-        assert_eq!(
-            &Body::Pending(None),
-            call_read("POST / HTTP/1.1\r\n\r\n").await.unwrap().body()
-        );
-        assert_eq!(
-            &Body::Pending(None),
-            call_read("POST / HTTP/1.1\r\ntransfer-encoding: chunked\r\n\r\n3\r\nabc\r\n0\r\n")
-                .await
-                .unwrap()
-                .body()
-        );
-        assert_eq!(
-            &Body::Pending(None),
-            call_read("POST / HTTP/1.1\r\ntransfer-encoding: chunked\r\ncontent-length: 3\r\n\r\n3\r\nabc\r\n0\r\n")
-                .await
-                .unwrap()
-                .body()
-        );
-        assert_eq!(
-            &Body::Empty,
-            call_read("M / HTTP/1.1\r\ncontent-length: 0\r\n\r\n")
-                .await
-                .unwrap()
-                .body()
-        );
-        assert_eq!(
-            &Body::Pending(Some(3)),
-            call_read("M / HTTP/1.1\r\ncontent-length: 3\r\n\r\nabc")
-                .await
-                .unwrap()
-                .body()
-        );
+        let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
+        assert_eq!(None, req.content_length);
+        assert_eq!(&Body::Empty, req.body());
+
+        let req = call_read("M / HTTP/1.1\r\ncontent-length: 0\r\n\r\n")
+            .await
+            .unwrap();
+        assert_eq!(Some(0), req.content_length);
+        assert_eq!(&Body::Empty, req.body());
+
+        let req = call_read("M / HTTP/1.1\r\ncontent-length: 3\r\n\r\nabc")
+            .await
+            .unwrap();
+        assert_eq!(Some(3), req.content_length);
+        assert_eq!(&Body::PendingKnown(3), req.body());
+
         assert_eq!(
             Err(HttpError::InvalidContentLength),
             call_read("M / HTTP/1.1\r\ncontent-length: a\r\n\r\n").await
@@ -187,26 +182,28 @@ fn body() {
             Err(HttpError::InvalidContentLength),
             call_read("M / HTTP/1.1\r\ncontent-length: -1\r\n\r\n").await
         );
-        assert_eq!(
-            &Body::Pending(Some(u64::MAX)),
-            call_read("M / HTTP/1.1\r\ncontent-length: 18446744073709551615\r\n\r\n")
-                .await
-                .unwrap()
-                .body()
-        );
+
+        let req = call_read("M / HTTP/1.1\r\ncontent-length: 18446744073709551615\r\n\r\n")
+            .await
+            .unwrap();
+        assert_eq!(Some(u64::MAX), req.content_length);
+        assert_eq!(&Body::PendingKnown(u64::MAX), req.body());
+
         assert_eq!(
             Err(HttpError::InvalidContentLength),
             call_read("M / HTTP/1.1\r\ncontent-length: 18446744073709551616\r\n\r\n").await
         );
+    });
+}
 
-        assert_eq!(
-            &Body::Empty,
-            call_read("M / HTTP/1.1\r\n\r\n").await.unwrap().body()
-        );
-        assert_eq!(
-            &Body::Empty,
-            call_read("M / HTTP/1.1\r\n\r\n").await.unwrap().body()
-        );
+#[test]
+fn method() {
+    async_test(async {
+        let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
+        assert_eq!(&Body::Empty, req.body());
+
+        let req = call_read("POST / HTTP/1.1\r\n\r\n").await.unwrap();
+        assert_eq!(&Body::PendingUnknown, req.body());
     });
 }
 

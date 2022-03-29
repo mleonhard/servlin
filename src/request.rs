@@ -18,7 +18,7 @@ pub struct Request {
     pub content_type: ContentType,
     pub expect_continue: bool,
     pub chunked: bool,
-    // pub gzip: bool,
+    pub gzip: bool,
     pub content_length: Option<u64>,
     pub body: Body,
 }
@@ -32,7 +32,7 @@ pub struct Request {
     pub(crate) content_type: ContentType,
     pub(crate) expect_continue: bool,
     pub(crate) chunked: bool,
-    // pub(crate) gzip: bool,
+    pub(crate) gzip: bool,
     pub(crate) content_length: Option<u64>,
     pub(crate) body: Body,
 }
@@ -166,32 +166,24 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
         .filter(|s| !s.is_empty())
         .collect::<HashSet<&str>>();
     let chunked = transfer_encodings.remove("chunked");
-    // self.gzip = transfer_encodings.remove("gzip");
+    let gzip = transfer_encodings.remove("gzip");
     if !transfer_encodings.is_empty() {
         return Err(HttpError::UnsupportedTransferEncoding);
     }
-    // This code is complicated because HTTP/1.1 defines 3 ways to frame a body and
-    // complicated rules for deciding which framing method to expect:
-    // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3
-    let mut content_length = None;
-    let body = if chunked {
-        Body::Pending(None)
-    } else if let Some(content_len_string) = head.headers_lowercase.get("content-length") {
-        content_length = Some(
-            content_len_string
-                .parse()
-                .map_err(|_| HttpError::InvalidContentLength)?,
-        );
-        if content_length == Some(0) {
-            Body::Empty
-        } else {
-            Body::Pending(content_length)
-        }
+    let content_length = if let Some(s) = head.headers_lowercase.get("content-length") {
+        Some(s.parse().map_err(|_| HttpError::InvalidContentLength)?)
     } else {
-        match head.method.as_str() {
-            "POST" | "PUT" => Body::Pending(None),
-            _ => Body::Empty,
-        }
+        None
+    };
+    #[allow(clippy::match_same_arms)]
+    // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3
+    let body = match (chunked, &content_length, head.method.as_str()) {
+        (true, _, _) => Body::PendingUnknown,
+        (false, Some(0), _) => Body::Empty,
+        (false, Some(len), _) => Body::PendingKnown(*len),
+        (false, None, "POST" | "PUT") => Body::PendingUnknown,
+        (false, None, _) if expect_continue || gzip => Body::PendingUnknown,
+        (false, None, _) => Body::Empty,
     };
     Ok(Request {
         remote_addr,
@@ -201,6 +193,7 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
         content_type,
         expect_continue,
         chunked,
+        gzip,
         content_length,
         body,
     })

@@ -14,7 +14,10 @@ use temp_file::TempFile;
 
 #[must_use]
 fn cannot_read_pending_body_error() -> std::io::Error {
-    std::io::Error::new(ErrorKind::InvalidInput, "cannot read Body::Pending")
+    std::io::Error::new(
+        ErrorKind::InvalidInput,
+        "cannot read pending body; your handler did not return Response::GetBodyAndReprocess",
+    )
 }
 
 /// Future returned by `Body::async_reader`.
@@ -71,7 +74,9 @@ impl<'x> futures_io::AsyncRead for BodyAsyncReader<'x> {
     ) -> Poll<std::io::Result<usize>> {
         match &self.body {
             Body::Empty => Poll::Ready(Ok(0)),
-            Body::Pending(..) => Poll::Ready(Err(cannot_read_pending_body_error())),
+            Body::PendingKnown(..) | Body::PendingUnknown => {
+                Poll::Ready(Err(cannot_read_pending_body_error()))
+            }
             Body::Str(s) => self.copy_bytes(buf, s.as_bytes()),
             Body::String(s) => self.copy_bytes(buf, s.as_bytes()),
             Body::Vec(b) => self.copy_bytes(buf, b),
@@ -100,7 +105,8 @@ impl<'x> std::io::Read for BodyReader<'x> {
 pub enum Body {
     // TODO: Remove `Empty` and use `Body::Vec(Vec::new())` instead.
     Empty,
-    Pending(Option<u64>),
+    PendingKnown(u64),
+    PendingUnknown,
     Str(&'static str),
     String(String),
     Vec(Vec<u8>),
@@ -111,12 +117,12 @@ pub enum Body {
 impl Body {
     #[must_use]
     pub fn is_pending(&self) -> bool {
-        matches!(self, Body::Pending(..))
+        matches!(self, Body::PendingKnown(..) | Body::PendingUnknown)
     }
 
     #[must_use]
     pub fn length_is_known(&self) -> bool {
-        !matches!(self, Body::Pending(None))
+        self != &Body::PendingUnknown
     }
 
     #[must_use]
@@ -126,10 +132,11 @@ impl Body {
 
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
+    #[allow(clippy::match_same_arms)]
     pub fn len(&self) -> u64 {
         match self {
-            Body::Empty | Body::Pending(None) => 0,
-            Body::Pending(Some(n)) => *n,
+            Body::Empty | Body::PendingUnknown => 0,
+            Body::PendingKnown(len) => *len,
             Body::Str(s) => u64::try_from(s.len()).unwrap(),
             Body::String(s) => u64::try_from(s.len()).unwrap(),
             Body::Vec(v) => u64::try_from(v.len()).unwrap(),
@@ -142,7 +149,7 @@ impl Body {
     pub fn reader(&self) -> Result<BodyReader<'_>, std::io::Error> {
         match self {
             Body::Empty => Ok(BodyReader::Cursor(Cursor::new(b""))),
-            Body::Pending(..) => Err(cannot_read_pending_body_error()),
+            Body::PendingKnown(..) | Body::PendingUnknown => Err(cannot_read_pending_body_error()),
             Body::Str(s) => Ok(BodyReader::Cursor(Cursor::new(s.as_bytes()))),
             Body::String(s) => Ok(BodyReader::Cursor(Cursor::new(s.as_bytes()))),
             Body::Vec(v) => Ok(BodyReader::Cursor(Cursor::new(v))),
@@ -221,7 +228,7 @@ impl TryFrom<Body> for Vec<u8> {
     fn try_from(body: Body) -> Result<Self, Self::Error> {
         match body {
             Body::Empty => Ok(Vec::new()),
-            Body::Pending(..) => Err(cannot_read_pending_body_error()),
+            Body::PendingKnown(..) | Body::PendingUnknown => Err(cannot_read_pending_body_error()),
             Body::Str(s) => Ok(s.as_bytes().to_vec()),
             Body::String(s) => Ok(s.into_bytes()),
             Body::Vec(v) => Ok(v),
@@ -234,7 +241,8 @@ impl Debug for Body {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         match self {
             Body::Empty => write!(f, "Body::Empty"),
-            Body::Pending(max_len) => write!(f, "Body::Pending(len={:?})", max_len),
+            Body::PendingKnown(len) => write!(f, "Body::PendingKnown(len={:?})", len,),
+            Body::PendingUnknown => write!(f, "Body::PendingUnknown"),
             Body::Str(s) => write!(f, "Body::Str({:?})", s),
             Body::String(s) => write!(f, "Body::Str({:?})", s),
             Body::Vec(v) => write!(

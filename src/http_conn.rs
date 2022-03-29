@@ -18,10 +18,9 @@ use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ReadState {
-    Ready,
-    Bytes(u64),
-    Chunks,
-    Unknown,
+    Head,
+    /// Body(len: Option<u64>, expect_continue: bool, chunked: bool, gzip: bool)
+    Body(Option<u64>, bool, bool, bool),
     Shutdown,
 }
 
@@ -37,7 +36,6 @@ pub struct HttpConn {
     pub buf: FixedBuf<8192>,
     pub stream: async_net::TcpStream,
     pub read_state: ReadState,
-    pub expect_continue: bool,
     pub write_state: WriteState,
 }
 impl HttpConn {
@@ -47,15 +45,14 @@ impl HttpConn {
             remote_addr,
             buf: FixedBuf::new(),
             stream,
-            read_state: ReadState::Ready,
-            expect_continue: false,
+            read_state: ReadState::Head,
             write_state: WriteState::None,
         }
     }
 
     #[must_use]
     pub fn is_ready(&self) -> bool {
-        self.read_state == ReadState::Ready
+        self.read_state == ReadState::Head
     }
 
     pub fn shutdown_write(&mut self) {
@@ -87,34 +84,21 @@ impl HttpConn {
             WriteState::Shutdown => return Err(HttpError::Disconnected),
         }
         match self.read_state {
-            ReadState::Ready => {}
-            ReadState::Bytes(..) | ReadState::Chunks | ReadState::Unknown => {
-                return Err(HttpError::BodyNotRead);
-            }
+            ReadState::Head => {}
+            ReadState::Body(..) => return Err(HttpError::BodyNotRead),
             ReadState::Shutdown => return Err(HttpError::Disconnected),
         }
         self.write_state = WriteState::Response;
         let req = read_http_request(self.remote_addr, &mut self.buf, &mut self.stream).await?;
-        self.expect_continue = req.expect_continue;
-        if req.body().is_pending() {
-            // This code is complicated because HTTP/1.1 defines 3 ways to frame a body and
-            // complicated rules for deciding which framing method to expect:
-            // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3
-            if req.chunked {
-                self.read_state = ReadState::Chunks;
-            } else if req.content_length == Some(0) {
-                self.read_state = ReadState::Ready;
-            } else if let Some(content_length) = &req.content_length {
-                self.read_state = ReadState::Bytes(*content_length);
-            } else {
-                match req.method() {
-                    "POST" | "PUT" => self.read_state = ReadState::Unknown,
-                    _ => self.read_state = ReadState::Ready,
-                }
-            };
-        } else {
-            self.read_state = ReadState::Ready;
-        }
+        self.read_state = match &req.body {
+            Body::PendingKnown(len) => {
+                ReadState::Body(Some(*len), req.expect_continue, req.chunked, req.gzip)
+            }
+            Body::PendingUnknown => {
+                ReadState::Body(None, req.expect_continue, req.chunked, req.gzip)
+            }
+            _ => ReadState::Head,
+        };
         Ok(req)
     }
 
@@ -123,26 +107,14 @@ impl HttpConn {
     /// - the connection is closed
     /// - a response was already sent
     /// - we fail to send the response
-    pub async fn write_http_continue_if_needed(&mut self) -> Result<(), HttpError> {
+    pub async fn write_http_continue(&mut self) -> Result<(), HttpError> {
         match self.write_state {
             WriteState::None => return Err(HttpError::ResponseAlreadySent),
             WriteState::Response => {}
             WriteState::Shutdown => return Err(HttpError::Disconnected),
         }
-        //dbg!("write_http_continue_if_needed");
-        if self.expect_continue {
-            self.write_response(&Response::new(100)).await?;
-            self.expect_continue = false;
-        }
-        Ok(())
-    }
-
-    #[must_use]
-    pub fn has_body(&self) -> bool {
-        match self.read_state {
-            ReadState::Ready | ReadState::Shutdown => false,
-            ReadState::Bytes(..) | ReadState::Chunks | ReadState::Unknown => true,
-        }
+        //dbg!("write_http_continue");
+        self.write_response(&Response::new(100)).await
     }
 
     /// # Errors
@@ -154,24 +126,29 @@ impl HttpConn {
     pub async fn read_body_to_vec(&mut self) -> Result<Body, HttpError> {
         //dbg!("read_body_to_vec");
         match self.read_state {
-            ReadState::Ready => Err(HttpError::BodyNotAvailable),
-            ReadState::Bytes(len_u64) => {
+            ReadState::Head => Err(HttpError::BodyNotAvailable),
+            // TODO: Support chunked transfer encoding, as required by the HTTP/1.1 spec.
+            // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1
+            ReadState::Body(_len, _expect_continue, true, _)
+            | ReadState::Body(_len, _expect_continue, _, true) => {
+                Err(HttpError::UnsupportedTransferEncoding)
+            }
+            ReadState::Body(Some(len_u64), expect_continue, false, false) => {
                 let len_usize =
                     usize::try_from(len_u64).map_err(|_| HttpError::InvalidContentLength)?;
-                self.write_http_continue_if_needed().await?;
-                self.read_state = ReadState::Ready;
-                let result =
-                    read_http_body_to_vec((&mut self.buf).chain(&mut self.stream), len_usize).await;
-                result
+                if expect_continue {
+                    self.write_http_continue().await?;
+                }
+                self.read_state = ReadState::Head;
+                read_http_body_to_vec((&mut self.buf).chain(&mut self.stream), len_usize).await
             }
-            ReadState::Unknown => {
-                self.write_http_continue_if_needed().await?;
+            ReadState::Body(None, expect_continue, false, false) => {
+                if expect_continue {
+                    self.write_http_continue().await?;
+                }
                 self.read_state = ReadState::Shutdown;
                 read_http_unsized_body_to_vec((&mut self.buf).chain(&mut self.stream)).await
             }
-            // TODO: Support chunked transfer encoding, as required by the HTTP/1.1 spec.
-            // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1
-            ReadState::Chunks => Err(HttpError::UnsupportedTransferEncoding),
             ReadState::Shutdown => Err(HttpError::Disconnected),
         }
     }
@@ -187,18 +164,27 @@ impl HttpConn {
     pub async fn read_body_to_file(&mut self, dir: &Path, max_len: u64) -> Result<Body, HttpError> {
         //dbg!("read_body_to_file", max_len, dir);
         match self.read_state {
-            ReadState::Ready => Err(HttpError::BodyNotAvailable),
-            ReadState::Bytes(len) => {
-                if max_len < len {
-                    Err(HttpError::BodyTooLong)
-                } else {
-                    self.write_http_continue_if_needed().await?;
-                    self.read_state = ReadState::Ready;
-                    read_http_body_to_file((&mut self.buf).chain(&mut self.stream), len, dir).await
-                }
+            ReadState::Head => Err(HttpError::BodyNotAvailable),
+            // TODO: Support chunked transfer encoding, as required by the HTTP/1.1 spec.
+            // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1
+            ReadState::Body(_len, _expect_continue, true, _)
+            | ReadState::Body(_len, _expect_continue, _, true) => {
+                Err(HttpError::UnsupportedTransferEncoding)
             }
-            ReadState::Unknown => {
-                self.write_http_continue_if_needed().await?;
+            ReadState::Body(Some(len), _expect_continue, false, false) if len > max_len => {
+                Err(HttpError::BodyTooLong)
+            }
+            ReadState::Body(Some(len), expect_continue, false, false) => {
+                if expect_continue {
+                    self.write_http_continue().await?;
+                }
+                self.read_state = ReadState::Head;
+                read_http_body_to_file((&mut self.buf).chain(&mut self.stream), len, dir).await
+            }
+            ReadState::Body(None, expect_continue, false, false) => {
+                if expect_continue {
+                    self.write_http_continue().await?;
+                }
                 self.read_state = ReadState::Shutdown;
                 read_http_unsized_body_to_file(
                     (&mut self.buf).chain(&mut self.stream),
@@ -207,9 +193,6 @@ impl HttpConn {
                 )
                 .await
             }
-            // TODO: Support chunked transfer encoding, as required by the HTTP/1.1 spec.
-            // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1
-            ReadState::Chunks => Err(HttpError::UnsupportedTransferEncoding),
             ReadState::Shutdown => Err(HttpError::Disconnected),
         }
     }
