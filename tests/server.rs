@@ -1,5 +1,3 @@
-#![cfg(feature = "internals")]
-
 use crate::test_util::check_elapsed;
 use beatrice::{socket_addr_127_0_0_1_any_port, HttpServerBuilder};
 use permit::Permit;

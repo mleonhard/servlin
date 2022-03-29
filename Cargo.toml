@@ -13,7 +13,6 @@ version = "0.1.0"
 default = []
 json = ["serde", "serde_json"]
 urlencoded = ["serde", "serde_urlencoded"]
-internals = []
 
 [dependencies]
 async-fs = "^1.5.0"

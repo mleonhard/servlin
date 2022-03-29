@@ -179,10 +179,10 @@ fn return_drop() {
 #[test]
 fn get_body() {
     let server = TestServer::start(|req| {
-        if req.body().is_pending() {
+        if req.body.is_pending() {
             Response::get_body_and_reprocess(70_000)
         } else {
-            let len = req.body().reader().unwrap().bytes().count();
+            let len = req.body.reader().unwrap().bytes().count();
             Response::text(200, format!("len={}", len))
         }
     })
@@ -242,7 +242,7 @@ fn already_got_body() {
 #[test]
 fn get_body_then_drop() {
     let server = TestServer::start(|req| {
-        if req.body().is_pending() {
+        if req.body.is_pending() {
             Response::get_body_and_reprocess(70_000)
         } else {
             Response::drop_connection()
@@ -255,7 +255,7 @@ fn get_body_then_drop() {
 #[test]
 fn error_writing_body_file() {
     let mut server = TestServer::start(|req| {
-        assert!(req.body().is_pending());
+        assert!(req.body.is_pending());
         Response::get_body_and_reprocess(70_000)
     })
     .unwrap();
@@ -270,11 +270,11 @@ fn error_writing_body_file() {
 #[test]
 fn error_reading_body_file() {
     let mut server = TestServer::start(|req| {
-        if req.body().is_pending() {
+        if req.body.is_pending() {
             Response::get_body_and_reprocess(70_000)
         } else {
             std::thread::sleep(Duration::from_millis(200));
-            req.body().reader().unwrap();
+            req.body.reader().unwrap();
             unreachable!();
         }
     })
@@ -313,11 +313,11 @@ fn slow_reply() {
 #[test]
 fn expect_100_continue() {
     let server = TestServer::start(|req| {
-        if req.body().is_pending() {
+        if req.body.is_pending() {
             std::thread::sleep(Duration::from_millis(100));
             Response::get_body_and_reprocess(70_000)
         } else {
-            let len = req.body().reader().unwrap().bytes().count();
+            let len = req.body.reader().unwrap().bytes().count();
             Response::text(200, format!("len={}", len))
         }
     })

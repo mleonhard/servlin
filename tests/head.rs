@@ -2,7 +2,7 @@
 mod test_util;
 
 use crate::test_util::TestServer;
-use beatrice::internals::{read_http_head, Head, HeadError, HttpError};
+use beatrice::internal::{read_http_head, Head, HeadError, HttpError};
 use beatrice::Response;
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;

@@ -1,7 +1,6 @@
-#![cfg(feature = "internals")]
 mod test_util;
 
-use beatrice::internals::{read_http_request, HttpError};
+use beatrice::internal::{read_http_request, HttpError};
 use beatrice::{ContentType, Request, RequestBody};
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
@@ -96,19 +95,19 @@ fn expect_continue() {
     async_test(async {
         let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
         assert!(!req.expect_continue);
-        assert_eq!(&RequestBody::empty(), req.body());
+        assert_eq!(&RequestBody::empty(), &req.body);
 
         let req = call_read("M / HTTP/1.1\r\nExpect: 100-continue\r\n\r\nabc")
             .await
             .unwrap();
         assert!(req.expect_continue);
-        assert_eq!(&RequestBody::PendingUnknown, req.body());
+        assert_eq!(&RequestBody::PendingUnknown, &req.body);
 
         let req = call_read("M / HTTP/1.1\r\nexpect: 100-continue\r\ncontent-length: 3\r\n\r\nabc")
             .await
             .unwrap();
         assert!(req.expect_continue);
-        assert_eq!(&RequestBody::PendingKnown(3), req.body());
+        assert_eq!(&RequestBody::PendingKnown(3), &req.body);
     });
 }
 
@@ -118,40 +117,40 @@ fn transfer_encoding() {
         let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
         assert!(!req.chunked);
         assert!(!req.gzip);
-        assert_eq!(&RequestBody::empty(), req.body());
+        assert_eq!(&RequestBody::empty(), &req.body);
 
         let req = call_read("POST / HTTP/1.1\r\n\r\n").await.unwrap();
         assert!(!req.chunked);
         assert!(!req.gzip);
-        assert_eq!(&RequestBody::PendingUnknown, req.body());
+        assert_eq!(&RequestBody::PendingUnknown, &req.body);
 
         let req = call_read("M / HTTP/1.1\r\ntransfer-encoding: chunked\r\n\r\n")
             .await
             .unwrap();
         assert!(req.chunked);
         assert!(!req.gzip);
-        assert_eq!(&RequestBody::PendingUnknown, req.body());
+        assert_eq!(&RequestBody::PendingUnknown, &req.body);
 
         let req = call_read("M / HTTP/1.1\r\ntransfer-encoding: gzip\r\n\r\n")
             .await
             .unwrap();
         assert!(!req.chunked);
         assert!(req.gzip);
-        assert_eq!(&RequestBody::PendingUnknown, req.body());
+        assert_eq!(&RequestBody::PendingUnknown, &req.body);
 
         let req = call_read("M / HTTP/1.1\r\ntransfer-encoding: gzip, chunked\r\n\r\n")
             .await
             .unwrap();
         assert!(req.chunked);
         assert!(req.gzip);
-        assert_eq!(&RequestBody::PendingUnknown, req.body());
+        assert_eq!(&RequestBody::PendingUnknown, &req.body);
 
         let req = call_read("M / HTTP/1.1\r\ntransfer-encoding: gzip\r\ncontent-length:10\r\n\r\n")
             .await
             .unwrap();
         assert!(!req.chunked);
         assert!(req.gzip);
-        assert_eq!(&RequestBody::PendingKnown(10), req.body());
+        assert_eq!(&RequestBody::PendingKnown(10), &req.body);
     });
 }
 
@@ -160,19 +159,19 @@ fn content_length() {
     async_test(async {
         let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
         assert_eq!(None, req.content_length);
-        assert_eq!(&RequestBody::empty(), req.body());
+        assert_eq!(&RequestBody::empty(), &req.body);
 
         let req = call_read("M / HTTP/1.1\r\ncontent-length: 0\r\n\r\n")
             .await
             .unwrap();
         assert_eq!(Some(0), req.content_length);
-        assert_eq!(&RequestBody::empty(), req.body());
+        assert_eq!(&RequestBody::empty(), &req.body);
 
         let req = call_read("M / HTTP/1.1\r\ncontent-length: 3\r\n\r\nabc")
             .await
             .unwrap();
         assert_eq!(Some(3), req.content_length);
-        assert_eq!(&RequestBody::PendingKnown(3), req.body());
+        assert_eq!(&RequestBody::PendingKnown(3), &req.body);
 
         assert_eq!(
             Err(HttpError::InvalidContentLength),
@@ -187,7 +186,7 @@ fn content_length() {
             .await
             .unwrap();
         assert_eq!(Some(u64::MAX), req.content_length);
-        assert_eq!(&RequestBody::PendingKnown(u64::MAX), req.body());
+        assert_eq!(&RequestBody::PendingKnown(u64::MAX), &req.body);
 
         assert_eq!(
             Err(HttpError::InvalidContentLength),
@@ -200,10 +199,10 @@ fn content_length() {
 fn method() {
     async_test(async {
         let req = call_read("M / HTTP/1.1\r\n\r\n").await.unwrap();
-        assert_eq!(&RequestBody::empty(), req.body());
+        assert_eq!(&RequestBody::empty(), &req.body);
 
         let req = call_read("POST / HTTP/1.1\r\n\r\n").await.unwrap();
-        assert_eq!(&RequestBody::PendingUnknown, req.body());
+        assert_eq!(&RequestBody::PendingUnknown, &req.body);
     });
 }
 

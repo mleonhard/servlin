@@ -12,13 +12,13 @@ pub struct State {
 }
 
 fn upload(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
-    if req.body().is_pending() {
+    if req.body.is_pending() {
         println!("continue");
         return Ok(Response::get_body_and_reprocess(1024 * 1024));
     }
     println!("upload receiving");
     let mut body_string = String::new();
-    req.body().reader()?.read_to_string(&mut body_string)?;
+    req.body.reader()?.read_to_string(&mut body_string)?;
     //dbg!(&body_string);
     state.upload_count.fetch_add(1, Ordering::AcqRel);
     Ok(Response::text(

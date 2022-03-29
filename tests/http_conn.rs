@@ -1,8 +1,7 @@
-#![cfg(feature = "internals")]
 mod test_util;
 
 use crate::test_util::{async_test, connected_streams};
-use beatrice::internals::{handle_http_conn, Token};
+use beatrice::internal::{handle_http_conn, Token};
 use beatrice::{HttpConn, Request, Response};
 use futures_lite::{AsyncReadExt, AsyncWriteExt};
 use permit::Permit;
@@ -97,7 +96,7 @@ fn handle_http_conn_upload() {
     async_test(async {
         let mut stream = handle_http_conn_task(|req: Request| async move {
             let mut body_string = String::new();
-            req.body()
+            req.body
                 .async_reader()
                 .await
                 .unwrap()
@@ -129,7 +128,7 @@ fn handle_http_conn_upload_large() {
                 return Response::get_body_and_reprocess(10_000_000);
             }
             let mut body_string = String::new();
-            req.body()
+            req.body
                 .async_reader()
                 .await
                 .unwrap()

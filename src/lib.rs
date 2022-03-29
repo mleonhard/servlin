@@ -190,16 +190,12 @@ pub use crate::request_body::RequestBody;
 pub use crate::response::Response;
 pub use crate::response_body::ResponseBody;
 
-pub mod reexport {
-    pub use permit;
-    pub use safina_executor;
-    pub use safina_sync;
-    pub use safina_timer;
-}
-
-/// To use this module, enable cargo feature `"internals"`.
-#[cfg(feature = "internals")]
-pub mod internals {
+/// This part of the library is not covered by the semver guarantees.
+/// If you use these in your program, a minor version upgrade could break your build.
+///
+/// If you use these items in a published library,
+/// your library should depend on a specific version of this library.
+pub mod internal {
     pub use crate::accept::*;
     pub use crate::body_async_reader::*;
     pub use crate::body_reader::*;
@@ -213,6 +209,13 @@ pub mod internals {
     pub use crate::response_body::*;
     pub use crate::token_set::*;
     pub use crate::util::*;
+}
+
+pub mod reexport {
+    pub use permit;
+    pub use safina_executor;
+    pub use safina_sync;
+    pub use safina_timer;
 }
 
 use crate::accept::accept_loop;
@@ -307,10 +310,10 @@ impl HttpServerBuilder {
     ///
     /// let cache_dir = temp_dir::TempDir::new().unwrap();
     /// let handler = move |req: Request| {
-    ///     if req.body().is_pending() {
+    ///     if req.body.is_pending() {
     ///         return Response::get_body_and_reprocess(1024 * 1024);
     ///     }
-    ///     let len = req.body().reader().unwrap().bytes().count();
+    ///     let len = req.body.reader().unwrap().bytes().count();
     ///     Response::text(200, format!("body len={}", len))
     /// };
     /// # let permit = permit::Permit::new();
