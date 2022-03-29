@@ -163,6 +163,7 @@
 //! 1. Run `./release.sh`
 #![forbid(unsafe_code)]
 mod accept;
+mod ascii_string;
 mod body;
 mod content_type;
 mod head;
@@ -176,6 +177,7 @@ mod util;
 pub use crate::accept::{
     socket_addr_127_0_0_1, socket_addr_127_0_0_1_any_port, socket_addr_all_interfaces,
 };
+pub use crate::ascii_string::AsciiString;
 pub use crate::body::{Body, BodyAsyncReader, BodyReader};
 pub use crate::content_type::ContentType;
 pub use crate::http_conn::HttpConn;
@@ -369,7 +371,6 @@ impl HttpServerBuilder {
         self
     }
 
-    // TODO: Make this take a function that returns Result<Response,Response>.
     /// Spawns the server task.
     ///
     /// Returns `(addr, stopped_receiver)`.

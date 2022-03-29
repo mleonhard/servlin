@@ -101,7 +101,9 @@ fn with_body() {
 
 #[test]
 fn with_header() {
-    let server = TestServer::start(|_req| Response::new(200).with_header("h1", "v1")).unwrap();
+    let server =
+        TestServer::start(|_req| Response::new(200).with_header("h1", "v1".try_into().unwrap()))
+            .unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
         "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nh1: v1\r\n\r\n",
@@ -112,13 +114,13 @@ fn with_header() {
 fn with_duplicate_header() {
     let server = TestServer::start(|_req| {
         Response::new(200)
-            .with_header("h1", "v1")
-            .with_header("h1", "v2")
+            .with_header("h1", "v1".try_into().unwrap())
+            .with_header("h1", "v2".try_into().unwrap())
     })
     .unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nh1: v2\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nh1: v1\r\nh1: v2\r\n\r\n",
     );
 }
 
@@ -126,13 +128,13 @@ fn with_duplicate_header() {
 fn with_duplicate_header_different_case() {
     let server = TestServer::start(|_req| {
         Response::new(200)
-            .with_header("h1", "v1")
-            .with_header("H1", "v2")
+            .with_header("h1", "v1".try_into().unwrap())
+            .with_header("H1", "v2".try_into().unwrap())
     })
     .unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nh1: v2\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nh1: v1\r\nH1: v2\r\n\r\n",
     );
 }
 
@@ -148,7 +150,7 @@ fn method_not_allowed_405() {
 #[test]
 fn duplicate_content_type_header() {
     let server = TestServer::start(|_req| {
-        Response::text(200, "t1").with_header("Content-type", "text/plain")
+        Response::text(200, "t1").with_header("Content-type", "text/plain".try_into().unwrap())
     })
     .unwrap();
     assert_starts_with(
@@ -160,7 +162,7 @@ fn duplicate_content_type_header() {
 #[test]
 fn duplicate_content_length_header() {
     let server =
-        TestServer::start(|_req| Response::text(200, "t1").with_header("Content-length", "0"))
+        TestServer::start(|_req| Response::text(200, "t1").with_header("Content-length", 0.into()))
             .unwrap();
     assert_starts_with(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),

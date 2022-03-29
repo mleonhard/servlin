@@ -6,12 +6,12 @@ use std::io::Write;
 
 use crate::http_error::HttpError;
 use crate::util::{copy_async, CopyResult};
-use crate::{Body, ContentType, Request};
-use std::collections::HashMap;
+use crate::{AsciiString, Body, ContentType, Request};
 use std::fmt::Debug;
 use std::ops::Deref;
 
-// TODO: Rename to HttpBody.
+// TODO: Eliminate this somehow.  One way is to use only `Body`, prefix methods with `internal_`,
+//       and doc(hidden) those internal methods when not feature `internals`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BodyWrapper<'x>(&'x Body);
 impl<'x> Deref for BodyWrapper<'x> {
@@ -28,18 +28,18 @@ pub enum Response {
     /// `GetBodyAndReprocess(max_len: u64, Request)`<br>
     /// Read the body from the client, but only up to the specified `u64` bytes.
     GetBodyAndReprocess(u64, Request),
-    /// Normal(code: u16, ContentType, headers: HashMap<String, String>, Body)
-    Normal(u16, ContentType, HashMap<String, String>, Body),
+    /// Normal(code: u16, ContentType, headers: Vec<String,String>, Body)
+    Normal(u16, ContentType, Vec<(AsciiString, AsciiString)>, Body),
 }
 impl Response {
     #[must_use]
     pub fn new(code: u16) -> Self {
-        Response::Normal(code, ContentType::None, HashMap::new(), Body::empty())
+        Response::Normal(code, ContentType::None, Vec::new(), Body::empty())
     }
 
     #[must_use]
     pub fn html(code: u16, body: impl Into<Body>) -> Self {
-        Response::Normal(code, ContentType::Html, HashMap::new(), body.into())
+        Response::Normal(code, ContentType::Html, Vec::new(), body.into())
     }
 
     /// # Errors
@@ -51,14 +51,14 @@ impl Response {
         Ok(Response::Normal(
             code,
             ContentType::Json,
-            HashMap::new(),
+            Vec::new(),
             Body::Vec(body_vec),
         ))
     }
 
     #[must_use]
     pub fn text(code: u16, body: impl Into<Body>) -> Self {
-        Response::Normal(code, ContentType::PlainText, HashMap::new(), body.into())
+        Response::Normal(code, ContentType::PlainText, Vec::new(), body.into())
     }
 
     /// Tell the client to GET `location`.
@@ -66,19 +66,19 @@ impl Response {
     /// The client should not store this redirect.
     ///
     /// A PUT or POST handler usually returns this.
+    ///
+    /// # Panics
+    /// Panics when `location` is not US-ASCII.
     #[must_use]
     pub fn redirect_303(location: impl AsRef<str>) -> Self {
-        Response::new(303).with_header("location", location.as_ref())
+        Response::new(303).with_header("location", location.as_ref().try_into().unwrap())
     }
 
+    /// # Panics
+    /// Panics when any of `allowed_methods` are not US-ASCII.
     #[must_use]
     pub fn method_not_allowed_405(allowed_methods: &[&'static str]) -> Self {
-        Response::Normal(
-            405,
-            ContentType::None,
-            [("allow".to_string(), allowed_methods.join(","))].into(),
-            Body::empty(),
-        )
+        Self::new(405).with_header("allow", allowed_methods.join(",").try_into().unwrap())
     }
 
     #[must_use]
@@ -91,48 +91,89 @@ impl Response {
         Response::text(413, "Uploaded data is too big.")
     }
 
+    //     #[cfg_attr(not(feature = "internals"), doc(hidden))]
+
     #[must_use]
-    fn into_tuple(self) -> (u16, ContentType, HashMap<String, String>, Body) {
+    fn mut_tuple(
+        &mut self,
+    ) -> (
+        &mut u16,
+        &mut ContentType,
+        &mut Vec<(AsciiString, AsciiString)>,
+        &mut Body,
+    ) {
         match self {
             Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
             Response::Normal(c, t, h, b) => (c, t, h, b),
         }
     }
 
+    // TODO: Name these `internal_` and set `doc(hidden)` when not feature `internal`.
     #[must_use]
-    pub fn with_body(self, b: impl Into<Body>) -> Self {
-        let (c, t, h, _b) = self.into_tuple();
-        Response::Normal(c, t, h, b.into())
-    }
-
-    /// To use this method, enable cargo feature `"internals"`.
-    #[cfg(feature = "internals")]
-    #[must_use]
-    pub fn with_http_body(self, b: impl Into<Body>) -> Self {
-        let (c, t, h, _b) = self.into_tuple();
-        Response::Normal(c, t, h, b.into())
+    fn mut_code(&mut self) -> &mut u16 {
+        self.mut_tuple().0
     }
 
     #[must_use]
-    pub fn with_header(self, name: impl AsRef<str>, value: impl AsRef<str>) -> Self {
-        let (c, t, mut h, b) = self.into_tuple();
-        h.insert(
-            name.as_ref().to_ascii_lowercase(),
-            value.as_ref().to_string(),
-        );
-        Response::Normal(c, t, h, b)
+    fn mut_content_type(&mut self) -> &mut ContentType {
+        self.mut_tuple().1
     }
 
     #[must_use]
-    pub fn with_status(self, c: u16) -> Self {
-        let (_c, t, h, b) = self.into_tuple();
-        Response::Normal(c, t, h, b)
+    fn mut_headers(&mut self) -> &mut Vec<(AsciiString, AsciiString)> {
+        self.mut_tuple().2
     }
 
     #[must_use]
-    pub fn with_type(self, t: ContentType) -> Self {
-        let (c, _t, h, b) = self.into_tuple();
-        Response::Normal(c, t, h, b)
+    fn mut_body(&mut self) -> &mut Body {
+        self.mut_tuple().3
+    }
+
+    #[must_use]
+    pub fn with_body(mut self, b: impl Into<Body>) -> Self {
+        *self.mut_body() = b.into();
+        self
+    }
+
+    /// Adds a header.
+    ///
+    /// You can call this multiple times to add multiple headers with the same name.
+    ///
+    /// The [HTTP spec](https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.4)
+    /// limits header names to US-ASCII and header values to US-ASCII or ISO-8859-1.
+    ///
+    /// # Panics
+    /// Panics when `name` is not US-ASCII.
+    ///
+    /// # Example
+    /// ```
+    /// use beatrice::{AsciiString, Response};
+    /// use core::convert::TryInto;
+    /// # fn new_random_session_id_u64() -> u64 { 123 }
+    ///
+    /// let session_id: u64 = new_random_session_id_u64();
+    /// // ...
+    /// return Response::redirect_303("/logged-in")
+    ///     .with_cookie("session_id", session_id.into())
+    ///     .with_cookie("backend", "prod0".to_string().try_into().unwrap());
+    /// ```
+    #[must_use]
+    pub fn with_header(mut self, name: impl AsRef<str>, value: AsciiString) -> Self {
+        self.mut_headers()
+            .push((name.as_ref().try_into().unwrap(), value));
+        self
+    }
+
+    #[must_use]
+    pub fn with_status(mut self, c: u16) -> Self {
+        *self.mut_code() = c;
+        self
+    }
+
+    #[must_use]
+    pub fn with_type(mut self, t: ContentType) -> Self {
+        *self.mut_content_type() = t;
+        self
     }
 
     #[must_use]
@@ -183,6 +224,7 @@ impl Response {
     /// Panics when called on `Response::Drop` or `Response::GetBodyAndReprocess(..)`.
     #[must_use]
     pub fn reason_phrase(&self) -> &'static str {
+        // TODO: Move this to a stand-alone funciton, exported in `internal` mod.
         // https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
         match self.code() {
             100 => "Continue",
@@ -255,6 +297,7 @@ impl Response {
     #[must_use]
     pub fn content_type(&self) -> &ContentType {
         match self {
+            // TODO: Remove these panics.  Restructure somehow.
             Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
             Response::Normal(_c, t, _h, _b) => t,
         }
@@ -263,7 +306,7 @@ impl Response {
     /// # Panics
     /// Panics when called on `Response::Drop` or `Response::GetBodyAndReprocess(..)`.
     #[must_use]
-    pub fn headers(&self) -> &HashMap<String, String> {
+    pub fn headers(&self) -> &Vec<(AsciiString, AsciiString)> {
         match self {
             Response::Drop | Response::GetBodyAndReprocess(..) => unimplemented!(),
             Response::Normal(_c, _t, h, _b) => h,
@@ -354,8 +397,10 @@ pub async fn write_http_response(
     )
     .into_bytes();
     if response.content_type() != &ContentType::None {
-        if response.headers().contains_key("content-type") {
-            return Err(HttpError::DuplicateContentTypeHeader);
+        for (name, _value) in response.headers() {
+            if name.as_str().eq_ignore_ascii_case("content-type") {
+                return Err(HttpError::DuplicateContentTypeHeader);
+            }
         }
         write!(
             head_bytes,
@@ -365,8 +410,10 @@ pub async fn write_http_response(
         .unwrap();
     }
     if response.body().length_is_known() {
-        if response.headers().contains_key("content-length") {
-            return Err(HttpError::DuplicateContentLengthHeader);
+        for (name, _value) in response.headers() {
+            if name.as_str().eq_ignore_ascii_case("content-length") {
+                return Err(HttpError::DuplicateContentLengthHeader);
+            }
         }
         write!(head_bytes, "content-length: {}\r\n", response.body().len()).unwrap();
     }
