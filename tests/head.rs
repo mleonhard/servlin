@@ -1,4 +1,3 @@
-#![cfg(feature = "internals")]
 mod test_util;
 
 use crate::test_util::TestServer;
