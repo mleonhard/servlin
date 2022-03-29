@@ -92,7 +92,11 @@ impl Request {
         if self.content_type != ContentType::Json {
             Err(Response::text(400, "expected json request body"))
         } else if self.body.is_pending() {
-            Err(Response::payload_too_large_413())
+            if self.body.length_is_known() {
+                Err(Response::payload_too_large_413())
+            } else {
+                Err(Response::length_required_411())
+            }
         } else {
             serde_json::from_reader(self.body.reader()?).map_err(|e| match e.classify() {
                 Category::Eof => Response::text(400, "truncated json"),

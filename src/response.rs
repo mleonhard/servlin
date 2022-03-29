@@ -67,6 +67,11 @@ impl Response {
     }
 
     #[must_use]
+    pub fn length_required_411() -> Self {
+        Response::text(411, "not accepting streaming uploads")
+    }
+
+    #[must_use]
     pub fn payload_too_large_413() -> Self {
         Response::text(413, "Uploaded data is too big.")
     }
