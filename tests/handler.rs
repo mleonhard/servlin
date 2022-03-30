@@ -388,6 +388,15 @@ fn chunked_not_supported() {
 }
 
 #[test]
+fn chunked_not_last() {
+    let server = TestServer::start(|_req| Response::get_body_and_reprocess(100)).unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\ntransfer-encoding:chunked, gzip\r\n\r\n3\r\nabc\r\n0\r\n\r\n").unwrap(),
+        "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 38\r\n\r\nHttpError::UnsupportedTransferEncoding",
+    );
+}
+
+#[test]
 fn content_length_zero() {
     let server = TestServer::start(|_req| Response::new(200)).unwrap();
     assert_eq!(

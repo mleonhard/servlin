@@ -1,7 +1,7 @@
 mod test_util;
 
 use beatrice::internal::{read_http_request, HttpError};
-use beatrice::{ContentType, Request, RequestBody};
+use beatrice::{AsciiString, ContentType, Request, RequestBody};
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
 use safina_sync::Receiver;
@@ -28,7 +28,10 @@ fn head() {
         assert_eq!(addr1(), req.remote_addr);
         assert_eq!("M", req.method());
         assert_eq!("/1", req.url.path());
-        assert_eq!(Some("Val1"), req.header("header1"));
+        assert_eq!(
+            Some("Val1"),
+            req.headers.get_only("header1").map(AsciiString::as_str)
+        );
     });
 }
 

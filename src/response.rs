@@ -6,7 +6,7 @@ use std::io::Write;
 
 use crate::http_error::HttpError;
 use crate::util::{copy_async, CopyResult};
-use crate::{AsciiString, ContentType, ResponseBody};
+use crate::{AsciiString, ContentType, HeaderList, ResponseBody};
 use std::fmt::Debug;
 
 #[allow(clippy::module_name_repetitions)]
@@ -24,9 +24,7 @@ pub struct Response {
     pub kind: ResponseKind,
     pub code: u16,
     pub content_type: ContentType,
-    /// The [HTTP spec](https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.4)
-    /// limits header names to US-ASCII and header values to US-ASCII or ISO-8859-1.
-    pub headers: Vec<(AsciiString, AsciiString)>,
+    pub headers: HeaderList,
     pub body: ResponseBody,
 }
 impl Response {
@@ -36,7 +34,7 @@ impl Response {
             kind: ResponseKind::Normal,
             code,
             content_type: ContentType::None,
-            headers: Vec::new(),
+            headers: HeaderList::new(),
             body: ResponseBody::empty(),
         }
     }
@@ -48,7 +46,7 @@ impl Response {
             kind: ResponseKind::DropConnection,
             code: 0,
             content_type: ContentType::None,
-            headers: Vec::new(),
+            headers: HeaderList::new(),
             body: ResponseBody::empty(),
         }
     }
@@ -63,7 +61,7 @@ impl Response {
             kind: ResponseKind::GetBodyAndReprocess(max_len),
             code: 0,
             content_type: ContentType::None,
-            headers: Vec::new(),
+            headers: HeaderList::new(),
             body: ResponseBody::empty(),
         }
     }
@@ -121,66 +119,6 @@ impl Response {
         Response::text(413, "Uploaded data is too big.")
     }
 
-    // TODO: Move this code to a Headers struct and share it with Request.
-
-    /// Adds a header.
-    ///
-    /// You can call this multiple times to add multiple headers with the same name.
-    ///
-    /// The [HTTP spec](https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.4)
-    /// limits header names to US-ASCII and header values to US-ASCII or ISO-8859-1.
-    ///
-    /// # Panics
-    /// Panics when `name` is not US-ASCII.
-    pub fn add_header(&mut self, name: impl AsRef<str>, value: AsciiString) {
-        self.headers
-            .push((name.as_ref().try_into().unwrap(), value));
-    }
-
-    /// Finds the first header that matches `name` with a case-insensitive comparison and
-    /// returns its `value`.
-    ///
-    /// Returns `None` if the no name matched.
-    pub fn get_first_header(&self, name: impl AsRef<str>) -> Option<&AsciiString> {
-        for (header_name, header_value) in &self.headers {
-            if header_name.eq_ignore_ascii_case(name.as_ref()) {
-                return Some(header_value);
-            }
-        }
-        None
-    }
-
-    /// Looks for headers with names that match `name` with a case-insensitive comparison.
-    /// Returns the values of those headers.
-    pub fn get_headers(&self, name: impl AsRef<str>) -> Vec<&AsciiString> {
-        let mut headers = Vec::new();
-        for (header_name, header_value) in &self.headers {
-            if header_name.eq_ignore_ascii_case(name.as_ref()) {
-                headers.push(header_value);
-            }
-        }
-        headers
-    }
-
-    /// Removes the first header that matches `name` with a case-insensitive comparison and
-    /// has `value`.
-    ///
-    /// Returns `None` if the no name matched.
-    pub fn remove_header(
-        &mut self,
-        name: impl AsRef<str>,
-        value: impl AsRef<str>,
-    ) -> Option<(AsciiString, AsciiString)> {
-        for (n, (header_name, header_value)) in self.headers.iter().enumerate() {
-            if header_name.eq_ignore_ascii_case(name.as_ref())
-                && header_value.as_str() == value.as_ref()
-            {
-                return Some(self.headers.remove(n));
-            }
-        }
-        None
-    }
-
     #[must_use]
     pub fn with_body(mut self, b: impl Into<ResponseBody>) -> Self {
         self.body = b.into();
@@ -199,19 +137,16 @@ impl Response {
     ///
     /// # Example
     /// ```
-    /// use beatrice::{AsciiString, Response};
-    /// use core::convert::TryInto;
-    /// # fn new_random_session_id_u64() -> u64 { 123 }
+    /// use beatrice::Response;
     ///
-    /// let session_id: u64 = new_random_session_id_u64();
-    /// // ...
-    /// return Response::redirect_303("/logged-in")
-    ///     .with_cookie("session_id", session_id.into())
-    ///     .with_cookie("backend", "prod0".to_string().try_into().unwrap());
+    /// # fn example() -> Response {
+    /// return Response::new(200)
+    ///     .with_header("header1", "value1".to_string().try_into().unwrap());
+    /// # }
     /// ```
     #[must_use]
     pub fn with_header(mut self, name: impl AsRef<str>, value: AsciiString) -> Self {
-        self.add_header(name, value);
+        self.headers.add(name, value);
         self
     }
 
@@ -273,23 +208,13 @@ impl Debug for Response {
                 write!(f, "Response(kind=GetBodyAndReprocess({}))", max_len)
             }
             ResponseKind::Normal => {
-                let mut headers: Vec<String> = self
-                    .headers
-                    .iter()
-                    .map(|(n, v)| format!("{}: {:?}", n, v))
-                    .collect();
-                headers.sort();
                 write!(
                     f,
-                    "Response({} {}, {:?}, headers={{{}}}, {:?})",
+                    "Response({} {}, {:?}, {:?}, {:?})",
                     self.code,
                     reason_phrase(self.code),
                     self.content_type,
-                    self.headers
-                        .iter()
-                        .map(|(name, value)| format!("{}:{}", name, value))
-                        .collect::<Vec<String>>()
-                        .join(", "),
+                    self.headers,
                     self.body
                 )
             }
@@ -392,10 +317,8 @@ pub async fn write_http_response(
     )
     .into_bytes();
     if response.content_type != ContentType::None {
-        for (name, _value) in &response.headers {
-            if name.as_str().eq_ignore_ascii_case("content-type") {
-                return Err(HttpError::DuplicateContentTypeHeader);
-            }
+        if response.headers.get_only("content-type").is_some() {
+            return Err(HttpError::DuplicateContentTypeHeader);
         }
         write!(
             head_bytes,
@@ -405,16 +328,14 @@ pub async fn write_http_response(
         .unwrap();
     }
     let body_len = response.body.len();
-    for (name, _value) in &response.headers {
-        if name.as_str().eq_ignore_ascii_case("content-length") {
-            return Err(HttpError::DuplicateContentLengthHeader);
-        }
+    if response.headers.get_only("content-length").is_some() {
+        return Err(HttpError::DuplicateContentLengthHeader);
     }
     write!(head_bytes, "content-length: {}\r\n", body_len).unwrap();
-    for (name, value) in &response.headers {
+    for header in &response.headers {
         // Convert headers from UTF-8 back to ISO-8859-1, with 0xFF for a replacement byte.
-        write!(head_bytes, "{}: ", name).unwrap();
-        head_bytes.extend(value.chars().map(|c| u8::try_from(c).unwrap_or(255)));
+        write!(head_bytes, "{}: ", header.name).unwrap();
+        head_bytes.extend(header.value.chars().map(|c| u8::try_from(c).unwrap_or(255)));
         head_bytes.extend(b"\r\n");
     }
     head_bytes.extend(b"\r\n");

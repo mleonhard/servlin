@@ -1,8 +1,10 @@
+extern crate core;
+
 mod test_util;
 
 use crate::test_util::TestServer;
 use beatrice::internal::{read_http_head, Head, HeadError, HttpError};
-use beatrice::Response;
+use beatrice::{AsciiString, Response};
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
 use safina_sync::Receiver;
@@ -118,24 +120,24 @@ fn head_try_read_headers() {
             Err(HeadError::MalformedHeader),
             "M / HTTP/1.1\r\nav\r\n\r\n",
         ),
-        (Ok(Some("".to_string())), "M / HTTP/1.1\r\na:\r\n\r\n"),
-        (Ok(Some("b".to_string())), "M / HTTP/1.1\r\na:b\r\n\r\n"),
+        (Ok(vec!["".to_string()]), "M / HTTP/1.1\r\na:\r\n\r\n"),
+        (Ok(vec!["b".to_string()]), "M / HTTP/1.1\r\na:b\r\n\r\n"),
         (
             Err(HeadError::MalformedHeader),
             "M / HTTP/1.1\r\n a:b\r\n\r\n",
         ),
         // Strips value whitespace.
         (
-            Ok(Some("b".to_string())),
+            Ok(vec!["b".to_string()]),
             "M / HTTP/1.1\r\na: \t\rb\r\n\r\n",
         ),
         (
-            Ok(Some("b".to_string())),
+            Ok(vec!["b".to_string()]),
             "M / HTTP/1.1\r\na:b \t\r\r\n\r\n",
         ),
         // Keeps last duplicate.
         (
-            Ok(Some("2".to_string())),
+            Ok(vec!["1".to_string(), "2".to_string()]),
             "M / HTTP/1.1\r\na:1\r\nA:2\r\n\r\n",
         ),
         // Extra newlines
@@ -157,7 +159,7 @@ fn head_try_read_headers() {
             "M / HTTP/1.1\r\n\ra:b\r\n\r\n",
         ),
         (
-            Ok(Some("b".to_string())),
+            Ok(vec!["b".to_string()]),
             "M / HTTP/1.1\r\na:b\r\r\nc:d\r\n\r\n",
         ),
         (
@@ -169,7 +171,7 @@ fn head_try_read_headers() {
             "M / HTTP/1.1\r\na:b\r\n\r\r\n\r\n",
         ),
         (
-            Ok(Some("b".to_string())),
+            Ok(vec!["b".to_string()]),
             "M / HTTP/1.1\r\na:b\r\r\n\r\n\r\n",
         ),
     ] {
@@ -177,19 +179,24 @@ fn head_try_read_headers() {
         buf.write_bytes(req).unwrap();
         assert_eq!(
             expected,
-            Head::try_read(&mut buf)
-                .map(|head| head.headers_lowercase.get("a").map(String::to_string)),
+            Head::try_read(&mut buf).map(|mut head| head
+                .headers
+                .remove_all("a")
+                .into_iter()
+                .map(AsciiString::into)
+                .collect::<Vec<String>>()),
             "{:?}",
             req
         );
     }
-    // Lower-cases name.
+    // Lookups are case-insensitive.
     assert_eq!(
-        Some(&"CCdd2".to_string()),
+        Some("CCdd2"),
         Head::try_read(&mut FixedBuf::from(*b"M / HTTP/1.1\r\nAAbb1:CCdd2\r\n\r\n",))
             .unwrap()
-            .headers_lowercase
-            .get("aabb1")
+            .headers
+            .get_only("aabb1")
+            .map(AsciiString::as_str)
     );
     // Accepts all valid header name symbols.
     // https://datatracker.ietf.org/doc/html/rfc7230#section-3.2
@@ -206,13 +213,14 @@ fn head_try_read_headers() {
     //                      ; any VCHAR, except delimiters
     //     VCHAR is any visible ASCII character.
     assert_eq!(
-        Some(&"! \"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~".to_string()),
+        Some("! \"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"),
         Head::try_read(&mut FixedBuf::from(
             *(b"M / HTTP/1.1\r\n1#$%&'*+-.^_`|~0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:! \"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\r\n\r\n")
         ))
             .unwrap()
-            .headers_lowercase
-            .get("1#$%&'*+-.^_`|~0123456789abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz")
+            .headers
+            .get_only("1#$%&'*+-.^_`|~0123456789abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz")
+            .map(AsciiString::as_str)
     );
     // TODO: Add tests of non-ASCII chars in names and values.
 }
@@ -254,7 +262,7 @@ fn read_http_head_ok() {
         let head = receiver.async_recv().await.unwrap().unwrap();
         assert_eq!("M", head.method);
         assert_eq!("/", head.url.path());
-        assert!(head.headers_lowercase.is_empty());
+        assert!(head.headers.is_empty());
     });
 }
 
@@ -307,7 +315,7 @@ fn read_http_head_multiple_writes() {
         let head = receiver.async_recv().await.unwrap().unwrap();
         assert_eq!("M", head.method);
         assert_eq!("/", head.url.path());
-        assert!(head.headers_lowercase.is_empty());
+        assert!(head.headers.is_empty());
     });
 }
 
@@ -348,7 +356,7 @@ fn head_derive() {
     assert_ne!(head1, head2);
     // Debug
     assert_eq!(
-        "Head{method=\"A\", path=\"/1\", headers={h1: \"V1\", h2: \"v2\"}}",
+        "Head{method=\"A\", path=\"/1\", headers={H1: \"V1\", h2: \"v2\"}}",
         format!("{:?}", head1).as_str()
     );
 }

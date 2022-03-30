@@ -1,10 +1,10 @@
 use crate::http_error::HttpError;
 use crate::util::find_slice;
+use crate::{AsciiString, Header, HeaderList};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
 use futures_lite::AsyncReadExt;
 use safe_regex::{regex, Matcher2, Matcher3};
-use std::collections::HashMap;
 use url::Url;
 
 fn trim_trailing_cr(bytes: &[u8]) -> &[u8] {
@@ -49,7 +49,7 @@ pub enum HeadError {
 pub struct Head {
     pub method: String,
     pub url: Url,
-    pub headers_lowercase: HashMap<String, String>,
+    pub headers: HeaderList,
 }
 impl Head {
     fn read_head_bytes<const BUF_SIZE: usize>(
@@ -101,7 +101,7 @@ impl Head {
         bytes.iter().map(|&b| b as char).collect()
     }
 
-    fn parse_header_line(line: &[u8]) -> Result<(String, String), HeadError> {
+    fn parse_header_line(line: &[u8]) -> Result<Header, HeadError> {
         // https://datatracker.ietf.org/doc/html/rfc7230#section-3.2
         //     header-field   = field-name ":" OWS field-value OWS
         //     field-name     = token
@@ -128,9 +128,11 @@ impl Head {
         let (name_bytes, value_bytes) = matcher
             .match_slices(line)
             .ok_or(HeadError::MalformedHeader)?;
-        let name_lowercase = std::str::from_utf8(name_bytes).unwrap().to_lowercase();
-        let value = Self::latin1_bytes_to_utf8(trim_whitespace(value_bytes));
-        Ok((name_lowercase, value))
+        let name_string = String::from_utf8(name_bytes.to_vec()).unwrap();
+        let value_string = Self::latin1_bytes_to_utf8(trim_whitespace(value_bytes));
+        let name = AsciiString::try_from(name_string).unwrap();
+        let value = AsciiString::try_from(value_string).unwrap();
+        Ok(Header::new(name, value))
     }
 
     /// # Errors
@@ -144,32 +146,26 @@ impl Head {
         let mut lines = head.split(|b| *b == b'\n').map(trim_trailing_cr);
         let request_line = lines.next().ok_or(HeadError::MissingRequestLine)?;
         let (method, url) = Self::parse_request_line(request_line)?;
-        let mut headers_lowercase: HashMap<String, String> = HashMap::new();
+        let mut headers = HeaderList::new();
         for line in lines {
-            let (name_lowercase, value) = Self::parse_header_line(line)?;
-            headers_lowercase.insert(name_lowercase, value);
+            let header = Self::parse_header_line(line)?;
+            headers.push(header);
         }
         Ok(Self {
             method,
             url,
-            headers_lowercase,
+            headers,
         })
     }
 }
 impl core::fmt::Debug for Head {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        let mut headers: Vec<String> = self
-            .headers_lowercase
-            .iter()
-            .map(|(n, v)| format!("{}: {:?}", n, v))
-            .collect();
-        headers.sort();
         write!(
             f,
-            "Head{{method={:?}, path={:?}, headers={{{}}}}}",
+            "Head{{method={:?}, path={:?}, headers={:?}}}",
             self.method,
             self.url.path(),
-            headers.join(", ")
+            self.headers
         )
     }
 }

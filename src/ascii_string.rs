@@ -67,12 +67,10 @@ impl Display for AsciiString {
         write!(f, "{}", self.0)
     }
 }
-
-fn try_from_error(bytes: impl AsRef<[u8]>) -> String {
-    format!(
-        "`AsciiString::try_from` called with non-ASCII value: \"{}\"",
-        escape_and_elide(bytes.as_ref(), 100)
-    )
+impl From<AsciiString> for String {
+    fn from(ascii_string: AsciiString) -> Self {
+        ascii_string.0
+    }
 }
 
 impl From<i8> for AsciiString {
@@ -114,6 +112,18 @@ impl From<u64> for AsciiString {
     fn from(n: u64) -> Self {
         Self(n.to_string())
     }
+}
+impl From<usize> for AsciiString {
+    fn from(n: usize) -> Self {
+        Self(n.to_string())
+    }
+}
+
+fn try_from_error(bytes: impl AsRef<[u8]>) -> String {
+    format!(
+        "`AsciiString::try_from` called with non-ASCII value: \"{}\"",
+        escape_and_elide(bytes.as_ref(), 100)
+    )
 }
 
 impl TryFrom<char> for AsciiString {

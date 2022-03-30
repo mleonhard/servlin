@@ -1,9 +1,8 @@
 use crate::head::read_http_head;
 use crate::http_error::HttpError;
-use crate::{ContentType, RequestBody, Response};
+use crate::{AsciiString, ContentType, HeaderList, RequestBody, Response};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
-use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::net::SocketAddr;
 use url::Url;
@@ -13,7 +12,7 @@ pub struct Request {
     pub remote_addr: SocketAddr,
     pub method: String,
     pub url: Url,
-    pub headers_lowercase: HashMap<String, String>,
+    pub headers: HeaderList,
     pub content_type: ContentType,
     pub expect_continue: bool,
     pub chunked: bool,
@@ -40,13 +39,6 @@ impl Request {
     #[must_use]
     pub fn url(&self) -> &Url {
         &self.url
-    }
-
-    #[must_use]
-    pub fn header(&self, name_lowercase: impl AsRef<str>) -> Option<&str> {
-        self.headers_lowercase
-            .get(name_lowercase.as_ref())
-            .map(String::as_str)
     }
 
     /// # Errors
@@ -144,22 +136,17 @@ impl Request {
 }
 impl Debug for Request {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        let mut headers: Vec<String> = self
-            .headers_lowercase
-            .iter()
-            .map(|(n, v)| format!("{}: {:?}", n, v))
-            .collect();
-        headers.sort();
         write!(
             f,
-            "Request{{{}, {}, {:?}, headers={{{}}}, {:?}{}{}{}, {:?}}}",
+            "Request{{{}, {}, {:?}, {:?}, {:?}{}{}{}{}, {:?}}}",
             self.remote_addr,
             self.method(),
             self.url().path(),
-            headers.join(", "),
+            self.headers,
             self.content_type(),
             if self.expect_continue { ", expect" } else { "" },
             if self.chunked { ", chunked" } else { "" },
+            if self.gzip { ", gzip" } else { "" },
             if let Some(len) = &self.content_length {
                 format!(", {}", len)
             } else {
@@ -185,32 +172,34 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
 ) -> Result<Request, HttpError> {
     //dbg!("read_http_request", &buf);
     buf.shift();
-    let head = read_http_head(buf, reader).await?;
+    let mut head = read_http_head(buf, reader).await?;
     //dbg!(&head);
     let content_type = head
-        .headers_lowercase
-        .get("content-type")
-        .map_or(ContentType::None, |s| ContentType::parse(s));
+        .headers
+        .remove_only("content-type")
+        .map_or(ContentType::None, |s| ContentType::parse(s.as_str()));
     let expect_continue = head
-        .headers_lowercase
-        .get("expect")
-        .map_or(false, |s| s == "100-continue");
-    let transfer_encoding = head
-        .headers_lowercase
-        .get("transfer-encoding")
-        .map(ToString::to_string)
-        .unwrap_or_default();
-    let mut transfer_encodings = transfer_encoding
-        .split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .collect::<HashSet<&str>>();
-    let chunked = transfer_encodings.remove("chunked");
-    let gzip = transfer_encodings.remove("gzip");
-    if !transfer_encodings.is_empty() {
-        return Err(HttpError::UnsupportedTransferEncoding);
-    }
-    let content_length = if let Some(s) = head.headers_lowercase.get("content-length") {
+        .headers
+        .remove_only("expect")
+        .map_or(false, |s| s.as_str() == "100-continue");
+    let (gzip, chunked) = {
+        let opt_ascii_string = head.headers.remove_only("transfer-encoding");
+        let mut iter = opt_ascii_string
+            .as_ref()
+            .map(AsciiString::as_str)
+            .unwrap_or_default()
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+        match (iter.next(), iter.next(), iter.next()) {
+            (Some("gzip"), Some("chunked"), None) => (true, true),
+            (Some("gzip"), None, None) => (true, false),
+            (Some("chunked"), None, None) => (false, true),
+            (None, None, None) => (false, false),
+            _ => return Err(HttpError::UnsupportedTransferEncoding),
+        }
+    };
+    let content_length = if let Some(s) = head.headers.get_only("content-length") {
         Some(s.parse().map_err(|_| HttpError::InvalidContentLength)?)
     } else {
         None
@@ -229,7 +218,7 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
         remote_addr,
         method: head.method,
         url: head.url,
-        headers_lowercase: head.headers_lowercase,
+        headers: head.headers,
         content_type,
         expect_continue,
         chunked,
