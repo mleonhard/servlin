@@ -1,15 +1,6 @@
 //! Safe time functions.
-use std::ops::{Add, Sub};
+use std::ops::Add;
 use std::time::{Duration, SystemTime};
-
-fn div_ceil(n: i64, divisor: i64) -> i64 {
-    let result = n / divisor;
-    if n % divisor > 0 {
-        result + 1
-    } else {
-        result
-    }
-}
 
 fn is_leap_year(year: i64) -> bool {
     if year % 400 == 0 {
@@ -79,9 +70,7 @@ impl DateTime {
     }
 
     fn balance_month(&mut self) {
-        let delta_years = if self.month < 1 {
-            div_ceil(self.month.abs() + 1, 12)
-        } else if self.month > 12 {
+        let delta_years = if self.month > 12 {
             0 - (self.month - 1) / 12
         } else {
             return;
@@ -98,14 +87,6 @@ impl DateTime {
 
     fn balance_day(&mut self) {
         self.balance_month();
-        while self.day < -366 {
-            //dbg!(self.year);
-            self.year -= 1;
-            //dbg!(self.year);
-            //dbg!(self.day);
-            self.day += year_len_days(self.year);
-            //dbg!(self.day);
-        }
         while self.day > 366 {
             //dbg!(self.day);
             self.day -= year_len_days(self.year);
@@ -113,15 +94,6 @@ impl DateTime {
             //dbg!(self.year);
             self.year += 1;
             //dbg!(self.year);
-        }
-        while self.day < 1 {
-            //dbg!(self.month);
-            self.month -= 1;
-            //dbg!(self.month);
-            self.balance_month();
-            //dbg!(self.day);
-            self.day += month_len_days(self.year, self.month);
-            //dbg!(self.day);
         }
         while self.day > month_len_days(self.year, self.month) {
             //dbg!(self.day);
@@ -135,9 +107,7 @@ impl DateTime {
     }
 
     fn balance_hour(&mut self) {
-        let delta_days = if self.hour < 0 {
-            div_ceil(self.hour.abs(), 24)
-        } else if self.hour > 23 {
+        let delta_days = if self.hour > 23 {
             0 - self.hour / 24
         } else {
             self.balance_day();
@@ -155,9 +125,7 @@ impl DateTime {
     }
 
     fn balance_min(&mut self) {
-        let delta_hours = if self.min < 0 {
-            div_ceil(self.min.abs(), 60)
-        } else if self.min > 59 {
+        let delta_hours = if self.min > 59 {
             0 - self.min / 60
         } else {
             self.balance_hour();
@@ -175,9 +143,7 @@ impl DateTime {
     }
 
     pub fn balance(&mut self) {
-        let delta_mins = if self.sec < 0 {
-            div_ceil(self.sec.abs(), 60)
-        } else if self.sec > 59 {
+        let delta_mins = if self.sec > 59 {
             0 - self.sec / 60
         } else {
             self.balance_min();
@@ -199,16 +165,6 @@ impl Add<Duration> for DateTime {
 
     fn add(mut self, rhs: Duration) -> Self::Output {
         self.sec += i64::try_from(rhs.as_secs()).unwrap();
-        self.balance();
-        self
-    }
-}
-// This has a bug.
-impl Sub<Duration> for DateTime {
-    type Output = DateTime;
-
-    fn sub(mut self, rhs: Duration) -> Self::Output {
-        self.sec -= i64::try_from(rhs.as_secs()).unwrap();
         self.balance();
         self
     }
@@ -313,46 +269,6 @@ mod tests {
                 "{:?} + {}",
                 initial,
                 seconds_to_add,
-            );
-        }
-    }
-
-    #[test]
-    fn date_time_sub() {
-        for (initial, seconds_to_sub, expected) in [
-            ((1970, 1, 1, 0, 0, 0), 0, (1970, 1, 1, 0, 0, 0)),
-            ((1970, 1, 1, 0, 0, 0), 1, (1969, 12, 31, 23, 59, 59)),
-            ((2004, 3, 1, 0, 0, 0), 1, (2004, 2, 29, 23, 59, 59)),
-            ((2100, 3, 1, 0, 0, 0), 1, (2100, 2, 28, 23, 59, 59)),
-            ((2000, 3, 1, 0, 0, 0), 1, (2000, 2, 29, 23, 59, 59)),
-            ((2005, 2, 1, 0, 0, 0), 365 * DAY, (2004, 2, 2, 0, 0, 0)),
-            ((2005, 2, 1, 0, 0, 0), 366 * DAY, (2004, 2, 1, 0, 0, 0)),
-            ((2005, 2, 1, 0, 0, 0), 367 * DAY, (2004, 1, 31, 0, 0, 0)),
-            ((2005, 2, 1, 0, 0, 0), 368 * DAY, (2004, 1, 30, 0, 0, 0)),
-            ((2005, 3, 1, 0, 0, 0), 1, (2005, 2, 28, 23, 59, 59)),
-            ((2005, 3, 1, 0, 0, 0), 365 * DAY, (2004, 3, 1, 0, 0, 0)),
-            ((2005, 3, 1, 0, 0, 0), 366 * DAY, (2004, 2, 29, 0, 0, 0)),
-            ((2005, 3, 1, 0, 0, 0), 367 * DAY, (2004, 2, 28, 0, 0, 0)),
-            ((2005, 3, 1, 0, 0, 0), 368 * DAY, (2004, 2, 27, 0, 0, 0)),
-            ((2005, 4, 1, 0, 0, 0), 365 * DAY, (2004, 4, 1, 0, 0, 0)),
-            ((2005, 4, 1, 0, 0, 0), 366 * DAY, (2004, 3, 31, 0, 0, 0)),
-            ((2005, 4, 1, 0, 0, 0), 367 * DAY, (2004, 3, 30, 0, 0, 0)),
-            ((2005, 4, 1, 0, 0, 0), 368 * DAY, (2004, 3, 29, 0, 0, 0)),
-        ] {
-            let dt = DateTime {
-                year: initial.0,
-                month: initial.1,
-                day: initial.2,
-                hour: initial.3,
-                min: initial.4,
-                sec: initial.5,
-            } - Duration::from_secs(seconds_to_sub);
-            assert_eq!(
-                expected,
-                (dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec),
-                "{:?} - {}",
-                initial,
-                seconds_to_sub,
             );
         }
     }
