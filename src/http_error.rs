@@ -17,6 +17,7 @@ pub enum HttpError {
     ErrorSavingFile(ErrorKind, String),
     HeadTooLong,
     InvalidContentLength,
+    MalformedCookieHeader,
     MalformedHeaderLine,
     MalformedPath,
     MalformedRequestLine,
@@ -60,6 +61,7 @@ impl HttpError {
             | HttpError::Disconnected
             | HttpError::HeadTooLong
             | HttpError::InvalidContentLength
+            | HttpError::MalformedCookieHeader
             | HttpError::MalformedHeaderLine
             | HttpError::MalformedPath
             | HttpError::MalformedRequestLine
@@ -91,6 +93,7 @@ impl HttpError {
             }
             HttpError::HeadTooLong => "HttpError::HeadTooLong".to_string(),
             HttpError::InvalidContentLength => "HttpError::InvalidContentLength".to_string(),
+            HttpError::MalformedCookieHeader => "HttpError::MalformedCookieHeader".to_string(),
             HttpError::MalformedHeaderLine => "HttpError::MalformedHeaderLine".to_string(),
             HttpError::MalformedPath => "HttpError::MalformedPath".to_string(),
             HttpError::MalformedRequestLine => "HttpError::MalformedRequestLine".to_string(),
@@ -123,6 +126,7 @@ impl From<HttpError> for Response {
         match e {
             HttpError::BodyNotUtf8
             | HttpError::InvalidContentLength
+            | HttpError::MalformedCookieHeader
             | HttpError::MalformedHeaderLine
             | HttpError::MalformedPath
             | HttpError::MalformedRequestLine
@@ -158,6 +162,7 @@ impl From<HttpError> for std::io::Error {
             | HttpError::BodyTooLong
             | HttpError::HeadTooLong
             | HttpError::InvalidContentLength
+            | HttpError::MalformedCookieHeader
             | HttpError::MalformedHeaderLine
             | HttpError::MalformedPath
             | HttpError::MalformedRequestLine

@@ -3,6 +3,7 @@ use crate::http_error::HttpError;
 use crate::{AsciiString, ContentType, HeaderList, RequestBody, Response};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::SocketAddr;
 use url::Url;
@@ -13,6 +14,7 @@ pub struct Request {
     pub method: String,
     pub url: Url,
     pub headers: HeaderList,
+    pub cookies: HashMap<String, String>,
     pub content_type: ContentType,
     pub expect_continue: bool,
     pub chunked: bool,
@@ -136,13 +138,20 @@ impl Request {
 }
 impl Debug for Request {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        let mut cookie_strings: Vec<String> = self
+            .cookies
+            .iter()
+            .map(|(name, value)| format!("{}={}", name, value))
+            .collect();
+        cookie_strings.sort();
         write!(
             f,
-            "Request{{{}, {}, {:?}, {:?}, {:?}{}{}{}{}, {:?}}}",
+            "Request{{{}, method={}, path={:?}, headers={:?}, cookies={:?}, {:?}{}{}{}{}, {:?}}}",
             self.remote_addr,
             self.method(),
             self.url().path(),
             self.headers,
+            cookie_strings,
             self.content_type(),
             if self.expect_continue { ", expect" } else { "" },
             if self.chunked { ", chunked" } else { "" },
@@ -199,6 +208,22 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
             _ => return Err(HttpError::UnsupportedTransferEncoding),
         }
     };
+    let mut cookies = HashMap::new();
+    for header_value in head.headers.get_all("cookie") {
+        for cookie_str in header_value
+            .split(';')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            let mut parts = cookie_str.splitn(2, '=');
+            match (parts.next(), parts.next()) {
+                (Some(name), Some(value)) => {
+                    cookies.insert(name.to_string(), value.to_string());
+                }
+                _ => return Err(HttpError::MalformedCookieHeader),
+            }
+        }
+    }
     let content_length = if let Some(s) = head.headers.get_only("content-length") {
         Some(s.parse().map_err(|_| HttpError::InvalidContentLength)?)
     } else {
@@ -219,6 +244,7 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
         method: head.method,
         url: head.url,
         headers: head.headers,
+        cookies,
         content_type,
         expect_continue,
         chunked,
