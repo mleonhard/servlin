@@ -6,7 +6,7 @@ use std::io::Write;
 
 use crate::http_error::HttpError;
 use crate::util::{copy_async, CopyResult};
-use crate::{AsciiString, ContentType, HeaderList, ResponseBody};
+use crate::{AsciiString, ContentType, Cookie, HeaderList, ResponseBody};
 use std::fmt::Debug;
 
 #[allow(clippy::module_name_repetitions)]
@@ -122,6 +122,15 @@ impl Response {
     #[must_use]
     pub fn with_body(mut self, b: impl Into<ResponseBody>) -> Self {
         self.body = b.into();
+        self
+    }
+
+    /// Adds a `Set-Cookie` header.
+    ///
+    /// <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie>
+    #[must_use]
+    pub fn with_set_cookie(mut self, cookie: Cookie) -> Self {
+        self.headers.add("set-cookie", cookie.into());
         self
     }
 
