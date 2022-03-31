@@ -175,6 +175,7 @@ mod request;
 mod request_body;
 mod response;
 mod response_body;
+mod time;
 mod token_set;
 mod util;
 
@@ -210,6 +211,7 @@ pub mod internal {
     pub use crate::request_body::*;
     pub use crate::response::*;
     pub use crate::response_body::*;
+    pub use crate::time::*;
     pub use crate::token_set::*;
     pub use crate::util::*;
 }
