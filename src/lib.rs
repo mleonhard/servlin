@@ -35,7 +35,7 @@
 //!   - Disk space usage limits
 //!
 //! # Examples
-//! Complete example: [`examples/demo.rs`](examples/demo.rs).
+//! Complete examples: [`examples/`](examples/).
 //!
 //! Simple example:
 //! ```rust

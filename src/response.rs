@@ -118,6 +118,11 @@ impl Response {
         Response::new(303).with_header("location", location.as_ref().try_into().unwrap())
     }
 
+    #[must_use]
+    pub fn not_found_404() -> Self {
+        Response::text(404, "not found")
+    }
+
     /// # Panics
     /// Panics when any of `allowed_methods` are not US-ASCII.
     #[must_use]

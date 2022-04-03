@@ -34,6 +34,7 @@
 //!
 //! {"count":4}
 //! ```
+#![forbid(unsafe_code)]
 use beatrice::reexport::{safina_executor, safina_timer};
 use beatrice::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 use serde::Deserialize;
@@ -99,6 +100,7 @@ fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
 }
 
 pub fn main() {
+    println!("Access the API at http://127.0.0.1:8000/");
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();
     let state = Arc::new(State::new());

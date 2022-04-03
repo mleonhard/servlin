@@ -1,9 +1,9 @@
 //! Server-Sent Events Example
-//! ===========================
+//! ==========================
 //!
 //! Start the server:
 //! ```
-//! $ cargo run --example events-sse
+//! $ cargo run --package beatrice --example events-sse
 //!    Compiling beatrice v0.1.0 (/x/beatrice-rs)
 //!     Finished dev [unoptimized + debuginfo] target(s) in 1.09s
 //!      Running `target/debug/examples/events-sse`
@@ -21,6 +21,7 @@
 //! data: 5
 //! $
 //! ```
+#![forbid(unsafe_code)]
 use beatrice::reexport::{safina_executor, safina_timer};
 use beatrice::{
     print_log_response, socket_addr_127_0_0_1, Event, EventSender, HttpServerBuilder, Request,
@@ -70,6 +71,7 @@ fn subscribe(state: &Arc<State>, _req: &Request) -> Result<Response, Response> {
 #[allow(clippy::unnecessary_wraps)]
 fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
     match (req.method(), req.url().path()) {
+        ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("GET", "/subscribe") => subscribe(state, req),
         _ => Ok(Response::text(404, "Not found")),
     }

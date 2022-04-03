@@ -35,7 +35,7 @@ A modular HTTP server library in Rust.
   - Disk space usage limits
 
 # Examples
-Complete example: [`examples/demo.rs`](examples/demo.rs).
+Complete examples: [`examples/`](examples/).
 
 Simple example:
 ```rust
@@ -174,9 +174,9 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      🔒  │           └── safe-quote 1.0.15
 0/0        0/0          0/0    0/0     0/0      🔒  │               └── safe-proc-macro2 1.0.36
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-executor 0.3.3
-0/0        0/0          0/0    0/0     0/0      🔒  │   ├── safina-sync 0.2.3
+0/0        0/0          0/0    0/0     0/0      🔒  │   ├── safina-sync 0.2.4
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-threadpool 0.2.3
-0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-sync 0.2.3
+0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-sync 0.2.4
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-timer 0.1.11
 1/1        74/93        4/6    0/0     2/3      ☢️  │   └── once_cell 1.10.0
 0/0        5/5          0/0    0/0     0/0      ☢️  ├── serde 1.0.136

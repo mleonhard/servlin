@@ -1,3 +1,6 @@
+/// Server-Sent Events (SSE)
+/// - <https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events>
+/// - <https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events>
 use crate::util::escape_and_elide;
 use futures_lite::FutureExt;
 use safina_sync::SyncSender;

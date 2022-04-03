@@ -38,10 +38,6 @@ url = "2"
 [dev-dependencies]
 
 [[example]]
-name = "demo"
-required-features = ["json"]
-
-[[example]]
 name = "html_form"
 required-features = ["urlencoded"]
 
