@@ -168,6 +168,7 @@ mod body_async_reader;
 mod body_reader;
 mod content_type;
 mod cookie;
+mod event;
 mod head;
 mod headers;
 mod http_conn;
@@ -188,6 +189,7 @@ pub use crate::body_async_reader::BodyAsyncReader;
 pub use crate::body_reader::BodyReader;
 pub use crate::content_type::ContentType;
 pub use crate::cookie::{Cookie, SameSite};
+pub use crate::event::{Event, EventSender};
 pub use crate::headers::{Header, HeaderList};
 pub use crate::http_conn::HttpConn;
 pub use crate::request::Request;
@@ -206,6 +208,7 @@ pub mod internal {
     pub use crate::body_reader::*;
     pub use crate::content_type::*;
     pub use crate::cookie::*;
+    pub use crate::event::*;
     pub use crate::head::*;
     pub use crate::headers::*;
     pub use crate::http_conn::*;
@@ -245,7 +248,7 @@ pub fn print_log_response(
 ) -> Response {
     let response = result.unwrap_or_else(|e| e);
     println!(
-        "{} {} {} => {} len={}",
+        "{} {} {} => {} {}",
         if response.code / 100 == 5 {
             "ERROR"
         } else {
@@ -254,7 +257,11 @@ pub fn print_log_response(
         method,
         url.path(),
         response.code,
-        response.body.len(),
+        if let Some(len) = response.body.len() {
+            format!("len={}", len)
+        } else {
+            "streamed".to_string()
+        },
     );
     response
 }

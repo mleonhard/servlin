@@ -1,11 +1,14 @@
+use crate::event::EventReceiver;
 use std::io::{Cursor, Read};
 use std::path::Path;
 use std::pin::Pin;
+use std::sync::Mutex;
 use std::task::{Context, Poll};
 
 /// Struct returned by `RequestBody::async_reader` and `ResponseBody::async_reader`.
 pub enum BodyAsyncReader<'x> {
     Cursor(Cursor<&'x [u8]>),
+    EventReceiver(&'x Mutex<EventReceiver>),
     File(async_fs::File),
 }
 impl<'x> BodyAsyncReader<'x> {
@@ -29,6 +32,9 @@ impl<'x> futures_io::AsyncRead for BodyAsyncReader<'x> {
     ) -> Poll<Result<usize, std::io::Error>> {
         match &mut *self {
             BodyAsyncReader::Cursor(cursor) => Poll::Ready(cursor.read(buf)),
+            BodyAsyncReader::EventReceiver(mutex_event_receiver) => {
+                Pin::new(&mut *mutex_event_receiver.lock().unwrap()).poll_read(cx, buf)
+            }
             BodyAsyncReader::File(async_fs_file) => Pin::new(async_fs_file).poll_read(cx, buf),
         }
     }

@@ -54,6 +54,38 @@ fn handle_req(state: &Arc<State>, req: Request) -> Result<Response, Response> {
     }
 }
 
+// async fn handle_req(
+//     state: &Arc<State>,
+//     http_conn: &mut HttpConn,
+//     mut req: Request,
+// ) -> Result<Response, HttpError> {
+//     let blocking = |f| async {
+//         with_timeout(schedule_blocking(f).async_recv(), Duration::from_secs(10)).await??
+//     };
+//     match (req.method(), req.url().path()) {
+//         ("GET", "/ping") => Ok(Response::text(200, "ok")),
+//         ("POST", "/hello") => blocking(|| hello(req)).await?,
+//         ("GET", "/events") => blocking(|| events(req, state)).await?,
+//         ("POST", "/upload") => {
+//             if req.body.is_pending() {
+//                 blocking(|| check_upload(state.clone(), req.clone())).await?;
+//                 req.body = with_timeout(
+//                     http_conn.read_body_to_file(cache_dir.path(), 1024 * 1024),
+//                     Duration::from_secs(120),
+//                 )
+//                 .await??;
+//             }
+//             blocking(|| handle_upload(state, req)).await?
+//         }
+//         _ => Ok(Response::text(404, "Not found")),
+//     }
+// }
+
+// let handler = move |http_conn: &mut HttpConn| {
+//     let mut req = http_conn.read_request().await?;
+//     print_logger(&req).log(handle_req(&state, http_conn, req).await)
+// };
+
 pub fn main() {
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();

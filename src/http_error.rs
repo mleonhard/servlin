@@ -1,5 +1,6 @@
 use crate::head::HeadError;
 use crate::Response;
+use safina_timer::{DeadlineError, DeadlineExceeded};
 use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -13,8 +14,11 @@ pub enum HttpError {
     Disconnected,
     DuplicateContentLengthHeader,
     DuplicateContentTypeHeader,
+    DuplicateTransferEncodingHeader,
     ErrorReadingFile(ErrorKind, String),
+    ErrorReadingResponseBody(ErrorKind, String),
     ErrorSavingFile(ErrorKind, String),
+    HandlerDeadlineExceeded,
     HeadTooLong,
     InvalidContentLength,
     MalformedCookieHeader,
@@ -24,6 +28,7 @@ pub enum HttpError {
     MissingRequestLine,
     ResponseAlreadySent,
     ResponseNotSent,
+    TimerThreadNotStarted,
     Truncated,
     UnsupportedProtocol,
     UnsupportedTransferEncoding,
@@ -34,6 +39,12 @@ impl HttpError {
     #[allow(clippy::needless_pass_by_value)]
     pub fn error_reading_file(e: std::io::Error) -> Self {
         HttpError::ErrorReadingFile(e.kind(), e.to_string())
+    }
+
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn error_reading_response_body(e: std::io::Error) -> Self {
+        HttpError::ErrorReadingResponseBody(e.kind(), e.to_string())
     }
 
     #[must_use]
@@ -51,8 +62,11 @@ impl HttpError {
             | HttpError::CacheDirNotConfigured
             | HttpError::DuplicateContentLengthHeader
             | HttpError::DuplicateContentTypeHeader
-            | HttpError::ErrorReadingFile(_, _)
-            | HttpError::ErrorSavingFile(_, _)
+            | HttpError::DuplicateTransferEncodingHeader
+            | HttpError::ErrorReadingFile(..)
+            | HttpError::ErrorReadingResponseBody(..)
+            | HttpError::ErrorSavingFile(..)
+            | HttpError::HandlerDeadlineExceeded
             | HttpError::ResponseAlreadySent
             | HttpError::ResponseNotSent
             | HttpError::UnwritableResponse => true,
@@ -66,6 +80,7 @@ impl HttpError {
             | HttpError::MalformedPath
             | HttpError::MalformedRequestLine
             | HttpError::MissingRequestLine
+            | HttpError::TimerThreadNotStarted
             | HttpError::Truncated
             | HttpError::UnsupportedProtocol
             | HttpError::UnsupportedTransferEncoding => false,
@@ -87,10 +102,20 @@ impl HttpError {
             HttpError::DuplicateContentTypeHeader => {
                 "HttpError::DuplicateContentTypeHeader".to_string()
             }
-            HttpError::Disconnected => "HttpError::Disconnected".to_string(),
-            HttpError::ErrorReadingFile(kind, s) | HttpError::ErrorSavingFile(kind, s) => {
-                format!("{:?}: {}", kind, s)
+            HttpError::DuplicateTransferEncodingHeader => {
+                "HttpError::DuplicateTransferEncodingHeader".to_string()
             }
+            HttpError::Disconnected => "HttpError::Disconnected".to_string(),
+            HttpError::ErrorReadingFile(kind, s) => {
+                format!("HttpError::ErrorReadingFile: {:?}: {}", kind, s)
+            }
+            HttpError::ErrorReadingResponseBody(kind, s) => {
+                format!("HttpError::ErrorReadingResponseBody: {:?}: {}", kind, s)
+            }
+            HttpError::ErrorSavingFile(kind, s) => {
+                format!("HttpError::ErrorSavingFile: {:?}: {}", kind, s)
+            }
+            HttpError::HandlerDeadlineExceeded => "HttpError::HandlerDeadlineExceeded".to_string(),
             HttpError::HeadTooLong => "HttpError::HeadTooLong".to_string(),
             HttpError::InvalidContentLength => "HttpError::InvalidContentLength".to_string(),
             HttpError::MalformedCookieHeader => "HttpError::MalformedCookieHeader".to_string(),
@@ -100,6 +125,7 @@ impl HttpError {
             HttpError::MissingRequestLine => "HttpError::MissingRequestLine".to_string(),
             HttpError::ResponseAlreadySent => "HttpError::ResponseAlreadySent".to_string(),
             HttpError::ResponseNotSent => "HttpError::ResponseNotSent".to_string(),
+            HttpError::TimerThreadNotStarted => "HttpError::TimerThreadNotStarted".to_string(),
             HttpError::Truncated => "HttpError::Truncated".to_string(),
             HttpError::UnsupportedProtocol => "HttpError::UnsupportedProtocol".to_string(),
             HttpError::UnsupportedTransferEncoding => {
@@ -143,50 +169,28 @@ impl From<HttpError> for Response {
             | HttpError::CacheDirNotConfigured
             | HttpError::DuplicateContentLengthHeader
             | HttpError::DuplicateContentTypeHeader
+            | HttpError::DuplicateTransferEncodingHeader
             | HttpError::ErrorReadingFile(..)
+            | HttpError::ErrorReadingResponseBody(..)
             | HttpError::ErrorSavingFile(..)
+            | HttpError::HandlerDeadlineExceeded
             | HttpError::ResponseAlreadySent
             | HttpError::ResponseNotSent
+            | HttpError::TimerThreadNotStarted
             | HttpError::UnwritableResponse => Response::text(500, "Internal server error"),
         }
     }
 }
-impl From<HttpError> for std::io::Error {
-    fn from(e: HttpError) -> Self {
+impl From<DeadlineExceeded> for HttpError {
+    fn from(_: DeadlineExceeded) -> Self {
+        HttpError::HandlerDeadlineExceeded
+    }
+}
+impl From<DeadlineError> for HttpError {
+    fn from(e: DeadlineError) -> Self {
         match e {
-            HttpError::Truncated => {
-                std::io::Error::new(ErrorKind::UnexpectedEof, "Incomplete request")
-            }
-            HttpError::AlreadyGotBody
-            | HttpError::BodyNotUtf8
-            | HttpError::BodyTooLong
-            | HttpError::HeadTooLong
-            | HttpError::InvalidContentLength
-            | HttpError::MalformedCookieHeader
-            | HttpError::MalformedHeaderLine
-            | HttpError::MalformedPath
-            | HttpError::MalformedRequestLine
-            | HttpError::MissingRequestLine
-            | HttpError::UnsupportedProtocol
-            | HttpError::UnsupportedTransferEncoding => {
-                std::io::Error::new(ErrorKind::InvalidData, e.description())
-            }
-            HttpError::Disconnected => {
-                std::io::Error::new(ErrorKind::ConnectionReset, e.description())
-            }
-            HttpError::ErrorReadingFile(kind, s) | HttpError::ErrorSavingFile(kind, s) => {
-                std::io::Error::new(kind, s)
-            }
-            HttpError::BodyNotAvailable
-            | HttpError::BodyNotRead
-            | HttpError::DuplicateContentLengthHeader
-            | HttpError::DuplicateContentTypeHeader
-            | HttpError::CacheDirNotConfigured
-            | HttpError::ResponseAlreadySent
-            | HttpError::ResponseNotSent
-            | HttpError::UnwritableResponse => {
-                std::io::Error::new(ErrorKind::InvalidInput, e.description())
-            }
+            DeadlineError::TimerThreadNotStarted => HttpError::TimerThreadNotStarted,
+            DeadlineError::DeadlineExceeded => HttpError::HandlerDeadlineExceeded,
         }
     }
 }

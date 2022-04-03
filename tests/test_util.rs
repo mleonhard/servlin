@@ -132,9 +132,9 @@ pub fn read_to_string(reader: &mut std::net::TcpStream) -> Result<String, std::i
 #[allow(clippy::missing_errors_doc)]
 pub fn read_for(
     reader: &mut std::net::TcpStream,
-    duration: Duration,
+    duration_ms: u64,
 ) -> Result<String, std::io::Error> {
-    let deadline = Instant::now() + duration;
+    let deadline = Instant::now() + Duration::from_millis(duration_ms);
     let mut bytes = Vec::new();
     loop {
         let now = Instant::now();

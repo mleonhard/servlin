@@ -1,13 +1,15 @@
+use crate::event::EventReceiver;
 use crate::util::escape_and_elide;
 use crate::{BodyAsyncReader, BodyReader};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Read};
 use std::path::PathBuf;
+use std::sync::Mutex;
 use temp_file::TempFile;
 
-#[derive(Clone, Eq, PartialEq)]
 pub enum ResponseBody {
+    EventStream(Mutex<EventReceiver>),
     StaticStr(&'static str),
     Vec(Vec<u8>),
     File(PathBuf, u64),
@@ -20,17 +22,24 @@ impl ResponseBody {
     }
 
     #[must_use]
+    #[allow(clippy::missing_panics_doc)]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        #[allow(clippy::match_same_arms)]
+        match self.len() {
+            None => false,
+            Some(0) => true,
+            Some(_) => false,
+        }
     }
 
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
-    pub fn len(&self) -> u64 {
+    pub fn len(&self) -> Option<u64> {
         match self {
-            ResponseBody::StaticStr(s) => u64::try_from(s.len()).unwrap(),
-            ResponseBody::Vec(v) => u64::try_from(v.len()).unwrap(),
-            ResponseBody::File(.., len) | ResponseBody::TempFile(.., len) => *len,
+            ResponseBody::EventStream(..) => None,
+            ResponseBody::StaticStr(s) => Some(u64::try_from(s.len()).unwrap()),
+            ResponseBody::Vec(v) => Some(u64::try_from(v.len()).unwrap()),
+            ResponseBody::File(.., len) | ResponseBody::TempFile(.., len) => Some(*len),
         }
     }
 
@@ -38,6 +47,9 @@ impl ResponseBody {
     /// Returns an error when the body is cached in a file and we fail to open the file.
     pub fn reader(&self) -> Result<BodyReader<'_>, std::io::Error> {
         match self {
+            ResponseBody::EventStream(mutex_receiver) => {
+                Ok(BodyReader::EventReceiver(mutex_receiver))
+            }
             ResponseBody::StaticStr(s) => Ok(BodyReader::bytes(s.as_bytes())),
             ResponseBody::Vec(v) => Ok(BodyReader::bytes(v.as_slice())),
             ResponseBody::File(path, ..) => BodyReader::file(path),
@@ -49,6 +61,9 @@ impl ResponseBody {
     /// Returns an error when the body is cached in a file and we fail to open the file.
     pub async fn async_reader(&self) -> Result<BodyAsyncReader<'_>, std::io::Error> {
         match self {
+            ResponseBody::EventStream(mutex_receiver) => {
+                Ok(BodyAsyncReader::EventReceiver(mutex_receiver))
+            }
             ResponseBody::StaticStr(s) => Ok(BodyAsyncReader::bytes(s.as_bytes())),
             ResponseBody::Vec(v) => Ok(BodyAsyncReader::bytes(v.as_slice())),
             ResponseBody::File(path, ..) => BodyAsyncReader::file(path).await,
@@ -59,6 +74,7 @@ impl ResponseBody {
 impl Debug for ResponseBody {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         match self {
+            ResponseBody::EventStream(..) => write!(f, "ResponseBody::EventStream(..)"),
             ResponseBody::StaticStr(s) => write!(f, "ResponseBody::Str({:?})", s),
             ResponseBody::Vec(v) => write!(
                 f,
@@ -83,6 +99,25 @@ impl Debug for ResponseBody {
         }
     }
 }
+impl PartialEq for ResponseBody {
+    fn eq(&self, other: &Self) -> bool {
+        #[allow(clippy::match_same_arms)]
+        match (self, other) {
+            (ResponseBody::EventStream(..), ResponseBody::EventStream(..)) => false,
+            (ResponseBody::StaticStr(s1), ResponseBody::StaticStr(s2)) => s1 == s2,
+            (ResponseBody::Vec(v1), ResponseBody::Vec(v2)) => v1 == v2,
+            (ResponseBody::File(path1, len1), ResponseBody::File(path2, len2)) => {
+                path1 == path2 && len1 == len2
+            }
+            (
+                ResponseBody::TempFile(temp_file1, len1),
+                ResponseBody::TempFile(temp_file2, len2),
+            ) => temp_file1.path() == temp_file2.path() && len1 == len2,
+            _ => false,
+        }
+    }
+}
+impl Eq for ResponseBody {}
 
 impl From<&'static str> for ResponseBody {
     fn from(s: &'static str) -> Self {
@@ -124,6 +159,11 @@ impl TryFrom<ResponseBody> for Vec<u8> {
 
     fn try_from(body: ResponseBody) -> Result<Self, Self::Error> {
         match body {
+            ResponseBody::EventStream(mutex_receiver) => {
+                let mut buf = Vec::new();
+                mutex_receiver.lock().unwrap().read_to_end(&mut buf)?;
+                Ok(buf)
+            }
             ResponseBody::StaticStr(s) => Ok(s.as_bytes().to_vec()),
             ResponseBody::Vec(v) => Ok(v),
             ResponseBody::File(path, ..) => std::fs::read(path),

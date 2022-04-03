@@ -4,10 +4,13 @@ use std::convert::TryFrom;
 use std::io::ErrorKind;
 use std::io::Write;
 
+use crate::event::EventReceiver;
 use crate::http_error::HttpError;
-use crate::util::{copy_async, CopyResult};
-use crate::{AsciiString, ContentType, Cookie, HeaderList, ResponseBody};
+use crate::util::{copy_async, copy_chunked_async};
+use crate::{AsciiString, ContentType, Cookie, EventSender, HeaderList, ResponseBody};
+use safina_sync::sync_channel;
 use std::fmt::Debug;
+use std::sync::Mutex;
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -19,7 +22,7 @@ pub enum ResponseKind {
     Normal,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 pub struct Response {
     pub kind: ResponseKind,
     pub code: u16,
@@ -80,6 +83,19 @@ impl Response {
         Ok(Self::new(code)
             .with_type(ContentType::Json)
             .with_body(body_vec))
+    }
+
+    #[must_use]
+    pub fn event_stream() -> (EventSender, Response) {
+        let (sender, receiver) = sync_channel(50);
+        (
+            EventSender(Some(sender)),
+            Self::new(200)
+                .with_type(ContentType::EventStream)
+                .with_body(ResponseBody::EventStream(Mutex::new(EventReceiver(
+                    receiver,
+                )))),
+        )
     }
 
     #[must_use]
@@ -336,11 +352,17 @@ pub async fn write_http_response(
         )
         .unwrap();
     }
-    let body_len = response.body.len();
-    if response.headers.get_only("content-length").is_some() {
-        return Err(HttpError::DuplicateContentLengthHeader);
+    if let Some(body_len) = response.body.len() {
+        if response.headers.get_only("content-length").is_some() {
+            return Err(HttpError::DuplicateContentLengthHeader);
+        }
+        write!(head_bytes, "content-length: {}\r\n", body_len).unwrap();
+    } else {
+        if response.headers.get_only("transfer-encoding").is_some() {
+            return Err(HttpError::DuplicateTransferEncodingHeader);
+        }
+        write!(head_bytes, "transfer-encoding: chunked\r\n").unwrap();
     }
-    write!(head_bytes, "content-length: {}\r\n", body_len).unwrap();
     for header in &response.headers {
         // Convert headers from UTF-8 back to ISO-8859-1, with 0xFF for a replacement byte.
         write!(head_bytes, "{}: ", header.name).unwrap();
@@ -354,31 +376,41 @@ pub async fn write_http_response(
         .await
         .map_err(|_| HttpError::Disconnected)?;
     drop(head_bytes);
-    if body_len > 0 {
-        //dbg!(body_len);
-        let mut reader = AsyncReadExt::take(
-            response
+    match response.body.len() {
+        Some(0) => {}
+        Some(body_len) => {
+            let mut reader = AsyncReadExt::take(
+                response
+                    .body
+                    .async_reader()
+                    .await
+                    .map_err(HttpError::error_reading_file)?,
+                body_len,
+            );
+            let num_copied = copy_async(&mut reader, &mut writer)
+                .await
+                .map_errs(HttpError::error_reading_response_body, |_| {
+                    HttpError::Disconnected
+                })?;
+            if num_copied != body_len {
+                return Err(HttpError::ErrorReadingResponseBody(
+                    ErrorKind::UnexpectedEof,
+                    "body is smaller than expected".to_string(),
+                ));
+            }
+        }
+        None => {
+            let mut reader = response
                 .body
                 .async_reader()
                 .await
-                .map_err(HttpError::error_reading_file)?,
-            body_len,
-        );
-        match copy_async(&mut reader, &mut writer).await {
-            CopyResult::Ok(len) if len == body_len => {
-                //dbg!(len);
-            }
-            CopyResult::Ok(_len) => {
-                return Err(HttpError::ErrorReadingFile(
-                    ErrorKind::UnexpectedEof,
-                    "body file is smaller than expected".to_string(),
-                ))
-            }
-            CopyResult::ReaderErr(e) => return Err(HttpError::error_reading_file(e)),
-            CopyResult::WriterErr(..) => return Err(HttpError::Disconnected),
-        };
+                .map_err(HttpError::error_reading_response_body)?;
+            copy_chunked_async(&mut reader, &mut writer)
+                .await
+                .map_errs(HttpError::error_reading_response_body, |_| {
+                    HttpError::Disconnected
+                })?;
+        }
     }
-    let result = writer.flush().await.map_err(|_| HttpError::Disconnected);
-    //dbg!(&result);
-    result
+    writer.flush().await.map_err(|_| HttpError::Disconnected)
 }

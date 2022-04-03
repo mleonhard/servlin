@@ -8,6 +8,8 @@ use std::time::{Duration, Instant};
 
 mod test_util;
 
+// TODO: Add a test for HttpError::BodyNotRead.  Decide what to do when client sends an unwanted body.
+
 fn req_with_len(body_len: usize) -> String {
     format!("M / HTTP/1.1\r\ncontent-length:{}\r\n\r\n", body_len)
         .chars()
@@ -329,15 +331,12 @@ fn expect_100_continue() {
         .write_all(b"M / HTTP/1.1\r\ncontent-length:100\r\nexpect: 100-continue\r\n\r\n")
         .unwrap();
     assert_eq!(
-        read_for(&mut tcp_stream, Duration::from_millis(100)).unwrap(),
+        read_for(&mut tcp_stream, 100).unwrap(),
         "HTTP/1.1 100 Continue\r\ncontent-length: 0\r\n\r\n"
     );
     check_elapsed(before, 100..200).unwrap();
     tcp_stream.write_all(&[b'a'; 100]).unwrap();
-    assert_ends_with(
-        read_for(&mut tcp_stream, Duration::from_millis(100)).unwrap(),
-        "len=100",
-    );
+    assert_ends_with(read_for(&mut tcp_stream, 100).unwrap(), "len=100");
     // Large body
     let mut tcp_stream = server.connect().unwrap();
     let before = Instant::now();
