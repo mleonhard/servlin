@@ -11,26 +11,27 @@ A modular HTTP server library in Rust.
 - `forbid(unsafe_code)`
 - Threaded request handlers:<br>
   `FnOnce(Request) -> Response + 'static + Clone + Send + Sync`
-- Uses async code for excellent performance under load
+- Uses async code internally for excellent performance under load
 - JSON
+- Server-Sent Events (SSE)
 - Saves large request bodies to temp files
 - Sends 100-Continue
 - Limits number of threads and connections
-- Modular: use pieces of the library, make async handlers, roll your own logging, etc.
+- Modular: roll your own logging, write custom versions of internal methods, etc.
 - No macros or complicated type params
-- Good test coverage (??%) - TODO: Update.
+- Good test coverage (63%) - TODO: Update.
 
 # Limitations
 - New, not proven in production.
-- Does not yet support:
-  - request timeouts
-  - chunked transfer-encoding for streaming uploads
+- To do:
+  - Request timeouts
+  - `chunked` transfer-encoding for request bodies
   - gzip
   - brotli
   - TLS
   - automatically getting TLS certs via ACME
   - Denial-of-Service mitigation: source throttling, minimum throughput
-  - Incomplete functional test suite
+  - Complete functional test suite
   - Missing load tests
   - Disk space usage limits
 
@@ -54,7 +55,7 @@ use temp_dir::TempDir;
 
 struct State {}
 
-fn hello(_state: Arc<State>, req: Request) -> Result<Response, Response> {
+fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Response> {
     #[derive(Deserialize)]
     struct Input {
         name: String,
@@ -64,10 +65,10 @@ fn hello(_state: Arc<State>, req: Request) -> Result<Response, Response> {
     .unwrap())
 }
 
-fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Response> {
-    match (req.method(), req.url().path(), req.content_type()) {
-        ("GET", "/ping", _) => Ok(Response::text(200, "ok")),
-        ("POST", "/hello", _) => hello(state, req),
+fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Response> {
+    match (req.method(), req.url().path()) {
+        ("GET", "/ping") => Ok(Response::text(200, "ok")),
+        ("POST", "/hello") => hello(state, req),
         _ => Ok(Response::text(404, "Not found")),
     }
 }
@@ -77,7 +78,7 @@ let request_handler = move |req: Request| {
     print_log_response(
         req.method().to_string(),
         req.url().clone(),
-        handle_req(state, req),
+        handle_req(state, &req),
     )
 };
 let cache_dir = TempDir::new().unwrap();
