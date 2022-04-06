@@ -310,10 +310,9 @@ pub async fn handle_http_conn<F, Fut>(
             Ok(()) => {}
             Err(HttpError::Disconnected) => return,
             Err(e) => {
-                if e.is_server_error() {
-                    eprintln!("ERROR {:?}", e);
-                }
                 let _ignored = http_conn.write_response(&e.into()).await;
+                // Disconnect clients after an error.
+                // This lets connection rate limiting work for bad requests.
                 http_conn.shutdown_write();
                 return;
             }
