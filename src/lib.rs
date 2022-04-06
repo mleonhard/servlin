@@ -246,24 +246,28 @@ pub fn print_log_response(
     url: Url,
     result: Result<Response, Response>,
 ) -> Response {
-    let response = result.unwrap_or_else(|e| e);
-    println!(
-        "{} {} {} => {} {}",
-        if response.code / 100 == 5 {
-            "ERROR"
-        } else {
-            "INFO"
-        },
-        method,
-        url.path(),
-        response.code,
-        if let Some(len) = response.body.len() {
-            format!("len={}", len)
-        } else {
-            "streamed".to_string()
-        },
-    );
-    response
+    match result {
+        Ok(response) if response.is_get_body_and_reprocess() => response,
+        Ok(response) | Err(response) => {
+            println!(
+                "{} {} {} => {} {}",
+                if response.code / 100 == 5 {
+                    "ERROR"
+                } else {
+                    "INFO"
+                },
+                method,
+                url.path(),
+                response.code,
+                if let Some(len) = response.body.len() {
+                    format!("len={}", len)
+                } else {
+                    "streamed".to_string()
+                },
+            );
+            response
+        }
+    }
 }
 
 /// Builds an HTTP server.

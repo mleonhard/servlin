@@ -221,6 +221,11 @@ impl Response {
     pub fn is_normal(&self) -> bool {
         self.kind == ResponseKind::Normal
     }
+
+    #[must_use]
+    pub fn is_get_body_and_reprocess(&self) -> bool {
+        matches!(self.kind, ResponseKind::GetBodyAndReprocess(..))
+    }
 }
 impl From<std::io::Error> for Response {
     fn from(e: std::io::Error) -> Self {
