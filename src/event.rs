@@ -74,6 +74,10 @@ impl EventSender {
             }
         }
     }
+
+    pub fn disconnect(&mut self) {
+        self.0.take();
+    }
 }
 
 // TODO: Support reading messages that are larger than `buf`.

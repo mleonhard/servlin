@@ -90,6 +90,7 @@ impl HeaderList {
     /// When only one header matched, returns the value of that header.
     ///
     /// Returns `None` when multiple headers matched or none matched.
+    // TODO: Make this return `Result<Option<AsciiString>, DuplicateHeader>`.
     pub fn remove_only(&mut self, name: impl AsRef<str>) -> Option<AsciiString> {
         let mut iter = self.remove_all(name).into_iter();
         match (iter.next(), iter.next()) {
