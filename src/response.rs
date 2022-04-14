@@ -146,6 +146,25 @@ impl Response {
         self
     }
 
+    /// Adds a `Cache-Control: max-age=N` header.
+    ///
+    /// <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control>
+    #[must_use]
+    pub fn with_max_age_seconds(mut self, seconds: u32) -> Self {
+        self.headers
+            .add("cache-control", format!("max-age={}", seconds).into());
+        self
+    }
+
+    /// Adds a `Cache-Control: no-store` header.
+    ///
+    /// <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control>
+    #[must_use]
+    pub fn with_no_store(mut self) -> Self {
+        self.headers.add("cache-control", "no-store".into());
+        self
+    }
+
     /// Adds a `Set-Cookie` header.
     ///
     /// <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie>
