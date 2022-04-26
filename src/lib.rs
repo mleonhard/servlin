@@ -75,11 +75,7 @@
 //!
 //! let state = Arc::new(State {});
 //! let request_handler = move |req: Request| {
-//!     print_log_response(
-//!         req.method().to_string(),
-//!         req.url().clone(),
-//!         handle_req(state, &req),
-//!     )
+//!     print_log_response(&req, handle_req(state, &req))
 //! };
 //! let cache_dir = TempDir::new().unwrap();
 //! safina_timer::start_timer_thread();
@@ -134,6 +130,7 @@
 //! | Rust stable         | ❓ | ❓ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❌ | ❓ |
 //!
 //! # Changelog
+//! - v0.2.0 - Make `print_log_response` easier to use.
 //! - v0.1.0 - First published version
 //!
 //! # TO DO
@@ -221,15 +218,10 @@ use async_net::TcpListener;
 use permit::Permit;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use url::Url;
 
 #[allow(clippy::needless_pass_by_value)]
 #[must_use]
-pub fn print_log_response(
-    method: String,
-    url: Url,
-    result: Result<Response, Response>,
-) -> Response {
+pub fn print_log_response(req: &Request, result: Result<Response, Response>) -> Response {
     let response = result.unwrap_or_else(|e| e);
     if !response.is_get_body_and_reprocess() {
         println!(
@@ -239,8 +231,8 @@ pub fn print_log_response(
             } else {
                 "INFO"
             },
-            method,
-            url.path(),
+            req.method(),
+            req.url().path(),
             response.code,
             if let Some(len) = response.body.len() {
                 format!("len={}", len)

@@ -75,11 +75,7 @@ fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Response> {
 
 let state = Arc::new(State {});
 let request_handler = move |req: Request| {
-    print_log_response(
-        req.method().to_string(),
-        req.url().clone(),
-        handle_req(state, &req),
-    )
+    print_log_response(&req, handle_req(state, &req))
 };
 let cache_dir = TempDir::new().unwrap();
 safina_timer::start_timer_thread();
@@ -107,7 +103,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.1.0
+0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.2.0
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.5.0
 0/0        51/51        14/14  0/0     0/0      ☢️  │   ├── async-lock 2.5.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.2
@@ -244,6 +240,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 | Rust stable         | ❓ | ❓ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❌ | ❓ |
 
 # Changelog
+- v0.2.0 - Make `print_log_response` easier to use.
 - v0.1.0 - First published version
 
 # TO DO

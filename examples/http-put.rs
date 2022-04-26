@@ -73,13 +73,7 @@ pub fn main() {
     let executor = safina_executor::Executor::default();
     let cache_dir = TempDir::new().unwrap();
     let state = Arc::new(State::new());
-    let request_handler = move |req: Request| {
-        print_log_response(
-            req.method().to_string(),
-            req.url().clone(),
-            handle_req(&state, &req),
-        )
-    };
+    let request_handler = move |req: Request| print_log_response(&req, handle_req(&state, &req));
     executor
         .block_on(
             HttpServerBuilder::new()
