@@ -220,7 +220,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 | Blocking handlers   | 🟢 | 🟢 | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
 | Async handlers      | ❌ | ❌ | 🟢 | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
 | 100-continue        | 🟢 | 🟢 | 🟢 | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
-| Thread limit        | [❌](https://github.com/tiny-http/tiny-http/issues/221) | ❌ | 🟢 | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+| Thread limit        | 🟢 | [❌](https://github.com/tiny-http/tiny-http/issues/221) | 🟢 | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
 | Connection limit    | 🟢 | ❌ | ❌ | ❓ | ❓ | ❌ | ❓ | ❓ | ❓ | ❓ |
 | Caches payloads     | 🟢 | ❌ | ❌ | ❓ | ❓ | [❌](https://github.com/poem-web/poem/issues/75) | ❓ | ❓ | ❓ | ❓ |
 | Request timeouts    | ❌ | ❌ | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
