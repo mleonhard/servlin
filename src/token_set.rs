@@ -20,6 +20,7 @@ impl Drop for Token {
     }
 }
 
+#[derive(Debug)]
 pub struct TimeOut;
 
 /// A set of tokens.  You can get a token from the set.

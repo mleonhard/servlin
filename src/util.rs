@@ -24,6 +24,7 @@ impl CopyResult {
     }
 }
 
+/// Copies bytes from `reader` to `writer`.
 pub async fn copy_async(
     mut reader: impl AsyncRead + Unpin,
     mut writer: impl AsyncWrite + Unpin,
@@ -73,6 +74,7 @@ fn trim_prefix(mut slice: &[u8], prefix: u8) -> &[u8] {
     slice
 }
 
+/// Reads blocks from `reader`, encodes them in HTTP chunked encoding, and writes them to `writer`.
 #[allow(clippy::missing_panics_doc)]
 pub async fn copy_chunked_async(
     mut reader: impl AsyncRead + Unpin,
@@ -162,6 +164,7 @@ pub fn find_slice<T: std::cmp::PartialEq>(needle: &[T], haystack: &[T]) -> Optio
     None
 }
 
+/// Wraps an `AsyncWrite` and records the number of bytes successfully written to it.
 pub struct AsyncWriteCounter<W>(W, u64);
 impl<W: AsyncWrite + Unpin> AsyncWriteCounter<W> {
     pub fn new(writer: W) -> Self {

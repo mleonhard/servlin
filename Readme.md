@@ -220,7 +220,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 | Blocking handlers   | 🟢 | 🟢 | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
 | Async handlers      | ❌ | ❌ | 🟢 | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
 | 100-continue        | 🟢 | 🟢 | 🟢 | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
-| Thread limit        | 🟢 | ❌ | 🟢 | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
+| Thread limit        | [❌](https://github.com/tiny-http/tiny-http/issues/221) | ❌ | 🟢 | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
 | Connection limit    | 🟢 | ❌ | ❌ | ❓ | ❓ | ❌ | ❓ | ❓ | ❓ | ❓ |
 | Caches payloads     | 🟢 | ❌ | ❌ | ❓ | ❓ | [❌](https://github.com/poem-web/poem/issues/75) | ❓ | ❓ | ❓ | ❓ |
 | Request timeouts    | ❌ | ❌ | ❌ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ |
@@ -243,24 +243,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 | Graceful shutdown   | ❓ | ❓ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❓ | ❓ |
 | Rust stable         | ❓ | ❓ | ❓ | ❓ | ❓ | 🟢 | ❓ | ❓ | ❌ | ❓ |
 
-- [`tide`](https://crates.io/crates/tide)
-  - Popular
-  - Does not support uploads (100-Continue): <https://github.com/http-rs/tide/issues/878>
-- [`actix-web`](https://crates.io/crates/actix)
-  - Very popular
-  - Macros
-  - Contains generous amounts of `unsafe` code
-- [`rocket`](https://crates.io/crates/rocket)
-  - Popular
-  - Macros
-  - Contains generous amounts of `unsafe` code
-- [`rouille`](https://crates.io/crates/rouille)
-  - Popular
-  - Blocking handlers
-  - [Uses an unbounded threadpool](https://github.com/tiny-http/tiny-http/issues/221)
-    and [stops serving after failing once to spawn a thread](https://github.com/tiny-http/tiny-http/issues/220).
-- TODO: Add others from <https://www.arewewebyet.org/topics/frameworks/>
-
 # Changelog
 - v0.1.0 - First published version
 
@@ -268,6 +250,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 - Fix limitations above
 - Support [HEAD](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD)
   responses that have Content-Length set and no body.
+- Update alternatives table
+- Add other servers from <https://www.arewewebyet.org/topics/frameworks/> to alternatives table
 
 # Release Process
 1. Edit `Cargo.toml` and bump version number.
