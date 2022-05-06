@@ -269,8 +269,9 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 # Changelog
 - v0.3.0
-  - Add `ResponseBody::StaticBytes`
-  - Remove `impl From<&[u8]> for RequestBody`
+  - Add `RequestBody::StaticBytes`.
+  - Add `ResponseBody::StaticBytes`.
+  - Remove `impl From<&[u8]>` for `RequestBody` and `ResponseBody`.
 - v0.2.0 - Make `print_log_response` easier to use.
 - v0.1.0 - First published version
 
