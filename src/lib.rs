@@ -18,7 +18,7 @@
 //! - Sends 100-Continue
 //! - Limits number of threads and connections
 //! - Modular: roll your own logging, write custom versions of internal methods, etc.
-//! - N macros or complicated type params
+//! - No macros or complicated type params
 //! - Good test coverage (63%)
 //!
 //! # Limitations
@@ -114,7 +114,7 @@
 //! | Unsafe-free deps    | NO | NO | NO | NO | NO | NO |
 //! | age (years)         | 0  | 6  | 1  | 3  | 0  | 1  |
 //! | TLS                 | NO | NO | ✓  | ✓  | ✓  | ✓  |
-//! | ACME certs          | NO | NO | NO | NO | NO | [o](https://docs.rs/poem/1.3.29/poem/listener/acme/index.html) |
+//! | ACME certs          | NO | NO | NO | NO | NO | [NO](https://docs.rs/poem/1.3.29/poem/listener/acme/index.html) |
 //! | SSE                 | ✓  | NO | [NO](https://github.com/trillium-rs/trillium/issues/39) | ✓ | ✓ | ✓ |
 //! | Websockets          | NO | ✓  | ✓  | ✓  | ✓  | ✓  |
 //! | Streaming response: |    |    |    |    |    |    |
@@ -158,13 +158,16 @@
 //! | Rust stable         | ✓  | ?  | ?  | NO | ?  |
 //!
 //! # Changelog
+//! - v0.3.0
+//!   - Add `ResponseBody::StaticBytes`
+//!   - Remove `impl From<&[u8]> for RequestBody`
 //! - v0.2.0 - Make `print_log_response` easier to use.
 //! - v0.1.0 - First published version
 //!
 //! # TO DO
 //! - Fix limitations above
 //! - Support [HEAD](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD)
-//!   responses that have Content-Length set and N body.
+//!   responses that have Content-Length set and no body.
 //! - Update alternatives table
 //! - Add other servers from <https://www.arewewebyet.org/topics/frameworks/> to alternatives table
 //!
@@ -286,7 +289,7 @@ impl HttpServerBuilder {
     /// - Picks a random port
     /// - 100 max connections
     /// - 64 KiB small body length
-    /// - N cache dir, server rejects large request bodies
+    /// - no cache dir, server rejects large request bodies
     #[allow(clippy::new_without_default)]
     #[must_use]
     pub fn new() -> Self {

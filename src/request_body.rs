@@ -21,6 +21,7 @@ fn cannot_read_pending_body_error() -> std::io::Error {
 pub enum RequestBody {
     PendingKnown(u64),
     PendingUnknown,
+    StaticBytes(&'static [u8]),
     StaticStr(&'static str),
     Vec(Vec<u8>),
     File(PathBuf, u64),
@@ -58,6 +59,7 @@ impl RequestBody {
         match self {
             RequestBody::PendingUnknown => 0,
             RequestBody::PendingKnown(len) => *len,
+            RequestBody::StaticBytes(b) => u64::try_from(b.len()).unwrap(),
             RequestBody::StaticStr(s) => u64::try_from(s.len()).unwrap(),
             RequestBody::Vec(v) => u64::try_from(v.len()).unwrap(),
             RequestBody::File(.., len) | RequestBody::TempFile(.., len) => *len,
@@ -71,6 +73,7 @@ impl RequestBody {
             RequestBody::PendingKnown(..) | RequestBody::PendingUnknown => {
                 Err(cannot_read_pending_body_error())
             }
+            RequestBody::StaticBytes(b) => Ok(BodyReader::Cursor(Cursor::new(b))),
             RequestBody::StaticStr(s) => Ok(BodyReader::Cursor(Cursor::new(s.as_bytes()))),
             RequestBody::Vec(v) => Ok(BodyReader::Cursor(Cursor::new(v))),
             RequestBody::File(path, ..) => std::fs::File::open(path).map(BodyReader::File),
@@ -87,6 +90,7 @@ impl RequestBody {
             RequestBody::PendingKnown(..) | RequestBody::PendingUnknown => {
                 Err(cannot_read_pending_body_error())
             }
+            RequestBody::StaticBytes(b) => Ok(BodyAsyncReader::Cursor(Cursor::new(b))),
             RequestBody::StaticStr(s) => Ok(BodyAsyncReader::Cursor(Cursor::new(s.as_bytes()))),
             RequestBody::Vec(v) => Ok(BodyAsyncReader::Cursor(Cursor::new(v))),
             RequestBody::File(path, ..) => {
@@ -96,6 +100,11 @@ impl RequestBody {
                 async_fs::File::open(temp_file.path()).await?,
             )),
         }
+    }
+}
+impl From<&'static [u8]> for RequestBody {
+    fn from(b: &'static [u8]) -> Self {
+        RequestBody::StaticBytes(b)
     }
 }
 impl From<&'static str> for RequestBody {
@@ -118,11 +127,6 @@ impl<const LEN: usize> From<[u8; LEN]> for RequestBody {
         RequestBody::Vec(b.to_vec())
     }
 }
-impl From<&[u8]> for RequestBody {
-    fn from(b: &[u8]) -> Self {
-        RequestBody::Vec(b.to_vec())
-    }
-}
 impl TryFrom<RequestBody> for String {
     type Error = std::io::Error;
 
@@ -140,6 +144,7 @@ impl TryFrom<RequestBody> for Vec<u8> {
             RequestBody::PendingKnown(..) | RequestBody::PendingUnknown => {
                 Err(cannot_read_pending_body_error())
             }
+            RequestBody::StaticBytes(b) => Ok(b.to_vec()),
             RequestBody::StaticStr(s) => Ok(s.as_bytes().to_vec()),
             RequestBody::Vec(v) => Ok(v),
             RequestBody::File(path, ..) => std::fs::read(path),
@@ -154,6 +159,14 @@ impl Debug for RequestBody {
                 write!(f, "RequestBody::PendingKnown(len={:?})", len,)
             }
             RequestBody::PendingUnknown => write!(f, "RequestBody::PendingUnknown"),
+            RequestBody::StaticBytes(b) => {
+                write!(
+                    f,
+                    "RequestBody::StaticBytes([{:?}], len={})",
+                    escape_and_elide(b, 10),
+                    b.len(),
+                )
+            }
             RequestBody::StaticStr(s) => write!(f, "RequestBody::StaticStr({:?})", s),
             RequestBody::Vec(v) => write!(
                 f,

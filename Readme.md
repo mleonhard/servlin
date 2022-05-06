@@ -18,7 +18,7 @@ A modular HTTP server library in Rust.
 - Sends 100-Continue
 - Limits number of threads and connections
 - Modular: roll your own logging, write custom versions of internal methods, etc.
-- N macros or complicated type params
+- No macros or complicated type params
 - Good test coverage (63%)
 
 # Limitations
@@ -103,7 +103,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.2.0
+0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.3.0
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.5.0
 0/0        51/51        14/14  0/0     0/0      ☢️  │   ├── async-lock 2.5.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.2
@@ -224,7 +224,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 | Unsafe-free deps    | NO | NO | NO | NO | NO | NO |
 | age (years)         | 0  | 6  | 1  | 3  | 0  | 1  |
 | TLS                 | NO | NO | ✓  | ✓  | ✓  | ✓  |
-| ACME certs          | NO | NO | NO | NO | NO | [o](https://docs.rs/poem/1.3.29/poem/listener/acme/index.html) |
+| ACME certs          | NO | NO | NO | NO | NO | [NO](https://docs.rs/poem/1.3.29/poem/listener/acme/index.html) |
 | SSE                 | ✓  | NO | [NO](https://github.com/trillium-rs/trillium/issues/39) | ✓ | ✓ | ✓ |
 | Websockets          | NO | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Streaming response: |    |    |    |    |    |    |
@@ -268,13 +268,16 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 | Rust stable         | ✓  | ?  | ?  | NO | ?  |
 
 # Changelog
+- v0.3.0
+  - Add `ResponseBody::StaticBytes`
+  - Remove `impl From<&[u8]> for RequestBody`
 - v0.2.0 - Make `print_log_response` easier to use.
 - v0.1.0 - First published version
 
 # TO DO
 - Fix limitations above
 - Support [HEAD](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD)
-  responses that have Content-Length set and N body.
+  responses that have Content-Length set and no body.
 - Update alternatives table
 - Add other servers from <https://www.arewewebyet.org/topics/frameworks/> to alternatives table
 
