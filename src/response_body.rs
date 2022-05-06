@@ -10,6 +10,7 @@ use temp_file::TempFile;
 
 pub enum ResponseBody {
     EventStream(Mutex<EventReceiver>),
+    StaticBytes(&'static [u8]),
     StaticStr(&'static str),
     Vec(Vec<u8>),
     File(PathBuf, u64),
@@ -37,6 +38,7 @@ impl ResponseBody {
     pub fn len(&self) -> Option<u64> {
         match self {
             ResponseBody::EventStream(..) => None,
+            ResponseBody::StaticBytes(b) => Some(u64::try_from(b.len()).unwrap()),
             ResponseBody::StaticStr(s) => Some(u64::try_from(s.len()).unwrap()),
             ResponseBody::Vec(v) => Some(u64::try_from(v.len()).unwrap()),
             ResponseBody::File(.., len) | ResponseBody::TempFile(.., len) => Some(*len),
@@ -50,6 +52,7 @@ impl ResponseBody {
             ResponseBody::EventStream(mutex_receiver) => {
                 Ok(BodyReader::EventReceiver(mutex_receiver))
             }
+            ResponseBody::StaticBytes(b) => Ok(BodyReader::bytes(b)),
             ResponseBody::StaticStr(s) => Ok(BodyReader::bytes(s.as_bytes())),
             ResponseBody::Vec(v) => Ok(BodyReader::bytes(v.as_slice())),
             ResponseBody::File(path, ..) => BodyReader::file(path),
@@ -64,6 +67,7 @@ impl ResponseBody {
             ResponseBody::EventStream(mutex_receiver) => {
                 Ok(BodyAsyncReader::EventReceiver(mutex_receiver))
             }
+            ResponseBody::StaticBytes(b) => Ok(BodyAsyncReader::bytes(b)),
             ResponseBody::StaticStr(s) => Ok(BodyAsyncReader::bytes(s.as_bytes())),
             ResponseBody::Vec(v) => Ok(BodyAsyncReader::bytes(v.as_slice())),
             ResponseBody::File(path, ..) => BodyAsyncReader::file(path).await,
@@ -75,50 +79,49 @@ impl Debug for ResponseBody {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         match self {
             ResponseBody::EventStream(..) => write!(f, "ResponseBody::EventStream(..)"),
-            ResponseBody::StaticStr(s) => write!(f, "ResponseBody::Str({:?})", s),
+            ResponseBody::StaticBytes(b) => {
+                write!(
+                    f,
+                    "ResponseBody::StaticBytes(len={} [{}])",
+                    b.len(),
+                    escape_and_elide(b, 100),
+                )
+            }
+            ResponseBody::StaticStr(s) => write!(
+                f,
+                "ResponseBody::StaticStr(len={} \"{}\")",
+                s.len(),
+                escape_and_elide(s.as_bytes(), 100),
+            ),
             ResponseBody::Vec(v) => write!(
                 f,
-                "ResponseBody::Vec({} {:?})",
+                "ResponseBody::Vec(len={} [{}])",
                 v.len(),
                 escape_and_elide(v.as_slice(), 100)
             ),
             ResponseBody::File(path, len) => {
                 write!(
                     f,
-                    "ResponseBody::File({:?},{})",
-                    path.to_string_lossy(),
-                    len
+                    "ResponseBody::File(len={}, path={:?})",
+                    len,
+                    path.to_string_lossy()
                 )
             }
             ResponseBody::TempFile(temp_file, len) => write!(
                 f,
-                "ResponseBody::TempFile({:?},{})",
+                "ResponseBody::TempFile(len={}, path={:?})",
+                len,
                 temp_file.path().to_string_lossy(),
-                len
             ),
         }
     }
 }
-impl PartialEq for ResponseBody {
-    fn eq(&self, other: &Self) -> bool {
-        #[allow(clippy::match_same_arms)]
-        match (self, other) {
-            (ResponseBody::EventStream(..), ResponseBody::EventStream(..)) => false,
-            (ResponseBody::StaticStr(s1), ResponseBody::StaticStr(s2)) => s1 == s2,
-            (ResponseBody::Vec(v1), ResponseBody::Vec(v2)) => v1 == v2,
-            (ResponseBody::File(path1, len1), ResponseBody::File(path2, len2)) => {
-                path1 == path2 && len1 == len2
-            }
-            (
-                ResponseBody::TempFile(temp_file1, len1),
-                ResponseBody::TempFile(temp_file2, len2),
-            ) => temp_file1.path() == temp_file2.path() && len1 == len2,
-            _ => false,
-        }
+impl Eq for ResponseBody {}
+impl From<&'static [u8]> for ResponseBody {
+    fn from(b: &'static [u8]) -> Self {
+        ResponseBody::StaticBytes(b)
     }
 }
-impl Eq for ResponseBody {}
-
 impl From<&'static str> for ResponseBody {
     fn from(s: &'static str) -> Self {
         ResponseBody::StaticStr(s)
@@ -139,12 +142,25 @@ impl<const LEN: usize> From<[u8; LEN]> for ResponseBody {
         ResponseBody::Vec(b.to_vec())
     }
 }
-impl From<&[u8]> for ResponseBody {
-    fn from(b: &[u8]) -> Self {
-        ResponseBody::Vec(b.to_vec())
+impl PartialEq for ResponseBody {
+    fn eq(&self, other: &Self) -> bool {
+        #[allow(clippy::match_same_arms)]
+        match (self, other) {
+            (ResponseBody::EventStream(..), ResponseBody::EventStream(..)) => false,
+            (ResponseBody::StaticBytes(b1), ResponseBody::StaticBytes(b2)) => b1 == b2,
+            (ResponseBody::StaticStr(s1), ResponseBody::StaticStr(s2)) => s1 == s2,
+            (ResponseBody::Vec(v1), ResponseBody::Vec(v2)) => v1 == v2,
+            (ResponseBody::File(path1, len1), ResponseBody::File(path2, len2)) => {
+                path1 == path2 && len1 == len2
+            }
+            (
+                ResponseBody::TempFile(temp_file1, len1),
+                ResponseBody::TempFile(temp_file2, len2),
+            ) => temp_file1.path() == temp_file2.path() && len1 == len2,
+            _ => false,
+        }
     }
 }
-
 impl TryFrom<ResponseBody> for String {
     type Error = std::io::Error;
 
@@ -164,6 +180,7 @@ impl TryFrom<ResponseBody> for Vec<u8> {
                 mutex_receiver.lock().unwrap().read_to_end(&mut buf)?;
                 Ok(buf)
             }
+            ResponseBody::StaticBytes(b) => Ok(b.to_vec()),
             ResponseBody::StaticStr(s) => Ok(s.as_bytes().to_vec()),
             ResponseBody::Vec(v) => Ok(v),
             ResponseBody::File(path, ..) => std::fs::read(path),

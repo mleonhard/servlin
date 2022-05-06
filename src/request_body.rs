@@ -27,7 +27,6 @@ pub enum RequestBody {
     File(PathBuf, u64),
     TempFile(TempFile, u64),
 }
-
 impl RequestBody {
     #[must_use]
     pub fn empty() -> Self {
@@ -102,6 +101,50 @@ impl RequestBody {
         }
     }
 }
+impl Debug for RequestBody {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        match self {
+            RequestBody::PendingKnown(len) => {
+                write!(f, "RequestBody::PendingKnown(len={})", len,)
+            }
+            RequestBody::PendingUnknown => write!(f, "RequestBody::PendingUnknown"),
+            RequestBody::StaticBytes(b) => {
+                write!(
+                    f,
+                    "RequestBody::StaticBytes(len={} [{}])",
+                    b.len(),
+                    escape_and_elide(b, 100),
+                )
+            }
+            RequestBody::StaticStr(s) => write!(
+                f,
+                "RequestBody::StaticStr(Str(len={} \"{}\")",
+                s.len(),
+                escape_and_elide(s.as_bytes(), 100),
+            ),
+            RequestBody::Vec(v) => write!(
+                f,
+                "RequestBody::Vec(len={} [{}])",
+                v.len(),
+                escape_and_elide(v.as_slice(), 100)
+            ),
+            RequestBody::File(path, len) => {
+                write!(
+                    f,
+                    "RequestBody::File(len={}, path={:?})",
+                    len,
+                    path.to_string_lossy()
+                )
+            }
+            RequestBody::TempFile(temp_file, len) => write!(
+                f,
+                "RequestBody::TempFile(len={}, path={:?})",
+                len,
+                temp_file.path().to_string_lossy(),
+            ),
+        }
+    }
+}
 impl From<&'static [u8]> for RequestBody {
     fn from(b: &'static [u8]) -> Self {
         RequestBody::StaticBytes(b)
@@ -149,40 +192,6 @@ impl TryFrom<RequestBody> for Vec<u8> {
             RequestBody::Vec(v) => Ok(v),
             RequestBody::File(path, ..) => std::fs::read(path),
             RequestBody::TempFile(temp_file, ..) => std::fs::read(temp_file.path()),
-        }
-    }
-}
-impl Debug for RequestBody {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        match self {
-            RequestBody::PendingKnown(len) => {
-                write!(f, "RequestBody::PendingKnown(len={:?})", len,)
-            }
-            RequestBody::PendingUnknown => write!(f, "RequestBody::PendingUnknown"),
-            RequestBody::StaticBytes(b) => {
-                write!(
-                    f,
-                    "RequestBody::StaticBytes([{:?}], len={})",
-                    escape_and_elide(b, 10),
-                    b.len(),
-                )
-            }
-            RequestBody::StaticStr(s) => write!(f, "RequestBody::StaticStr({:?})", s),
-            RequestBody::Vec(v) => write!(
-                f,
-                "RequestBody::Vec({} {:?})",
-                v.len(),
-                escape_and_elide(v.as_slice(), 100)
-            ),
-            RequestBody::File(path, len) => {
-                write!(f, "RequestBody::File({:?},{})", path.to_string_lossy(), len)
-            }
-            RequestBody::TempFile(temp_file, len) => write!(
-                f,
-                "RequestBody::TempFile({:?},{})",
-                temp_file.path().to_string_lossy(),
-                len
-            ),
         }
     }
 }
