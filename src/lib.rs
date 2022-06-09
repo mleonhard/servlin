@@ -36,7 +36,7 @@
 //!   - Disk space usage limits
 //!
 //! # Examples
-//! Complete examples: [`examples/`](examples/).
+//! Complete examples: [`examples/`](https://github.com/mleonhard/beatrice-rs/tree/main/examples).
 //!
 //! Simple example:
 //! ```rust
