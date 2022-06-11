@@ -28,8 +28,10 @@ if grep --quiet 'Cargo Geiger Safety Report' src/lib.rs; then
   time (
     # "--target not used?"
     # https://github.com/rust-secure-code/cargo-geiger/issues/95
+    # "WARNING: Dependency file was never scanned:... errors"
+    # https://github.com/rust-secure-code/cargo-geiger/issues/145
     set -x
-    cargo geiger --all-features --update-readme --readme-path "$filename" --output-format GitHubMarkdown --build-dependencies
+    cargo geiger --all-features --update-readme --readme-path "$filename" --output-format GitHubMarkdown --build-dependencies || true
     set +x
     echo -n "cargo geiger done."
   )
