@@ -30,6 +30,7 @@
 //!   - brotli
 //!   - TLS
 //!   - automatically getting TLS certs via ACME
+//!   - Drop idle connections when approaching connection limit.
 //!   - Denial-of-Service mitigation: source throttling, minimum throughput
 //!   - Complete functional test suite
 //!   - Missing load tests
@@ -101,6 +102,7 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/beatrice-rs/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.3.1 - Add `Response::include_dir`.
 //! - v0.3.0
 //!   - Add `RequestBody::StaticBytes`.
 //!   - Add `ResponseBody::StaticBytes`.

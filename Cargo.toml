@@ -7,7 +7,7 @@ keywords = ["web", "http", "server", "async", "threaded"]
 license = "MIT OR Apache-2.0"
 name = "beatrice"
 repository = "https://github.com/mleonhard/beatrice-rs"
-version = "0.3.0"
+version = "0.3.1"
 
 [features]
 default = []
@@ -20,6 +20,7 @@ async-net = "^1.6"
 fixed-buffer = { version = "0.5", features = ["futures-io"] }
 futures-io = "^0.3.21"
 futures-lite = "^1.12.0"
+include_dir = { version = "0.7", optional = true }
 #libflate = "1"
 permit = "^0.1.4"
 safe-regex = "^0.2.5"

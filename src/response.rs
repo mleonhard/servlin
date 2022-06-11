@@ -69,6 +69,43 @@ impl Response {
         }
     }
 
+    /// Looks for the requested file in included `dir`.
+    ///
+    /// Determines the content-type from the file extension.
+    /// For the list of supported content types, see [`ContentType`].
+    ///
+    /// When the request path is `"/"`, tries to return the file `/index.html`.
+    ///
+    /// # Errors
+    /// Returns a 404 Not Found response if the file is not found in the included dir.
+    #[cfg(feature = "include_dir")]
+    pub fn include_dir(path: &str, dir: &'static include_dir::Dir) -> Result<Response, Response> {
+        let path = path.strip_prefix('/').unwrap_or(path);
+        let path = if path.is_empty() { "index.html" } else { path };
+        let file = dir.get_file(path).ok_or_else(Response::not_found_404)?;
+        let extension = std::path::Path::new(path)
+            .extension()
+            .map_or("", |os_str| os_str.to_str().unwrap_or(""));
+        let content_type = match extension {
+            "css" => ContentType::Css,
+            "csv" => ContentType::Csv,
+            "gif" => ContentType::Gif,
+            "htm" | "html" => ContentType::Html,
+            "js" => ContentType::JavaScript,
+            "jpg" | "jpeg" => ContentType::Jpeg,
+            "json" => ContentType::Json,
+            "md" => ContentType::Markdown,
+            "pdf" => ContentType::Pdf,
+            "txt" => ContentType::PlainText,
+            "png" => ContentType::Png,
+            "svg" => ContentType::Svg,
+            _ => ContentType::None,
+        };
+        return Ok(Response::new(200)
+            .with_type(content_type)
+            .with_body(ResponseBody::StaticBytes(file.contents())));
+    }
+
     #[must_use]
     pub fn html(code: u16, body: impl Into<ResponseBody>) -> Self {
         Self::new(code).with_type(ContentType::Html).with_body(body)

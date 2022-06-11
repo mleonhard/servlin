@@ -30,6 +30,7 @@ A modular HTTP server library in Rust.
   - brotli
   - TLS
   - automatically getting TLS certs via ACME
+  - Drop idle connections when approaching connection limit.
   - Denial-of-Service mitigation: source throttling, minimum throughput
   - Complete functional test suite
   - Missing load tests
@@ -103,7 +104,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.3.0
+0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.3.1
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.5.0
 0/0        51/51        14/14  0/0     0/0      ☢️  │   ├── async-lock 2.5.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.2
@@ -161,6 +162,10 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-io 0.3.21
 0/0        0/0          0/0    0/0     0/0      ❓  ├── futures-io 0.3.21
 0/0        0/0          0/0    0/0     0/0      ❓  ├── futures-lite 1.12.0
+0/0        0/0          0/0    0/0     0/0      ❓  ├── include_dir 0.7.2
+0/0        0/0          0/0    0/0     0/0      ❓  │   └── include_dir_macros 0.7.2
+0/0        12/12        0/0    0/0     3/3      ☢️  │       ├── proc-macro2 1.0.39
+0/0        0/0          0/0    0/0     0/0      ❓  │       └── quote 1.0.18
 0/0        0/0          0/0    0/0     0/0      🔒  ├── permit 0.1.4
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safe-regex 0.2.5
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safe-regex-macro 0.2.5
@@ -211,6 +216,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/beatrice-rs/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.3.1 - Add `Response::include_dir`.
 - v0.3.0
   - Add `RequestBody::StaticBytes`.
   - Add `ResponseBody::StaticBytes`.
