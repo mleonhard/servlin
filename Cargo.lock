@@ -76,29 +76,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "065374052e7df7ee4047b1160cca5e1467a12351a40b3da123c870ba0b8eda2a"
 
 [[package]]
-name = "beatrice"
-version = "0.3.2"
-dependencies = [
- "async-fs",
- "async-net",
- "fixed-buffer",
- "futures-io",
- "futures-lite",
- "include_dir",
- "permit",
- "safe-regex",
- "safina-executor",
- "safina-sync",
- "safina-timer",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "temp-dir",
- "temp-file",
- "url",
-]
-
-[[package]]
 name = "blocking"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -458,6 +435,29 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "servlin"
+version = "0.1.0"
+dependencies = [
+ "async-fs",
+ "async-net",
+ "fixed-buffer",
+ "futures-io",
+ "futures-lite",
+ "include_dir",
+ "permit",
+ "safe-regex",
+ "safina-executor",
+ "safina-sync",
+ "safina-timer",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "temp-dir",
+ "temp-file",
+ "url",
 ]
 
 [[package]]

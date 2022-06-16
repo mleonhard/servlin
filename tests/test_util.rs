@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
-use beatrice::{socket_addr_127_0_0_1_any_port, HttpServerBuilder, Request, Response};
 use permit::Permit;
 use safe_regex::{Matcher0, Matcher1};
 use safina_executor::Executor;
 use safina_sync::Receiver;
+use servlin::{socket_addr_127_0_0_1_any_port, HttpServerBuilder, Request, Response};
 use std::future::Future;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr};

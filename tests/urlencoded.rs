@@ -2,8 +2,8 @@
 mod test_util;
 
 use crate::test_util::TestServer;
-use beatrice::Response;
 use serde::Deserialize;
+use servlin::Response;
 
 #[test]
 fn urlencoded() {

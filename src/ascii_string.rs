@@ -14,8 +14,8 @@ use std::ops::Deref;
 ///
 /// Example:
 /// ```
-/// use beatrice::AsciiString;
 /// use core::convert::TryInto;
+/// use servlin::AsciiString;
 ///
 /// let value1: AsciiString = "value1".try_into().unwrap();
 /// let value2: AsciiString = 123_usize.into();

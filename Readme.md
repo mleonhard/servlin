@@ -1,8 +1,9 @@
-NOTE: This library was renamed to [Servlin](https://crates.io/crates/servlin).
-====
-
-Beatrice
+Servlin
 ========
+[![crates.io version](https://img.shields.io/crates/v/servlin.svg)](https://crates.io/crates/servlin)
+[![license: Apache 2.0](https://raw.githubusercontent.com/mleonhard/servlin/main/license-apache-2.0.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+[![unsafe forbidden](https://raw.githubusercontent.com/mleonhard/servlin/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
+[![pipeline status](https://github.com/mleonhard/servlin/workflows/CI/badge.svg)](https://github.com/mleonhard/servlin/actions)
 
 A modular HTTP server library in Rust.
 
@@ -36,20 +37,20 @@ A modular HTTP server library in Rust.
   - Disk space usage limits
 
 # Examples
-Complete examples: [`examples/`](https://github.com/mleonhard/beatrice-rs/tree/main/examples).
+Complete examples: [`examples/`](https://github.com/mleonhard/servlin/tree/main/examples).
 
 Simple example:
 ```rust
-use beatrice::{
+use serde::Deserialize;
+use serde_json::json;
+use servlin::{
     print_log_response,
     socket_addr_127_0_0_1,
     HttpServerBuilder,
     Request,
     Response
 };
-use beatrice::reexport::{safina_executor, safina_timer};
-use serde::Deserialize;
-use serde_json::json;
+use servlin::reexport::{safina_executor, safina_timer};
 use std::sync::Arc;
 use temp_dir::TempDir;
 
@@ -103,7 +104,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.3.2
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.1.0
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.5.0
 0/0        51/51        14/14  0/0     0/0      ☢️  │   ├── async-lock 2.5.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.2
@@ -212,17 +213,10 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 ```
 # Alternatives
-See [rust-webserver-comparison.md](https://github.com/mleonhard/beatrice-rs/blob/main/rust-webserver-comparison.md).
+See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
-- v0.3.2 - Renaming project to ['servlin'](https://crates.io/crates/servlin).
-- v0.3.1 - Add `Response::include_dir`.
-- v0.3.0
-  - Add `RequestBody::StaticBytes`.
-  - Add `ResponseBody::StaticBytes`.
-  - Remove `impl From<&[u8]>` for `RequestBody` and `ResponseBody`.
-- v0.2.0 - Make `print_log_response` easier to use.
-- v0.1.0 - First published version
+- v0.1.0 - Renamed library to Servlin.
 
 # TO DO
 - Fix limitations above

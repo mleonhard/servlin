@@ -1,13 +1,13 @@
 [package]
 authors = ["Michael Leonhard <michael@leonhardllc.com>"]
-description = "This library was renamed to Servlin."
+description = "Modular HTTP server library, threaded handlers and async performance"
 categories = ["network-programming", "web-programming::http-server", "web-programming::websocket"]
 edition = "2021"
 keywords = ["web", "http", "server", "async", "threaded"]
 license = "MIT OR Apache-2.0"
-name = "beatrice"
+name = "servlin"
 repository = "https://github.com/mleonhard/servlin"
-version = "0.3.2"
+version = "0.1.0"
 
 [features]
 default = []

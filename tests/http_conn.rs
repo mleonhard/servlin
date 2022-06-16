@@ -1,10 +1,10 @@
 mod test_util;
 
 use crate::test_util::{async_test, connected_streams};
-use beatrice::internal::{handle_http_conn, Token};
-use beatrice::{HttpConn, Request, Response};
 use futures_lite::{AsyncReadExt, AsyncWriteExt};
 use permit::Permit;
+use servlin::internal::{handle_http_conn, Token};
+use servlin::{HttpConn, Request, Response};
 use std::future::Future;
 use std::io::ErrorKind;
 use std::net::Shutdown;

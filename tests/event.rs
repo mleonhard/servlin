@@ -1,5 +1,5 @@
 use crate::test_util::{read_for, TestServer};
-use beatrice::{Event, Response};
+use servlin::{Event, Response};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 

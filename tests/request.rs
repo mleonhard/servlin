@@ -1,10 +1,10 @@
 mod test_util;
 
-use beatrice::internal::{read_http_request, HttpError};
-use beatrice::{AsciiString, ContentType, Request, RequestBody};
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
 use safina_sync::Receiver;
+use servlin::internal::{read_http_request, HttpError};
+use servlin::{AsciiString, ContentType, Request, RequestBody};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::Duration;
 use test_util::{async_test, connected_streams};

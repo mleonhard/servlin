@@ -1,9 +1,9 @@
 // TODO: Finish this example.
 #![forbid(unsafe_code)]
-// use beatrice::reexport::{safina_executor, safina_timer};
-// use beatrice::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 // use serde::Deserialize;
 // use serde_json::json;
+// use servlin::reexport::{safina_executor, safina_timer};
+// use servlin::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 // use std::io::Read;
 // use std::sync::atomic::{AtomicUsize, Ordering};
 // use std::sync::Arc;

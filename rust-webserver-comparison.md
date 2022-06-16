@@ -1,8 +1,8 @@
 # Rust Webserver Comparison
 
-|  | beatrice | [rouille](https://crates.io/crates/rouille) | [trillium](https://crates.io/crates/trillium) | [tide](https://crates.io/crates/tide) | [axum](https://crates.io/crates/axum) | [poem](https://crates.io/crates/poem) |
+|  | servlin | [rouille](https://crates.io/crates/rouille) | [trillium](https://crates.io/crates/trillium) | [tide](https://crates.io/crates/tide) | [axum](https://crates.io/crates/axum) | [poem](https://crates.io/crates/poem) |
 |---------------------|----|----|----|----|----|----|
-| Well-tested         | [NO](https://github.com/mleonhard/beatrice-rs/issues/1) | NO | [NO](https://github.com/trillium-rs/trillium/discussions/181) | NO | NO | NO |
+| Well-tested         | [NO](https://github.com/mleonhard/servlin/issues/1) | NO | [NO](https://github.com/trillium-rs/trillium/discussions/181) | NO | NO | NO |
 | Blocking handlers   | ✓  | ✓  | NO | NO | NO | ✓  |
 | Async handlers      | NO | NO | ✓  | ✓  | ✓  | ✓  |
 | 100-continue        | ✓  | ✓  | ✓  | [NO](https://github.com/http-rs/tide/issues/878) | ✓ | ✓ |
@@ -29,9 +29,9 @@
 | Graceful shutdown   | NO | ✓  | ✓  | [NO](https://github.com/http-rs/tide/issues/528) | ✓ | ✓ |
 | Rust stable         | ✓  | ✓  | ✓  | ✓  | ✓  | ✓  |
 
-|  | beatrice | [warp](https://crates.io/crates/warp) | [thruster](https://crates.io/crates/thruster) | [rocket](https://crates.io/crates/rocket) | [gotham](https://crates.io/crates/gotham) |
+|  | servlin | [warp](https://crates.io/crates/warp) | [thruster](https://crates.io/crates/thruster) | [rocket](https://crates.io/crates/rocket) | [gotham](https://crates.io/crates/gotham) |
 |---------------------|----|----|----|----|----|
-| Well-tested         | [NO](https://github.com/mleonhard/beatrice-rs/issues/1) | ? | ? | ? | ? |
+| Well-tested         | [NO](https://github.com/mleonhard/servlin/issues/1) | ? | ? | ? | ? |
 | Blocking handlers   | ✓  | ?  | ?  | ?  | ?  |
 | Async handlers      | NO | ?  | ?  | ?  | ?  |
 | 100-continue        | ✓  | ?  | ?  | ?  | ?  |

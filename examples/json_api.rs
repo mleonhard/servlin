@@ -3,8 +3,8 @@
 //!
 //! Start the server:
 //! ```
-//! cargo run --package beatrice --features json --example json_api
-//!    Compiling beatrice v0.1.0 (/x/beatrice-rs)
+//! cargo run --package servlin --features json --example json_api
+//!    Compiling servlin v0.1.0 (/x/servlin)
 //!     Finished dev [unoptimized + debuginfo] target(s) in 2.20s
 //!      Running `target/debug/examples/json_api`
 //! INFO GET /get => 200 len=11
@@ -35,10 +35,10 @@
 //! {"count":4}
 //! ```
 #![forbid(unsafe_code)]
-use beatrice::reexport::{safina_executor, safina_timer};
-use beatrice::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 use serde::Deserialize;
 use serde_json::json;
+use servlin::reexport::{safina_executor, safina_timer};
+use servlin::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 

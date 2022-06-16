@@ -3,12 +3,12 @@ extern crate core;
 mod test_util;
 
 use crate::test_util::TestServer;
-use beatrice::internal::{read_http_head, Head, HeadError, HttpError};
-use beatrice::{AsciiString, Response};
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
 use safina_sync::Receiver;
 use safina_timer::sleep_for;
+use servlin::internal::{read_http_head, Head, HeadError, HttpError};
+use servlin::{AsciiString, Response};
 use std::time::Duration;
 use test_util::{async_test, connected_streams};
 

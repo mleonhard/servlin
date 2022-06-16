@@ -2,7 +2,7 @@ use crate::test_util::{
     assert_ends_with, assert_starts_with, check_elapsed, read_for, read_response, read_to_string,
     TestServer,
 };
-use beatrice::{ContentType, Response};
+use servlin::{ContentType, Response};
 use std::io::{Read, Write};
 use std::time::{Duration, Instant};
 

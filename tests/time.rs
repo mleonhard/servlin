@@ -1,5 +1,5 @@
 #![allow(clippy::unreadable_literal)]
-use beatrice::internal::{DateTime, FormatTime};
+use servlin::internal::{DateTime, FormatTime};
 use std::time::{Duration, SystemTime};
 
 const MIN: u64 = 60;

@@ -1,5 +1,5 @@
-use beatrice::internal::SameSite;
-use beatrice::{AsciiString, Cookie};
+use servlin::internal::SameSite;
+use servlin::{AsciiString, Cookie};
 use std::time::{Duration, SystemTime};
 
 fn value1() -> AsciiString {

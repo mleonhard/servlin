@@ -228,7 +228,7 @@ impl Response {
     ///
     /// # Example
     /// ```
-    /// use beatrice::Response;
+    /// use servlin::Response;
     ///
     /// # fn example() -> Response {
     /// return Response::new(200)

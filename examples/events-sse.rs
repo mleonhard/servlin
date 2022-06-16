@@ -3,8 +3,8 @@
 //!
 //! Start the server:
 //! ```
-//! $ cargo run --package beatrice --example events-sse
-//!    Compiling beatrice v0.1.0 (/x/beatrice-rs)
+//! $ cargo run --package servlin --example events-sse
+//!    Compiling servlin v0.1.0 (/x/servlin)
 //!     Finished dev [unoptimized + debuginfo] target(s) in 1.09s
 //!      Running `target/debug/examples/events-sse`
 //! Access the server at http://127.0.0.1:8000/subscribe
@@ -22,12 +22,12 @@
 //! $
 //! ```
 #![forbid(unsafe_code)]
-use beatrice::reexport::{safina_executor, safina_timer};
-use beatrice::{
+use permit::Permit;
+use servlin::reexport::{safina_executor, safina_timer};
+use servlin::{
     print_log_response, socket_addr_127_0_0_1, Event, EventSender, HttpServerBuilder, Request,
     Response,
 };
-use permit::Permit;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 

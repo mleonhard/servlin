@@ -3,8 +3,8 @@
 //!
 //! Start the server:
 //! ```
-//! % cargo run --package beatrice --features urlencoded --example html_form
-//!    Compiling beatrice v0.1.0 (/x/beatrice-rs)
+//! % cargo run --package servlin --features urlencoded --example html_form
+//!    Compiling servlin v0.1.0 (/x/servlin)
 //!     Finished dev [unoptimized + debuginfo] target(s) in 2.35s
 //!      Running `target/debug/examples/html_form`
 //! Access the server at http://127.0.0.1:8000/
@@ -21,9 +21,9 @@
 //! Access the form with your web browser:
 //! <http://127.0.0.1:8000/>
 #![forbid(unsafe_code)]
-use beatrice::reexport::{safina_executor, safina_timer};
-use beatrice::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 use serde::Deserialize;
+use servlin::reexport::{safina_executor, safina_timer};
+use servlin::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 

@@ -3,7 +3,7 @@
 //!
 //! Start the server:
 //! ```
-//! cargo run --package beatrice --example http-put
+//! cargo run --package servlin --example http-put
 //!     Finished dev [unoptimized + debuginfo] target(s) in 0.04s
 //!      Running `target/debug/examples/http-put`
 //! Access the server at http://127.0.0.1:8000/upload
@@ -22,8 +22,8 @@
 //! Upload received, body_len=5, upload_count=2
 //! ```
 #![forbid(unsafe_code)]
-use beatrice::reexport::{safina_executor, safina_timer};
-use beatrice::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
+use servlin::reexport::{safina_executor, safina_timer};
+use servlin::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 use std::io::Read;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;

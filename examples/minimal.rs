@@ -3,7 +3,7 @@
 //!
 //! Start the server:
 //! ```
-//! $ cargo run --package beatrice --example minimal
+//! $ cargo run --package servlin --example minimal
 //!     Finished dev [unoptimized + debuginfo] target(s) in 0.04s
 //!      Running `target/debug/examples/minimal`
 //! ^C
@@ -15,8 +15,8 @@
 //! not found
 //! ```
 #![forbid(unsafe_code)]
-use beatrice::reexport::{safina_executor, safina_timer};
-use beatrice::{socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
+use servlin::reexport::{safina_executor, safina_timer};
+use servlin::{socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 
 pub fn main() {
     safina_timer::start_timer_thread();

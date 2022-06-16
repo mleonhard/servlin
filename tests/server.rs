@@ -1,7 +1,7 @@
 use crate::test_util::check_elapsed;
-use beatrice::{socket_addr_127_0_0_1_any_port, HttpServerBuilder};
 use permit::Permit;
 use safina_sync::Receiver;
+use servlin::{socket_addr_127_0_0_1_any_port, HttpServerBuilder};
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
