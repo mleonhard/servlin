@@ -1,9 +1,8 @@
+NOTE: This library was renamed to [Servlin](https://crates.io/crates/servlin).
+====
+
 Beatrice
 ========
-[![crates.io version](https://img.shields.io/crates/v/beatrice.svg)](https://crates.io/crates/beatrice)
-[![license: Apache 2.0](https://raw.githubusercontent.com/mleonhard/beatrice-rs/main/license-apache-2.0.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![unsafe forbidden](https://raw.githubusercontent.com/mleonhard/beatrice-rs/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
-[![pipeline status](https://github.com/mleonhard/beatrice-rs/workflows/CI/badge.svg)](https://github.com/mleonhard/beatrice-rs/actions)
 
 A modular HTTP server library in Rust.
 
@@ -104,7 +103,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.3.1
+0/0        0/0          0/0    0/0     0/0      🔒  beatrice 0.3.2
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.5.0
 0/0        51/51        14/14  0/0     0/0      ☢️  │   ├── async-lock 2.5.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.2
@@ -216,6 +215,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/beatrice-rs/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.3.2 - Renaming project to ['servlin'](https://crates.io/crates/servlin).
 - v0.3.1 - Add `Response::include_dir`.
 - v0.3.0
   - Add `RequestBody::StaticBytes`.
