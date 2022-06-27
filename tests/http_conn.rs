@@ -55,8 +55,8 @@ async fn read_response(
             Ok(Err(e)) => return Err(e),
         };
     }
-    Ok(String::from_utf8(buf)
-        .map_err(|_| std::io::Error::new(ErrorKind::InvalidData, "response is not UTF-8"))?)
+    String::from_utf8(buf)
+        .map_err(|_| std::io::Error::new(ErrorKind::InvalidData, "response is not UTF-8"))
 }
 
 #[test]
