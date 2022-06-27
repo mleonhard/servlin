@@ -67,6 +67,11 @@ impl Event {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EventSender(pub Option<SyncSender<Event>>);
 impl EventSender {
+    #[must_use]
+    pub fn unconnected() -> Self {
+        Self(None)
+    }
+
     pub fn send(&mut self, event: Event) {
         if let Some(sender) = &self.0 {
             if sender.try_send(event).is_err() {

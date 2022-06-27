@@ -33,6 +33,7 @@ if grep --quiet 'Cargo Geiger Safety Report' src/lib.rs; then
     set -x
     cargo geiger --all-features --update-readme --readme-path "$filename" --output-format GitHubMarkdown --build-dependencies || true
     set +x
-    echo -n "cargo geiger done."
   )
 fi
+set +e
+echo "Done."

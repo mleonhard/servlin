@@ -102,7 +102,8 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
-//! - v0.1.0 - Renamed library to Servlin.
+//! - v0.1.1 - Add `EventSender::unconnected`.
+//! - v0.1.0 - Rename library to Servlin.
 //!
 //! # TO DO
 //! - Fix limitations above
@@ -363,7 +364,7 @@ impl HttpServerBuilder {
     pub async fn spawn<F>(
         self,
         request_handler: F,
-    ) -> Result<(SocketAddr, reexport::safina_sync::Receiver<()>), std::io::Error>
+    ) -> Result<(SocketAddr, safina_sync::Receiver<()>), std::io::Error>
     where
         F: FnOnce(Request) -> Response + 'static + Clone + Send + Sync,
     {
