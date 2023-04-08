@@ -47,7 +47,7 @@ fn try_read_request_line() {
     ] {
         let mut buf: FixedBuf<200> = FixedBuf::new();
         buf.write_bytes(req).unwrap();
-        assert_eq!(Err(expected_err), Head::try_read(&mut buf), "{:?}", req,);
+        assert_eq!(Err(expected_err), Head::try_read(&mut buf), "{req:?}");
     }
 }
 
@@ -102,8 +102,7 @@ fn try_read_proto() {
         assert_eq!(
             Err(HeadError::UnsupportedProtocol),
             Head::try_read(&mut buf),
-            "{:?}",
-            req
+            "{req:?}"
         );
     }
 }
@@ -120,7 +119,7 @@ fn head_try_read_headers() {
             Err(HeadError::MalformedHeader),
             "M / HTTP/1.1\r\nav\r\n\r\n",
         ),
-        (Ok(vec!["".to_string()]), "M / HTTP/1.1\r\na:\r\n\r\n"),
+        (Ok(vec![String::new()]), "M / HTTP/1.1\r\na:\r\n\r\n"),
         (Ok(vec!["b".to_string()]), "M / HTTP/1.1\r\na:b\r\n\r\n"),
         (
             Err(HeadError::MalformedHeader),
@@ -185,8 +184,7 @@ fn head_try_read_headers() {
                 .into_iter()
                 .map(AsciiString::into)
                 .collect::<Vec<String>>()),
-            "{:?}",
-            req
+            "{req:?}"
         );
     }
     // Lookups are case-insensitive.
@@ -357,6 +355,6 @@ fn head_derive() {
     // Debug
     assert_eq!(
         "Head{method=\"A\", path=\"/1\", headers={H1: \"V1\", h2: \"v2\"}}",
-        format!("{:?}", head1).as_str()
+        format!("{head1:?}").as_str()
     );
 }

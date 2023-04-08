@@ -214,7 +214,7 @@ pub fn print_log_response(req: &Request, result: Result<Response, Response>) -> 
             req.url().path(),
             response.code,
             if let Some(len) = response.body.len() {
-                format!("len={}", len)
+                format!("len={len}")
             } else {
                 "streamed".to_string()
             },

@@ -32,7 +32,9 @@ impl<'x> futures_io::AsyncRead for BodyAsyncReader<'x> {
     ) -> Poll<Result<usize, std::io::Error>> {
         match &mut *self {
             BodyAsyncReader::Cursor(cursor) => Poll::Ready(cursor.read(buf)),
-            BodyAsyncReader::EventReceiver(mutex_event_receiver) => {
+            BodyAsyncReader::EventReceiver(mutex_event_receiver) =>
+            {
+                #[allow(clippy::mut_mutex_lock)]
                 Pin::new(&mut *mutex_event_receiver.lock().unwrap()).poll_read(cx, buf)
             }
             BodyAsyncReader::File(async_fs_file) => Pin::new(async_fs_file).poll_read(cx, buf),

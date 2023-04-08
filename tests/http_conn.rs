@@ -103,7 +103,7 @@ fn handle_http_conn_upload() {
                 .read_to_string(&mut body_string)
                 .await
                 .unwrap();
-            Response::text(200, format!("read {:?}", body_string))
+            Response::text(200, format!("read {body_string:?}"))
         })
         .await;
         stream

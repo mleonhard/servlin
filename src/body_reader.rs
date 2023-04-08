@@ -25,7 +25,9 @@ impl<'x> std::io::Read for BodyReader<'x> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, std::io::Error> {
         match self {
             BodyReader::Cursor(cursor) => cursor.read(buf),
-            BodyReader::EventReceiver(mutex_event_receiver) => {
+            BodyReader::EventReceiver(mutex_event_receiver) =>
+            {
+                #[allow(clippy::mut_mutex_lock)]
                 mutex_event_receiver.lock().unwrap().read(buf)
             }
             BodyReader::File(file) => file.read(buf),

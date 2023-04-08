@@ -274,9 +274,7 @@ where
         let _ignored = http_conn.write_response(&response).await;
         Err(HttpError::Disconnected)
     } else {
-        let result = http_conn.write_response(&response).await;
-        //dbg!(&result);
-        result
+        http_conn.write_response(&response).await
     }
 }
 

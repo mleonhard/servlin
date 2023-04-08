@@ -147,6 +147,6 @@ impl Display for Cookie {
 }
 impl From<Cookie> for AsciiString {
     fn from(cookie: Cookie) -> Self {
-        AsciiString::try_from(format!("{}", cookie)).unwrap()
+        AsciiString::try_from(format!("{cookie}")).unwrap()
     }
 }

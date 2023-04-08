@@ -90,7 +90,7 @@ impl Request {
         } else {
             let mut buf = Vec::new();
             if let Err(e) = self.body.reader()?.read_to_end(&mut buf) {
-                panic!("error reading body: {}", e);
+                panic!("error reading body: {e}");
             }
             serde_urlencoded::from_bytes(&buf).map_err(|e| {
                 // Does this make a cross-site-scripting (XSS) vulnerability?
@@ -129,9 +129,9 @@ impl Request {
         } else {
             serde_json::from_reader(self.body.reader()?).map_err(|e| match e.classify() {
                 Category::Eof => Response::text(400, "truncated json"),
-                Category::Io => panic!("error reading body: {}", e),
-                Category::Syntax => Response::text(400, format!("malformed json: {}", e)),
-                Category::Data => Response::text(400, format!("unexpected json: {}", e)),
+                Category::Io => panic!("error reading body: {e}"),
+                Category::Syntax => Response::text(400, format!("malformed json: {e}")),
+                Category::Data => Response::text(400, format!("unexpected json: {e}")),
             })
         }
     }
@@ -141,7 +141,7 @@ impl Debug for Request {
         let mut cookie_strings: Vec<String> = self
             .cookies
             .iter()
-            .map(|(name, value)| format!("{}={}", name, value))
+            .map(|(name, value)| format!("{name}={value}"))
             .collect();
         cookie_strings.sort();
         write!(
@@ -157,7 +157,7 @@ impl Debug for Request {
             if self.chunked { ", chunked" } else { "" },
             if self.gzip { ", gzip" } else { "" },
             if let Some(len) = &self.content_length {
-                format!(", {}", len)
+                format!(", {len}")
             } else {
                 String::new()
             },

@@ -37,15 +37,14 @@ pub fn assert_ends_with(value: impl AsRef<str>, suffix: impl AsRef<str>) {
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 pub fn check_elapsed(before: Instant, range_ms: Range<u64>) -> Result<(), String> {
-    assert!(!range_ms.is_empty(), "invalid range {:?}", range_ms);
+    assert!(!range_ms.is_empty(), "invalid range {range_ms:?}");
     let elapsed = before.elapsed();
     let duration_range = Duration::from_millis(range_ms.start)..Duration::from_millis(range_ms.end);
     if duration_range.contains(&elapsed) {
         Ok(())
     } else {
         Err(format!(
-            "{:?} elapsed, out of range {:?}",
-            elapsed, duration_range
+            "{elapsed:?} elapsed, out of range {duration_range:?}"
         ))
     }
 }
@@ -178,40 +177,37 @@ impl ExchangeErr {
     #[must_use]
     #[allow(clippy::needless_pass_by_value)]
     pub fn connect(e: std::io::Error) -> Self {
-        ExchangeErr::Connect(e.kind(), format!("{:?}", e))
+        ExchangeErr::Connect(e.kind(), format!("{e:?}"))
     }
     #[must_use]
     #[allow(clippy::needless_pass_by_value)]
     pub fn write(e: std::io::Error) -> Self {
-        ExchangeErr::Write(e.kind(), format!("{:?}", e))
+        ExchangeErr::Write(e.kind(), format!("{e:?}"))
     }
     #[allow(clippy::needless_pass_by_value)]
     #[must_use]
     pub fn read(e: std::io::Error) -> Self {
-        ExchangeErr::Read(e.kind(), format!("{:?}", e))
+        ExchangeErr::Read(e.kind(), format!("{e:?}"))
     }
     #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_connect(self) {
         assert!(
             matches!(self, ExchangeErr::Connect(..)),
-            "unwrap_connect called on {:?}",
-            self
+            "unwrap_connect called on {self:?}"
         );
     }
     #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_write(self) {
         assert!(
             matches!(self, ExchangeErr::Write(..)),
-            "unwrap_write called on {:?}",
-            self
+            "unwrap_write called on {self:?}"
         );
     }
     #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_read(self) {
         assert!(
             matches!(self, ExchangeErr::Read(..)),
-            "unwrap_read called on {:?}",
-            self
+            "unwrap_read called on {self:?}"
         );
     }
 }

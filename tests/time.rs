@@ -72,9 +72,7 @@ fn date_time_add() {
         assert_eq!(
             expected,
             (dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec),
-            "{:?} + {}",
-            initial,
-            seconds_to_add,
+            "{initial:?} + {seconds_to_add}",
         );
     }
 }

@@ -97,7 +97,7 @@ pub async fn accept_loop<F>(
             Some(AcceptResult::TooManyOpenFiles) => {
                 safina_timer::sleep_for(Duration::from_millis(500)).await;
             }
-            Some(AcceptResult::Err(e)) => panic!("error accepting connection: {}", e),
+            Some(AcceptResult::Err(e)) => panic!("error accepting connection: {e}"),
             None => {}
         }
     }

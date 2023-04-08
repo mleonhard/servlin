@@ -11,7 +11,7 @@ mod test_util;
 // TODO: Add a test for HttpError::BodyNotRead.  Decide what to do when client sends an unwanted body.
 
 fn req_with_len(body_len: usize) -> String {
-    format!("M / HTTP/1.1\r\ncontent-length:{}\r\n\r\n", body_len)
+    format!("M / HTTP/1.1\r\ncontent-length:{body_len}\r\n\r\n")
         .chars()
         .chain(std::iter::repeat('a').take(body_len))
         .collect::<String>()
@@ -185,7 +185,7 @@ fn get_body() {
             Response::get_body_and_reprocess(70_000)
         } else {
             let len = req.body.reader().unwrap().bytes().count();
-            Response::text(200, format!("len={}", len))
+            Response::text(200, format!("len={len}"))
         }
     })
     .unwrap();
@@ -320,7 +320,7 @@ fn expect_100_continue() {
             Response::get_body_and_reprocess(70_000)
         } else {
             let len = req.body.reader().unwrap().bytes().count();
-            Response::text(200, format!("len={}", len))
+            Response::text(200, format!("len={len}"))
         }
     })
     .unwrap();

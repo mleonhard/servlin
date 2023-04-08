@@ -105,7 +105,7 @@ impl Debug for RequestBody {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         match self {
             RequestBody::PendingKnown(len) => {
-                write!(f, "RequestBody::PendingKnown(len={})", len,)
+                write!(f, "RequestBody::PendingKnown(len={len})")
             }
             RequestBody::PendingUnknown => write!(f, "RequestBody::PendingUnknown"),
             RequestBody::StaticBytes(b) => {

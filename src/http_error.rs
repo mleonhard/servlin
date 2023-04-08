@@ -107,13 +107,13 @@ impl HttpError {
             }
             HttpError::Disconnected => "HttpError::Disconnected".to_string(),
             HttpError::ErrorReadingFile(kind, s) => {
-                format!("HttpError::ErrorReadingFile: {:?}: {}", kind, s)
+                format!("HttpError::ErrorReadingFile: {kind:?}: {s}")
             }
             HttpError::ErrorReadingResponseBody(kind, s) => {
-                format!("HttpError::ErrorReadingResponseBody: {:?}: {}", kind, s)
+                format!("HttpError::ErrorReadingResponseBody: {kind:?}: {s}")
             }
             HttpError::ErrorSavingFile(kind, s) => {
-                format!("HttpError::ErrorSavingFile: {:?}: {}", kind, s)
+                format!("HttpError::ErrorSavingFile: {kind:?}: {s}")
             }
             HttpError::HandlerDeadlineExceeded => "HttpError::HandlerDeadlineExceeded".to_string(),
             HttpError::HeadTooLong => "HttpError::HeadTooLong".to_string(),

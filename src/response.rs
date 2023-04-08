@@ -116,7 +116,7 @@ impl Response {
     #[cfg(feature = "json")]
     pub fn json(code: u16, v: impl serde::Serialize) -> Result<Response, String> {
         let body_vec = serde_json::to_vec(&v)
-            .map_err(|e| format!("error serializing response to json: {}", e))?;
+            .map_err(|e| format!("error serializing response to json: {e}"))?;
         Ok(Self::new(code)
             .with_type(ContentType::Json)
             .with_body(body_vec))
@@ -226,7 +226,7 @@ impl Response {
     pub fn with_max_age_seconds(mut self, seconds: u32) -> Self {
         self.headers.add(
             "cache-control",
-            format!("max-age={}", seconds).try_into().unwrap(),
+            format!("max-age={seconds}").try_into().unwrap(),
         );
         self
     }
@@ -336,7 +336,7 @@ impl Debug for Response {
         match self.kind {
             ResponseKind::DropConnection => write!(f, "Response(kind=Drop)"),
             ResponseKind::GetBodyAndReprocess(max_len) => {
-                write!(f, "Response(kind=GetBodyAndReprocess({}))", max_len)
+                write!(f, "Response(kind=GetBodyAndReprocess({max_len}))")
             }
             ResponseKind::Normal => {
                 write!(
@@ -462,7 +462,7 @@ pub async fn write_http_response(
         if response.headers.get_only("content-length").is_some() {
             return Err(HttpError::DuplicateContentLengthHeader);
         }
-        write!(head_bytes, "content-length: {}\r\n", body_len).unwrap();
+        write!(head_bytes, "content-length: {body_len}\r\n").unwrap();
     } else {
         if response.headers.get_only("transfer-encoding").is_some() {
             return Err(HttpError::DuplicateTransferEncodingHeader);

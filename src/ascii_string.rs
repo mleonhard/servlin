@@ -55,7 +55,7 @@ impl Default for AsciiString {
         Self::new()
     }
 }
-impl<'x> Deref for AsciiString {
+impl Deref for AsciiString {
     type Target = String;
 
     fn deref(&self) -> &Self::Target {

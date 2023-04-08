@@ -38,12 +38,12 @@ impl Event {
         let data = match self {
             Event::Message(data) => data,
             Event::Custom(event_type, data) => {
-                write!(buf, "event: {}\n", event_type)?;
+                write!(buf, "event: {event_type}\n")?;
                 data
             }
         };
         for line in data.lines() {
-            write!(buf, "data: {}\n", line)?;
+            write!(buf, "data: {line}\n")?;
         }
         Ok(original_buf_len - buf.len())
     }
@@ -53,12 +53,12 @@ impl Event {
         let data = match self {
             Event::Message(data) => data,
             Event::Custom(event_type, data) => {
-                write!(buf, "event: {}\n", event_type).unwrap();
+                write!(buf, "event: {event_type}\n").unwrap();
                 data
             }
         };
         for line in data.lines() {
-            write!(buf, "data: {}\n", line).unwrap();
+            write!(buf, "data: {line}\n").unwrap();
         }
     }
 }

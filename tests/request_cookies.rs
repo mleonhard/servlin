@@ -10,7 +10,7 @@ fn cookie_header() {
         let mut strings: Vec<String> = req
             .cookies
             .iter()
-            .map(|(name, value)| format!("({}:{})", name, value))
+            .map(|(name, value)| format!("({name}:{value})"))
             .collect();
         strings.sort();
         Response::text(200, format!("cookies=[{}]", strings.join(",")))
