@@ -102,6 +102,14 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.1.2 - Add:
+//!    - `Response::ok_200()`
+//!    - `Response::unauthorized_401()`
+//!    - `Response::forbidden_403()`
+//!    - `Response::internal_server_errror_500()`
+//!    - `Response::not_implemented_501()`
+//!    - `Response::service_unavailable_503()`
+//!    - `EventSender::is_connected()`
 //! - v0.1.1 - Add `EventSender::unconnected`.
 //! - v0.1.0 - Rename library to Servlin.
 //!

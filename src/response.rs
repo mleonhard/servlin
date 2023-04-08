@@ -142,6 +142,16 @@ impl Response {
             .with_body(body)
     }
 
+    #[must_use]
+    pub fn ok_200() -> Self {
+        Response::new(200)
+    }
+
+    #[must_use]
+    pub fn no_content_204() -> Self {
+        Response::new(204)
+    }
+
     /// Tell the client to GET `location`.
     ///
     /// The client should not store this redirect.
@@ -153,6 +163,16 @@ impl Response {
     #[must_use]
     pub fn redirect_303(location: impl AsRef<str>) -> Self {
         Response::new(303).with_header("location", location.as_ref().try_into().unwrap())
+    }
+
+    #[must_use]
+    pub fn unauthorized_401() -> Self {
+        Response::new(401)
+    }
+
+    #[must_use]
+    pub fn forbidden_403() -> Self {
+        Response::new(401)
     }
 
     #[must_use]
@@ -175,6 +195,21 @@ impl Response {
     #[must_use]
     pub fn payload_too_large_413() -> Self {
         Response::text(413, "Uploaded data is too big.")
+    }
+
+    #[must_use]
+    pub fn internal_server_errror_500() -> Self {
+        Response::new(500)
+    }
+
+    #[must_use]
+    pub fn not_implemented_501() -> Self {
+        Response::new(501)
+    }
+
+    #[must_use]
+    pub fn service_unavailable_503() -> Self {
+        Response::new(503)
     }
 
     #[must_use]

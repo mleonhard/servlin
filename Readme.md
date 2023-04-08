@@ -104,7 +104,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.1.1
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.1.2
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.5.0
 0/0        51/51        14/14  0/0     0/0      ☢️  │   ├── async-lock 2.5.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.2
@@ -216,6 +216,14 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.1.2 - Add:
+   - `Response::ok_200()`
+   - `Response::unauthorized_401()`
+   - `Response::forbidden_403()`
+   - `Response::internal_server_errror_500()`
+   - `Response::not_implemented_501()`
+   - `Response::service_unavailable_503()`
+   - `EventSender::is_connected()`
 - v0.1.1 - Add `EventSender::unconnected`.
 - v0.1.0 - Rename library to Servlin.
 

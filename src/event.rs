@@ -83,6 +83,11 @@ impl EventSender {
     pub fn disconnect(&mut self) {
         self.0.take();
     }
+
+    #[must_use]
+    pub fn is_connected(&self) -> bool {
+        self.0.is_some()
+    }
 }
 
 // TODO: Support reading messages that are larger than `buf`.
