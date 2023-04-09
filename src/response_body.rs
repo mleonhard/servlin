@@ -142,6 +142,12 @@ impl<const LEN: usize> From<[u8; LEN]> for ResponseBody {
         ResponseBody::Vec(b.to_vec())
     }
 }
+#[cfg(feature = "include_dir")]
+impl From<&'static include_dir::File<'static>> for ResponseBody {
+    fn from(file: &'static include_dir::File<'static>) -> Self {
+        ResponseBody::StaticBytes(file.contents())
+    }
+}
 impl PartialEq for ResponseBody {
     fn eq(&self, other: &Self) -> bool {
         #[allow(clippy::match_same_arms)]
