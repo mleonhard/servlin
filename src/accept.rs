@@ -21,6 +21,24 @@ pub fn socket_addr_all_interfaces(port: u16) -> SocketAddr {
     SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port)
 }
 
+/// Reads and parses the `PORT` environment variable.
+///
+/// # Panics
+/// Panics with a useful error message when the PORT env var is not an integer in 1..65536.
+#[allow(non_snake_case)]
+#[must_use]
+pub fn PORT_env() -> u16 {
+    let port: u16 = std::env::var("PORT")
+        .expect("PORT env var")
+        .parse()
+        .expect("failed parsing PORT env var");
+    if (1..=65535).contains(&port) {
+        port
+    } else {
+        panic!("PORT env var is out of range 1-65535: {port}")
+    }
+}
+
 /// # Errors
 /// Returns an error when we fail to bind to the address.
 pub async fn listen_127_0_0_1_any_port() -> Result<async_net::TcpListener, std::io::Error> {

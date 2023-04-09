@@ -110,6 +110,7 @@
 //!    - `Response::not_implemented_501()`
 //!    - `Response::service_unavailable_503()`
 //!    - `EventSender::is_connected()`
+//!    - `PORT_env()`
 //! - v0.1.1 - Add `EventSender::unconnected`.
 //! - v0.1.0 - Rename library to Servlin.
 //!
@@ -143,7 +144,7 @@ mod token_set;
 mod util;
 
 pub use crate::accept::{
-    socket_addr_127_0_0_1, socket_addr_127_0_0_1_any_port, socket_addr_all_interfaces,
+    socket_addr_127_0_0_1, socket_addr_127_0_0_1_any_port, socket_addr_all_interfaces, PORT_env,
 };
 pub use crate::ascii_string::AsciiString;
 pub use crate::body_async_reader::BodyAsyncReader;

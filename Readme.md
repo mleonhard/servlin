@@ -147,6 +147,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
                                                        │   [build-dependencies]
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 0/0        2/4          0/0    0/0     0/0      ☢️  │   ├── async-io 1.13.0
+                                                       │   │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   │   └── autocfg 1.1.0
 4/4        91/91        16/16  0/0     1/1      ☢️  │   │   ├── async-lock 2.7.0
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   ├── cfg-if 1.0.0
 0/0        168/168      2/2    0/0     1/1      ☢️  │   │   ├── concurrent-queue 2.2.0
@@ -172,13 +174,11 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
                                                        │   │   │   [build-dependencies]
 0/1        0/201        0/2    0/0     0/4      ❓  │   │   │   └── cc 1.0.79
 0/0        24/24        0/0    0/0     3/3      ☢️  │   │   ├── slab 0.4.8
-0/0        5/5          0/0    0/0     0/0      ☢️  │   │   │   └── serde 1.0.159
                                                        │   │   │   [build-dependencies]
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   └── autocfg 1.1.0
+0/0        5/5          0/0    0/0     0/0      ☢️  │   │   │   └── serde 1.0.159
 3/6        540/673      2/4    0/0     3/4      ☢️  │   │   ├── socket2 0.4.9
 0/0        21/21        0/0    0/0     4/4      ☢️  │   │   └── waker-fn 1.1.0
-                                                       │   │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   │   └── autocfg 1.1.0
 0/0        28/28        4/4    0/0     0/0      ☢️  │   ├── blocking 1.3.1
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 1.13.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── fixed-buffer 0.5.0
@@ -244,6 +244,7 @@ See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/mai
    - `Response::not_implemented_501()`
    - `Response::service_unavailable_503()`
    - `EventSender::is_connected()`
+   - `PORT_env()`
 - v0.1.1 - Add `EventSender::unconnected`.
 - v0.1.0 - Rename library to Servlin.
 
