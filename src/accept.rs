@@ -41,18 +41,21 @@ pub fn PORT_env() -> u16 {
 
 /// # Errors
 /// Returns an error when we fail to bind to the address.
+#[allow(unused_qualifications)]
 pub async fn listen_127_0_0_1_any_port() -> Result<async_net::TcpListener, std::io::Error> {
     TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0)).await
 }
 
 /// # Errors
 /// Returns an error when we fail to bind to the address.
+#[allow(unused_qualifications)]
 pub async fn listen_127_0_0_1(port: u16) -> Result<async_net::TcpListener, std::io::Error> {
     TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port)).await
 }
 
 /// # Errors
 /// Returns an error when we fail to bind to the address.
+#[allow(unused_qualifications)]
 pub async fn listen_all_interfaces(port: u16) -> Result<async_net::TcpListener, std::io::Error> {
     TcpListener::bind(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port)).await
 }
@@ -86,6 +89,7 @@ impl AcceptResult {
 /// # Panics
 /// Retries when we fail to accept a connection with error `EMFILE` (Too many open files).
 /// Panics on other errors.
+#[allow(unused_qualifications)]
 #[allow(clippy::module_name_repetitions)]
 pub async fn accept_loop<F>(
     mut permit: Permit,

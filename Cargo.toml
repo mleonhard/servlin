@@ -22,7 +22,7 @@ futures-io = "^0.3.21"
 futures-lite = "^1.12.0"
 include_dir = { version = "0.7", optional = true }
 #libflate = "1"
-permit = "^0.1.4"
+permit = "^0.2.0"
 safe-regex = "^0.2.5"
 #safina-executor = { version = "^0.3.3", path = "../safina-rs/safina-executor" }
 safina-executor = { version = "^0.3.3" }
