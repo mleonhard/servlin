@@ -5,7 +5,7 @@ use crate::log::tag_value::TagValue;
 use crate::log::Level;
 use std::cell::RefCell;
 use std::io::Write;
-use std::rc::Rc;
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Mutex;
 use std::time::SystemTime;
 
@@ -37,72 +37,67 @@ impl LogEvent {
         let level = self.level;
         let tags = &self.tags;
         if tags.is_empty() {
-            write!(f, "{{\"time_ns\":{time_ns},\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\"}}")
+            write!(f, "{{\"time_ns\":{time_ns},\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\"}}\n")
         } else {
-            write!(f, "{{\"time_ns\":{time_ns},\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",{tags}}}")
+            write!(f, "{{\"time_ns\":{time_ns},\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",{tags}}}\n")
         }
     }
 }
 
-pub trait Logger: Send {
-    fn add(&self, event: LogEvent);
-    fn rc_clone(&self) -> Rc<dyn Logger>;
-}
-
-#[derive(Clone)]
-pub struct StdoutLogger {}
-impl Logger for StdoutLogger {
-    fn add(&self, event: LogEvent) {
-        let time = event.time.iso8601_utc();
-        let level = event.level;
-        let mut tags = event.tags;
-        if let Some(msg_index) = tags.iter().position(|tag| tag.name == "msg") {
-            let msg_tag = tags.remove(msg_index);
-            let msg = msg_tag.value;
-            println!("{time} {level} {msg} {tags}");
-        } else {
-            println!("{time} {level} {tags}");
+pub fn start_stdout_logger_thread() -> SyncSender<LogEvent> {
+    let (sender, receiver): (SyncSender<LogEvent>, Receiver<LogEvent>) = sync_channel(100);
+    std::thread::spawn(move || {
+        for event in receiver {
+            let time = event.time.iso8601_utc();
+            let level = event.level;
+            let mut tags = event.tags;
+            if let Some(msg_index) = tags.iter().position(|tag| tag.name == "msg") {
+                let msg_tag = tags.remove(msg_index);
+                let msg = msg_tag.value;
+                println!("{time} {level} {msg} {tags}");
+            } else {
+                println!("{time} {level} {tags}");
+            }
         }
-    }
-
-    fn rc_clone(&self) -> Rc<dyn Logger> {
-        Rc::new(self.clone())
-    }
+    });
+    sender
 }
 
-pub static GLOBAL_LOGGER: once_cell::sync::OnceCell<Mutex<Box<dyn Logger>>> =
+pub static GLOBAL_LOGGER: once_cell::sync::OnceCell<Mutex<SyncSender<LogEvent>>> =
     once_cell::sync::OnceCell::new();
 
 thread_local! {
-    pub static THREAD_LOCAL_LOGGER: Option<Rc<dyn Logger>> = None;
+    pub static THREAD_LOCAL_LOGGER: RefCell<Option<SyncSender<LogEvent>>> = RefCell::new(None);
     pub static THREAD_LOCAL_TAGS: RefCell<Vec<Tag>> = RefCell::new(Vec::new());
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct GlobalLoggerAlreadySetError {}
 
-pub fn set_global_logger(logger: impl Logger + 'static) -> Result<(), GlobalLoggerAlreadySetError> {
+pub fn set_global_logger(sender: SyncSender<LogEvent>) -> Result<(), GlobalLoggerAlreadySetError> {
     GLOBAL_LOGGER
-        .set(Mutex::new(Box::new(logger)))
+        .set(Mutex::new(sender))
         .map_err(|_| GlobalLoggerAlreadySetError {})
 }
 
-pub static STDOUT_LOGGER: StdoutLogger = StdoutLogger {};
-
 /// Gets the logger previously passed to [set_global_logger].
 /// Returns [StdoutLogger] if no global logger was set.
-pub fn global_logger() -> &'static (dyn Logger) {
-    if let Some(box_logger) = THREAD_LOCAL_LOGGER.with(|opt_rc| opt_rc.map(|rc| rc.clone())) {
-        box_logger.as_ref()
-    } else if let Some(mutex_box_logger) = GLOBAL_LOGGER.get() {
-        let box_logger = mutex_box_logger.lock().unwrap().rc_clone();
-        THREAD_LOCAL_LOGGER.with(|cell| {
-            cell.set(box_logger);
-            cell.get().unwrap().as_ref()
-        })
-    } else {
-        &STDOUT_LOGGER
-    }
+pub fn with_global_logger<R, F: FnOnce(&SyncSender<LogEvent>) -> R>(f: F) -> R {
+    THREAD_LOCAL_LOGGER.with(|cell| {
+        let mut opt_sender = cell.borrow_mut();
+        if let Some(sender) = opt_sender.as_ref() {
+            f(sender)
+        } else {
+            let sender = GLOBAL_LOGGER
+                .get_or_init(|| Mutex::new(start_stdout_logger_thread()))
+                .lock()
+                .unwrap()
+                .clone();
+            let result = f(&sender);
+            opt_sender.replace(sender);
+            result
+        }
+    })
 }
 
 pub fn add_thread_local_log_tag(name: &'static str, value: impl Into<TagValue>) {
@@ -122,5 +117,5 @@ pub fn log(time: SystemTime, level: Level, tags: impl Into<TagList>) {
     let mut tags = tags.into();
     with_thread_local_log_tags(|thread_tags| tags.0.extend_from_slice(thread_tags));
     let event = LogEvent { time, level, tags };
-    global_logger().add(event);
+    with_global_logger(|sender| sender.send(event)).unwrap()
 }

@@ -32,9 +32,6 @@ pub struct PrefixFileSet {
 }
 impl PrefixFileSet {
     pub fn new(path_prefix: &Path) -> Result<Self, String> {
-        let path_prefix = path_prefix
-            .canonicalize()
-            .map_err(|e| format!("error getting canonical path of {path_prefix:?}: {e:?}"))?;
         let dir = path_prefix
             .parent()
             .ok_or_else(|| format!("path has no parent: {path_prefix:?}"))?;

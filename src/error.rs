@@ -5,21 +5,21 @@ use std::time::SystemTime;
 
 #[derive(Debug)]
 pub struct Error {
+    pub msg: Option<String>,
+    pub tags: Vec<Tag>,
+    pub response: Option<Response>,
     pub time: SystemTime,
     pub backtrace: Option<Backtrace>,
-    pub msg: Option<String>,
-    pub response: Option<Response>,
-    pub tags: Vec<Tag>,
 }
 impl Error {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            msg: None,
+            tags: Vec::new(),
+            response: None,
             time: SystemTime::now(),
             backtrace: None,
-            msg: None,
-            response: None,
-            tags: Vec::new(),
         }
     }
 
@@ -88,9 +88,9 @@ impl From<std::io::Error> for Error {
 }
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
-        self.response == other.response
-            && self.msg == other.msg
+        self.msg == other.msg
             && self.tags.as_slice() == other.tags.as_slice()
+            && self.response == other.response
         // Do not compare backtraces or time.
     }
 }

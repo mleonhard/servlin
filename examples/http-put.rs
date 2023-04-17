@@ -71,7 +71,7 @@ fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
 pub fn main() {
     println!("Access the server at http://127.0.0.1:8000/upload");
     set_global_logger(
-        LogFileWriter::new_builder(".", 100 * 1024 * 1024)
+        LogFileWriter::new_builder("log", 100 * 1024 * 1024)
             .start_writer_thread()
             .unwrap(),
     )

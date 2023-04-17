@@ -1,12 +1,12 @@
 use crate::internal::ToDateTime;
-use crate::log::logger::{LogEvent, Logger};
+use crate::log::logger::LogEvent;
 use crate::log::prefix_file_set::{PrefixFile, PrefixFileSet};
 use crate::log::{tag, Level};
+use crate::Error;
 use std::fs::{File, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender};
 use std::time::{Duration, SystemTime};
 
 pub struct LogFile {
@@ -108,7 +108,7 @@ impl LogFileWriterBuilder {
         self
     }
 
-    pub fn start_writer_thread(self) -> Result<LogFileWriter, String> {
+    pub fn start_writer_thread(self) -> Result<SyncSender<LogEvent>, Error> {
         LogFileWriter::start_writer_thread(self)
     }
 }
@@ -139,33 +139,53 @@ impl LogFileWriter {
         path_prefix: impl Into<PathBuf>,
         max_keep_bytes: u64,
     ) -> LogFileWriterBuilder {
-        let path_prefix = path_prefix.into().canonicalize().unwrap();
-        if path_prefix.file_name().is_none() {
-            panic!(
-                "path_prefix does not contain a filename part: {:?}",
-                path_prefix.to_string_lossy()
-            );
-        }
         LogFileWriterBuilder {
             max_keep_age: None,
             max_keep_bytes,
             max_write_age: Duration::from_secs(24 * 3600),
             max_write_bytes: 10 * 1024 * 1024,
-            path_prefix,
+            path_prefix: path_prefix.into(),
         }
     }
 
-    pub fn start_writer_thread(builder: LogFileWriterBuilder) -> Result<Self, String> {
-        let mut file_set = PrefixFileSet::new(&builder.path_prefix)?;
+    pub fn start_writer_thread(
+        builder: LogFileWriterBuilder,
+    ) -> Result<SyncSender<LogEvent>, Error> {
+        let dir = builder
+            .path_prefix
+            .parent()
+            .ok_or_else(|| format!("path has no parent: {:?}", builder.path_prefix))?;
+        let mut path_prefix = if dir.is_absolute() {
+            dir.to_path_buf()
+        } else {
+            std::env::current_dir()
+                .map_err(|e| format!("cannot find current directory to resolve path {dir:?}: {e}"))?
+                .join(dir)
+        }
+        .canonicalize()
+        .map_err(|e| {
+            format!(
+                "error getting canonical path of {:?}: {e}",
+                builder.path_prefix
+            )
+        })?;
+        let file_name = builder.path_prefix.file_name().ok_or_else(|| {
+            format!(
+                "path_prefix does not contain a filename part: {:?}",
+                path_prefix.to_string_lossy()
+            )
+        })?;
+        path_prefix.push(Path::new(file_name));
+        let mut file_set = PrefixFileSet::new(&path_prefix)?;
         file_set.delete_oldest_while_over_max_len(builder.max_keep_bytes)?;
-        let mut file = LogFile::create(&builder.path_prefix)?;
+        let mut file = LogFile::create(&path_prefix)?;
         let mut buffer: Vec<u8> = Vec::new();
         LogEvent::new(Level::Info, tag("msg", "Starting log writer"))
             .write_json(&mut buffer)
             .unwrap();
         file.write_all(&buffer)?;
         buffer.clear();
-        let (sender, receiver): (Sender<LogEvent>, Receiver<LogEvent>) = channel();
+        let (sender, receiver): (SyncSender<LogEvent>, Receiver<LogEvent>) = sync_channel(100);
         std::thread::spawn(move || {
             for event in receiver {
                 event.write_json(&mut buffer).unwrap();
@@ -178,7 +198,7 @@ impl LogFileWriter {
                         mtime: now,
                         len: file.len,
                     });
-                    file = LogFile::create(&builder.path_prefix).unwrap();
+                    file = LogFile::create(&path_prefix).unwrap();
                 }
                 if let Some(duration) = builder.max_keep_age {
                     file_set.delete_older_than(now, duration).unwrap();
@@ -191,16 +211,8 @@ impl LogFileWriter {
                 file.write_all(&buffer).unwrap();
                 buffer.clear();
             }
+            file.file.sync_all().unwrap();
         });
-        Ok(LogFileWriter(sender))
-    }
-}
-impl Logger for LogFileWriter {
-    fn add(&self, event: LogEvent) {
-        self.0.send(event).unwrap()
-    }
-
-    fn rc_clone(&self) -> Rc<dyn Logger> {
-        Rc::new(self.clone())
+        Ok(sender)
     }
 }
