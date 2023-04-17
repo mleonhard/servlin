@@ -1,6 +1,6 @@
 //! Safe time functions.
 use std::ops::Add;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn is_leap_year(year: i64) -> bool {
     if year % 400 == 0 {
@@ -176,19 +176,40 @@ impl Add<Duration> for DateTime {
 pub trait FormatTime {
     fn iso8601_utc(&self) -> String;
 }
-
 impl FormatTime for SystemTime {
     fn iso8601_utc(&self) -> String {
+        let dt = self.to_datetime();
+        format!(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+            dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec
+        )
+    }
+}
+
+#[allow(clippy::module_name_repetitions)]
+pub trait ToDateTime {
+    fn to_datetime(&self) -> DateTime;
+}
+impl ToDateTime for SystemTime {
+    fn to_datetime(&self) -> DateTime {
         let epoch_seconds = i64::try_from(
             self.duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
         )
         .unwrap();
-        let dt = DateTime::new(epoch_seconds);
-        format!(
-            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-            dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec
-        )
+        DateTime::new(epoch_seconds)
+    }
+}
+
+pub trait EpochNs {
+    // Nanoseconds overflow u64 in the year 2554.
+    fn epoch_ns(&self) -> u64;
+}
+impl EpochNs for SystemTime {
+    fn epoch_ns(&self) -> u64 {
+        self.duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::from_secs(0))
+            .as_nanos() as u64
     }
 }

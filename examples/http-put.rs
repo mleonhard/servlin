@@ -22,8 +22,9 @@
 //! Upload received, body_len=5, upload_count=2
 //! ```
 #![forbid(unsafe_code)]
+use servlin::log::{log_response, set_global_logger, LogFileWriter};
 use servlin::reexport::{safina_executor, safina_timer};
-use servlin::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
+use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
 use std::io::Read;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -42,7 +43,7 @@ impl State {
     }
 }
 
-fn put(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
+fn put(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
     if req.body.is_pending() {
         return Ok(Response::get_body_and_reprocess(1024 * 1024));
     }
@@ -58,7 +59,7 @@ fn put(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
     ))
 }
 
-fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
+fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
     match (req.method(), req.url().path()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("PUT", "/upload") => put(state, req),
@@ -69,11 +70,17 @@ fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
 
 pub fn main() {
     println!("Access the server at http://127.0.0.1:8000/upload");
+    set_global_logger(
+        LogFileWriter::new_builder(".", 100 * 1024 * 1024)
+            .start_writer_thread()
+            .unwrap(),
+    )
+    .unwrap();
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();
     let cache_dir = TempDir::new().unwrap();
     let state = Arc::new(State::new());
-    let request_handler = move |req: Request| print_log_response(&req, handle_req(&state, &req));
+    let request_handler = move |req: Request| log_response(&req, handle_req(&state, &req));
     executor
         .block_on(
             HttpServerBuilder::new()

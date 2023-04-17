@@ -23,10 +23,10 @@
 //! ```
 #![forbid(unsafe_code)]
 use permit::Permit;
+use servlin::log::log_response;
 use servlin::reexport::{safina_executor, safina_timer};
 use servlin::{
-    print_log_response, socket_addr_127_0_0_1, Event, EventSender, HttpServerBuilder, Request,
-    Response,
+    socket_addr_127_0_0_1, Error, Event, EventSender, HttpServerBuilder, Request, Response,
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -62,14 +62,14 @@ fn event_sender_thread(state: Arc<State>, permit: Permit) {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-fn subscribe(state: &Arc<State>, _req: &Request) -> Result<Response, Response> {
+fn subscribe(state: &Arc<State>, _req: &Request) -> Result<Response, Error> {
     let (sender, response) = Response::event_stream();
     state.subscribers.lock().unwrap().push(sender);
     Ok(response)
 }
 
 #[allow(clippy::unnecessary_wraps)]
-fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
+fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
     match (req.method(), req.url().path()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("GET", "/subscribe") => subscribe(state, req),
@@ -85,7 +85,7 @@ pub fn main() {
     std::thread::spawn(move || event_sender_thread(state_clone, event_sender_thread_permit));
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();
-    let request_handler = move |req: Request| print_log_response(&req, handle_req(&state, &req));
+    let request_handler = move |req: Request| log_response(&req, handle_req(&state, &req));
     executor
         .block_on(
             HttpServerBuilder::new()

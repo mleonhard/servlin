@@ -22,8 +22,9 @@
 //! <http://127.0.0.1:8000/>
 #![forbid(unsafe_code)]
 use serde::Deserialize;
+use servlin::log::log_response;
 use servlin::reexport::{safina_executor, safina_timer};
-use servlin::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
+use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -78,14 +79,14 @@ fn increment(state: &Arc<State>) -> Response {
     Response::redirect_303("/")
 }
 
-fn add(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
+fn add(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
     #[derive(Deserialize)]
     struct Input {
         num: usize,
     }
     let input: Input = req.urlencoded()?;
     let num = if input.num > 5 {
-        return Err(Response::text(400, "num is too big"));
+        return Err(Error::client_error(Response::text(400, "num is too big")));
     } else {
         input.num
     };
@@ -93,7 +94,7 @@ fn add(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
     Ok(Response::redirect_303("/"))
 }
 
-fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Response> {
+fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
     match (req.method(), req.url().path()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("GET", "/") => Ok(index(state)),
@@ -108,7 +109,7 @@ pub fn main() {
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();
     let state = Arc::new(State::new());
-    let request_handler = move |req: Request| print_log_response(&req, handle_req(&state, &req));
+    let request_handler = move |req: Request| log_response(&req, handle_req(&state, &req));
     executor
         .block_on(
             HttpServerBuilder::new()

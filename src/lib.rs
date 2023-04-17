@@ -44,19 +44,20 @@
 //! use serde::Deserialize;
 //! use serde_json::json;
 //! use servlin::{
-//!     print_log_response,
 //!     socket_addr_127_0_0_1,
+//!     Error,
 //!     HttpServerBuilder,
 //!     Request,
 //!     Response
 //! };
+//! use servlin::log::log_response;
 //! use servlin::reexport::{safina_executor, safina_timer};
 //! use std::sync::Arc;
 //! use temp_dir::TempDir;
 //!
 //! struct State {}
 //!
-//! fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Response> {
+//! fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Error> {
 //!     #[derive(Deserialize)]
 //!     struct Input {
 //!         name: String,
@@ -66,7 +67,7 @@
 //!     .unwrap())
 //! }
 //!
-//! fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Response> {
+//! fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Error> {
 //!     match (req.method(), req.url().path()) {
 //!         ("GET", "/ping") => Ok(Response::text(200, "ok")),
 //!         ("POST", "/hello") => hello(state, req),
@@ -76,7 +77,7 @@
 //!
 //! let state = Arc::new(State {});
 //! let request_handler = move |req: Request| {
-//!     print_log_response(&req, handle_req(state, &req))
+//!     log_response(&req, handle_req(state, &req))
 //! };
 //! let cache_dir = TempDir::new().unwrap();
 //! safina_timer::start_timer_thread();
@@ -130,11 +131,13 @@ mod body_async_reader;
 mod body_reader;
 mod content_type;
 mod cookie;
+mod error;
 mod event;
 mod head;
 mod headers;
 mod http_conn;
 mod http_error;
+pub mod log;
 mod request;
 mod request_body;
 mod response;
@@ -151,6 +154,7 @@ pub use crate::body_async_reader::BodyAsyncReader;
 pub use crate::body_reader::BodyReader;
 pub use crate::content_type::ContentType;
 pub use crate::cookie::{Cookie, SameSite};
+pub use crate::error::Error;
 pub use crate::event::{Event, EventSender};
 pub use crate::headers::{Header, HeaderList};
 pub use crate::http_conn::HttpConn;
@@ -198,31 +202,6 @@ use async_net::TcpListener;
 use permit::Permit;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-
-#[allow(clippy::needless_pass_by_value)]
-#[must_use]
-pub fn print_log_response(req: &Request, result: Result<Response, Response>) -> Response {
-    let response = result.unwrap_or_else(|e| e);
-    if !response.is_get_body_and_reprocess() {
-        println!(
-            "{} {} {} => {} {}",
-            if response.code / 100 == 5 {
-                "ERROR"
-            } else {
-                "INFO"
-            },
-            req.method(),
-            req.url().path(),
-            response.code,
-            if let Some(len) = response.body.len() {
-                format!("len={len}")
-            } else {
-                "streamed".to_string()
-            },
-        );
-    }
-    response
-}
 
 /// Builds an HTTP server.
 pub struct HttpServerBuilder {
