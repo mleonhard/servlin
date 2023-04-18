@@ -31,6 +31,11 @@ pub struct PrefixFileSet {
     len: u64,
 }
 impl PrefixFileSet {
+    /// # Errors
+    /// Returns `Err` when it fails to list the directory or get the metadata of files in it.
+    ///
+    /// # Panics
+    /// Panics on platforms that do not support [`std::fs::Metadata::modified`].
     pub fn new(path_prefix: &Path) -> Result<Self, String> {
         let dir = path_prefix
             .parent()
@@ -42,14 +47,14 @@ impl PrefixFileSet {
         {
             let dir_entry = dir_entry.map_err(|e| format!("error reading dir {dir:?}: {e:?}"))?;
             let path = dir_entry.path();
-            if path.starts_with(&path_prefix) {
+            if path.starts_with(path_prefix) {
                 let metadata = dir_entry.metadata().map_err(|e| {
                     format!("error reading metadata of {:?}: {e:?}", dir_entry.path())
                 })?;
                 if metadata.is_file() {
                     let mtime = metadata.modified().unwrap();
                     let len = metadata.len();
-                    files.push(PrefixFile { path, mtime, len })
+                    files.push(PrefixFile { path, mtime, len });
                 }
             }
         }
@@ -57,6 +62,9 @@ impl PrefixFileSet {
         Ok(Self { files, len })
     }
 
+    /// # Errors
+    /// Returns `Err` when it fails to delete the file.
+    #[allow(clippy::missing_panics_doc)]
     pub fn delete_oldest(&mut self) -> Result<(), String> {
         let file = self.files.peek().unwrap();
         remove_file(&file.path)
@@ -66,6 +74,8 @@ impl PrefixFileSet {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns `Err` when it fails to delete a file.
     pub fn delete_older_than(&mut self, now: SystemTime, duration: Duration) -> Result<(), String> {
         let min_mtime = now - duration;
         while let Some(file) = self.files.peek() {
@@ -78,6 +88,8 @@ impl PrefixFileSet {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns `Err` when it fails to delete a file.
     pub fn delete_oldest_while_over_max_len(&mut self, max_len: u64) -> Result<(), String> {
         while self.len > max_len {
             self.delete_oldest()?;

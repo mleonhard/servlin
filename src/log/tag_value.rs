@@ -19,6 +19,7 @@ pub enum TagValue {
     Null,
 }
 impl TagValue {
+    #[must_use]
     pub fn ordinal(&self) -> usize {
         match self {
             TagValue::Str(..) => 0,
@@ -125,8 +126,8 @@ impl<T: Into<TagValue>> From<Option<T>> for TagValue {
 impl Display for TagValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            TagValue::Str(x) => write!(f, "{:?}", x),
-            TagValue::String(x) => write!(f, "{:?}", x),
+            TagValue::Str(x) => write!(f, "{x:?}"),
+            TagValue::String(x) => write!(f, "{x:?}"),
             TagValue::Bool(x) => Display::fmt(&x, f),
             TagValue::I8(x) => Display::fmt(&x, f),
             TagValue::I16(x) => Display::fmt(&x, f),

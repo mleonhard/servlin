@@ -86,6 +86,11 @@ impl From<std::io::Error> for Error {
         Self::server_error(value.to_string())
     }
 }
+impl Default for Error {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
         self.msg == other.msg

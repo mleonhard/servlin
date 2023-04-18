@@ -4,11 +4,12 @@ use crate::log::tag::Tag;
 use crate::log::tag_value::TagValue;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::ops::{Add, Deref, DerefMut};
 
 /// This struct converts a tuple of tag builders (`Into<Tag>`) to a vector of tags.
 /// It supports tuples of length 0 through 20.
-#[derive(Clone, Hash)]
+#[derive(Clone)]
 pub struct TagList(pub Vec<Tag>);
 impl TagList {
     #[must_use]
@@ -21,7 +22,7 @@ impl TagList {
     }
 
     pub fn push(&mut self, name: &'static str, value: impl Into<TagValue>) {
-        self.0.push(Tag::new(name, value))
+        self.0.push(Tag::new(name, value));
     }
 
     #[must_use]
@@ -33,6 +34,11 @@ impl TagList {
     #[must_use]
     pub fn into_vec(self) -> Vec<Tag> {
         self.0
+    }
+}
+impl Default for TagList {
+    fn default() -> Self {
+        Self::new()
     }
 }
 impl Deref for TagList {
@@ -78,20 +84,25 @@ impl Debug for TagList {
         write!(f, "}}")
     }
 }
-impl PartialEq for TagList {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.as_slice() == other.0.as_slice()
-    }
-}
 impl Eq for TagList {}
-impl PartialOrd for TagList {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.as_slice().partial_cmp(other.0.as_slice())
+impl Hash for TagList {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.as_slice().hash(state);
     }
 }
 impl Ord for TagList {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.as_slice().cmp(other.0.as_slice())
+    }
+}
+impl PartialEq for TagList {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_slice() == other.0.as_slice()
+    }
+}
+impl PartialOrd for TagList {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.as_slice().partial_cmp(other.0.as_slice())
     }
 }
 

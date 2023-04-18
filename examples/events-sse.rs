@@ -85,7 +85,7 @@ pub fn main() {
     std::thread::spawn(move || event_sender_thread(state_clone, event_sender_thread_permit));
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();
-    let request_handler = move |req: Request| log_response(&req, handle_req(&state, &req));
+    let request_handler = move |req: Request| log_response(&req, handle_req(&state, &req)).unwrap();
     executor
         .block_on(
             HttpServerBuilder::new()

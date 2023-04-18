@@ -77,7 +77,7 @@
 //!
 //! let state = Arc::new(State {});
 //! let request_handler = move |req: Request| {
-//!     log_response(&req, handle_req(state, &req))
+//!     log_response(&req, handle_req(state, &req)).unwrap()
 //! };
 //! let cache_dir = TempDir::new().unwrap();
 //! safina_timer::start_timer_thread();

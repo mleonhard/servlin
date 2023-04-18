@@ -44,19 +44,20 @@ Simple example:
 use serde::Deserialize;
 use serde_json::json;
 use servlin::{
-    print_log_response,
     socket_addr_127_0_0_1,
+    Error,
     HttpServerBuilder,
     Request,
     Response
 };
+use servlin::log::log_response;
 use servlin::reexport::{safina_executor, safina_timer};
 use std::sync::Arc;
 use temp_dir::TempDir;
 
 struct State {}
 
-fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Response> {
+fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Error> {
     #[derive(Deserialize)]
     struct Input {
         name: String,
@@ -66,7 +67,7 @@ fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Response> {
     .unwrap())
 }
 
-fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Response> {
+fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Error> {
     match (req.method(), req.url().path()) {
         ("GET", "/ping") => Ok(Response::text(200, "ok")),
         ("POST", "/hello") => hello(state, req),
@@ -76,7 +77,7 @@ fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Response> {
 
 let state = Arc::new(State {});
 let request_handler = move |req: Request| {
-    print_log_response(&req, handle_req(state, &req))
+    log_response(&req, handle_req(state, &req)).unwrap()
 };
 let cache_dir = TempDir::new().unwrap();
 safina_timer::start_timer_thread();
@@ -106,6 +107,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.1.2
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.6.0
+                                                       │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 4/4        91/91        16/16  0/0     1/1      ☢️  │   ├── async-lock 2.7.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.3
 0/0        28/28        4/4    0/0     0/0      ☢️  │   ├── blocking 1.3.1
@@ -141,12 +144,12 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      ❓  │   │                   ├── quote 1.0.26
 0/0        4/4          0/0    0/0     0/0      ☢️  │   │                   └── unicode-ident 1.0.8
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 1.13.0
-                                                       │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-net 1.7.0
                                                        │   [build-dependencies]
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 0/0        2/4          0/0    0/0     0/0      ☢️  │   ├── async-io 1.13.0
+                                                       │   │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   │   └── autocfg 1.1.0
 4/4        91/91        16/16  0/0     1/1      ☢️  │   │   ├── async-lock 2.7.0
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   ├── cfg-if 1.0.0
 0/0        168/168      2/2    0/0     1/1      ☢️  │   │   ├── concurrent-queue 2.2.0
@@ -172,13 +175,11 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        7/7          0/0    0/0     0/0      ☢️  │   │   │   ├── itoa 1.0.6
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   └── libc 0.2.141
 0/0        24/24        0/0    0/0     3/3      ☢️  │   │   ├── slab 0.4.8
-0/0        5/5          0/0    0/0     0/0      ☢️  │   │   │   └── serde 1.0.160
                                                        │   │   │   [build-dependencies]
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   └── autocfg 1.1.0
+0/0        5/5          0/0    0/0     0/0      ☢️  │   │   │   └── serde 1.0.160
 3/6        540/673      2/4    0/0     3/4      ☢️  │   │   ├── socket2 0.4.9
 0/0        21/21        0/0    0/0     4/4      ☢️  │   │   └── waker-fn 1.1.0
-                                                       │   │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   │   └── autocfg 1.1.0
 0/0        28/28        4/4    0/0     0/0      ☢️  │   ├── blocking 1.3.1
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 1.13.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── fixed-buffer 0.5.0
@@ -189,6 +190,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── include_dir_macros 0.7.3
 0/0        15/15        0/0    0/0     3/3      ☢️  │       ├── proc-macro2 1.0.56
 0/0        0/0          0/0    0/0     0/0      ❓  │       └── quote 1.0.26
+1/1        79/125       5/9    0/0     2/4      ☢️  ├── once_cell 1.17.1
 0/0        0/0          0/0    0/0     0/0      🔒  ├── permit 0.2.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safe-regex 0.2.5
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safe-regex-macro 0.2.5

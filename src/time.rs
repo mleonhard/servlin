@@ -203,13 +203,19 @@ impl ToDateTime for SystemTime {
 }
 
 pub trait EpochNs {
-    // Nanoseconds overflow u64 in the year 2554.
+    /// Convert to nanoseconds.
+    ///
+    /// # Panics
+    /// Panics when the value would overflow u64.  This happens for dates in the year 2554.
     fn epoch_ns(&self) -> u64;
 }
 impl EpochNs for SystemTime {
     fn epoch_ns(&self) -> u64 {
-        self.duration_since(UNIX_EPOCH)
-            .unwrap_or(Duration::from_secs(0))
-            .as_nanos() as u64
+        u64::try_from(
+            self.duration_since(UNIX_EPOCH)
+                .unwrap_or(Duration::from_secs(0))
+                .as_nanos(),
+        )
+        .unwrap()
     }
 }

@@ -16,6 +16,12 @@ pub struct LogFile {
     pub created: SystemTime,
 }
 impl LogFile {
+    /// Creates a new file on disk with a name that starts with `path_prefix`.
+    /// If files already exist, it tries other filename suffixes
+    /// until it finds one that does not exist.
+    ///
+    /// # Errors
+    /// Returns `Err` when it fails to create the file.
     pub fn create(path_prefix: &Path) -> Result<Self, String> {
         for n in 0..u64::MAX {
             let dt = SystemTime::now().to_datetime();
@@ -43,6 +49,10 @@ impl LogFile {
         unreachable!();
     }
 
+    /// Writes all of the bytes in `buffer` to the file.
+    ///
+    /// # Errors
+    /// Returns `Err` when it fails to write to the file.
     pub fn write_all(&mut self, buffer: &Vec<u8>) -> Result<(), String> {
         self.file
             .write_all(buffer)
@@ -51,12 +61,15 @@ impl LogFile {
         Ok(())
     }
 
+    /// Returns the duration between the file's creation and `now`.
+    #[must_use]
     pub fn age(&self, now: SystemTime) -> Duration {
         now.duration_since(self.created)
             .unwrap_or(Duration::from_secs(0))
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub struct LogFileWriterBuilder {
     pub max_keep_age: Option<Duration>,
     pub max_keep_bytes: u64,
@@ -72,10 +85,12 @@ impl LogFileWriterBuilder {
     ///
     /// # Panics
     /// Panics when `duration` is less than 1 minute.
+    #[must_use]
     pub fn with_max_keep_age(mut self, duration: Duration) -> Self {
-        if duration < Duration::from_secs(60) {
-            panic!("duration is less than 1 minute: {duration:?}");
-        }
+        assert!(
+            duration >= Duration::from_secs(60),
+            "duration is less than 1 minute: {duration:?}"
+        );
         self.max_keep_age = Some(duration);
         self
     }
@@ -87,10 +102,12 @@ impl LogFileWriterBuilder {
     ///
     /// # Panics
     /// Panics when `duration` is less than 1 second.
+    #[must_use]
     pub fn with_max_write_age(mut self, duration: Duration) -> Self {
-        if duration < Duration::from_secs(1) {
-            panic!("duration is less than 1 second: {duration:?}");
-        }
+        assert!(
+            duration >= Duration::from_secs(1),
+            "duration is less than 1 second: {duration:?}"
+        );
         self.max_write_age = duration;
         self
     }
@@ -100,14 +117,17 @@ impl LogFileWriterBuilder {
     ///
     /// # Panics
     /// Panics when `len` is less than 64 KiB.
+    #[must_use]
     pub fn with_max_write_bytes(mut self, len: u64) -> Self {
-        if len < (64 * 1024) {
-            panic!("len is less than 64 KiB: {len}");
-        }
+        assert!(len >= (64 * 1024), "len is less than 64 KiB: {len}");
         self.max_write_bytes = len;
         self
     }
 
+    /// Creates the first log file and starts the log file writer thread.
+    ///
+    /// # Errors
+    /// Returns `Err` when it fails to create the first log file.
     pub fn start_writer_thread(self) -> Result<SyncSender<LogEvent>, Error> {
         LogFileWriter::start_writer_thread(self)
     }
@@ -133,8 +153,9 @@ impl LogFileWriter {
     /// let writer = LogFileWriter::new_builder(
     ///     PathBuf::from("/var/log/server.log"),
     ///     100 * 1024 * 1024,
-    /// ).build();
+    /// ).start_writer_thread();
     /// ```
+    #[must_use]
     pub fn new_builder(
         path_prefix: impl Into<PathBuf>,
         max_keep_bytes: u64,
@@ -148,6 +169,15 @@ impl LogFileWriter {
         }
     }
 
+    /// Creates the first log file and starts the log file writer thread.
+    ///
+    /// You probably don't want to call this.
+    /// Use `LogFileWriter::new_builder(..).start_writer_thread()` instead.
+    ///
+    /// # Errors
+    /// Returns `Err` when it fails to create the first log file.
+    #[allow(clippy::missing_panics_doc)]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn start_writer_thread(
         builder: LogFileWriterBuilder,
     ) -> Result<SyncSender<LogEvent>, Error> {
