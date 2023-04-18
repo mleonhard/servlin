@@ -68,6 +68,19 @@ pub fn start_stdout_logger_thread() -> SyncSender<LogEvent> {
     sender
 }
 
+#[allow(clippy::missing_panics_doc)]
+#[must_use]
+pub fn start_stdout_jsonl_logger_thread() -> SyncSender<LogEvent> {
+    let (sender, receiver): (SyncSender<LogEvent>, Receiver<LogEvent>) = sync_channel(100);
+    std::thread::spawn(move || {
+        let mut stdout = std::io::stdout();
+        for event in receiver {
+            event.write_json(&mut stdout).unwrap();
+        }
+    });
+    sender
+}
+
 pub static GLOBAL_LOGGER: once_cell::sync::OnceCell<Mutex<SyncSender<LogEvent>>> =
     once_cell::sync::OnceCell::new();
 
