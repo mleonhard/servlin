@@ -50,11 +50,9 @@ impl Display for Level {
 /// # Errors
 /// Returns `Err` when the global logger has stopped.
 pub fn error(msg: impl Into<String>, tags: impl Into<TagList>) -> Result<(), LoggerStoppedError> {
-    log(
-        SystemTime::now(),
-        Level::Error,
-        tags.into().with("msg", msg.into()).into_vec(),
-    )
+    let mut tags = tags.into();
+    tags.insert(0, tag("msg", msg.into()));
+    log(SystemTime::now(), Level::Error, tags.into_vec())
 }
 
 /// Make a new log event with 'info' level and sends it to the global logger.
@@ -62,11 +60,9 @@ pub fn error(msg: impl Into<String>, tags: impl Into<TagList>) -> Result<(), Log
 /// # Errors
 /// Returns `Err` when the global logger has stopped.
 pub fn info(msg: impl Into<String>, tags: impl Into<TagList>) -> Result<(), LoggerStoppedError> {
-    log(
-        SystemTime::now(),
-        Level::Info,
-        tags.into().with("msg", msg.into()).into_vec(),
-    )
+    let mut tags = tags.into();
+    tags.insert(0, tag("msg", msg.into()));
+    log(SystemTime::now(), Level::Info, tags.into_vec())
 }
 
 /// Make a new log event with 'debug' level and sends it to the global logger.
@@ -74,11 +70,9 @@ pub fn info(msg: impl Into<String>, tags: impl Into<TagList>) -> Result<(), Logg
 /// # Errors
 /// Returns `Err` when the global logger has stopped.
 pub fn debug(msg: impl Into<String>, tags: impl Into<TagList>) -> Result<(), LoggerStoppedError> {
-    log(
-        SystemTime::now(),
-        Level::Debug,
-        tags.into().with("msg", msg.into()).into_vec(),
-    )
+    let mut tags = tags.into();
+    tags.insert(0, tag("msg", msg.into()));
+    log(SystemTime::now(), Level::Debug, tags.into_vec())
 }
 
 /// Makes a new log event for `result` and sends it to the global logger.

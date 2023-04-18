@@ -41,9 +41,9 @@ impl LogEvent {
         let level = self.level;
         let tags = &self.tags;
         if tags.is_empty() {
-            writeln!(f, "{{\"time_ns\":{time_ns},\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\"}}")
+            writeln!(f, "{{\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",\"time_ns\":{time_ns}}}")
         } else {
-            writeln!(f, "{{\"time_ns\":{time_ns},\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",{tags}}}")
+            writeln!(f, "{{\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",{tags},\"time_ns\":{time_ns}}}")
         }
     }
 }
