@@ -202,14 +202,18 @@ impl ToDateTime for SystemTime {
     }
 }
 
-pub trait EpochNs {
+#[allow(clippy::module_name_repetitions)]
+pub trait EpochTime {
     /// Convert to nanoseconds.
     ///
     /// # Panics
     /// Panics when the value would overflow u64.  This happens for dates in the year 2554.
     fn epoch_ns(&self) -> u64;
+
+    /// Convert to seconds.
+    fn epoch_s(&self) -> u64;
 }
-impl EpochNs for SystemTime {
+impl EpochTime for SystemTime {
     fn epoch_ns(&self) -> u64 {
         u64::try_from(
             self.duration_since(UNIX_EPOCH)
@@ -217,5 +221,11 @@ impl EpochNs for SystemTime {
                 .as_nanos(),
         )
         .unwrap()
+    }
+
+    fn epoch_s(&self) -> u64 {
+        self.duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::from_secs(0))
+            .as_secs()
     }
 }

@@ -1,4 +1,4 @@
-use crate::internal::{EpochNs, FormatTime, ToDateTime};
+use crate::internal::{EpochTime, FormatTime, ToDateTime};
 use crate::log::tag::Tag;
 use crate::log::tag_list::TagList;
 use crate::log::tag_value::TagValue;
