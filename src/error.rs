@@ -40,7 +40,8 @@ impl Error {
     }
 
     #[must_use]
-    pub fn with_msg(mut self, msg: String) -> Self {
+    pub fn with_msg(mut self, msg: impl Into<String>) -> Self {
+        let msg = msg.into();
         self.msg = if let Some(prev_msg) = self.msg {
             Some(format!("{msg}: {prev_msg}"))
         } else {
