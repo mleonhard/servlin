@@ -138,6 +138,7 @@ mod headers;
 mod http_conn;
 mod http_error;
 pub mod log;
+mod rand;
 mod request;
 mod request_body;
 mod response;

@@ -22,7 +22,7 @@
 //! Upload received, body_len=5, upload_count=2
 //! ```
 #![forbid(unsafe_code)]
-use servlin::log::{log_response, set_global_logger, LogFileWriter};
+use servlin::log::{log_request_and_response, set_global_logger, LogFileWriter};
 use servlin::reexport::{safina_executor, safina_timer};
 use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
 use std::io::Read;
@@ -43,7 +43,7 @@ impl State {
     }
 }
 
-fn put(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
+fn put(state: Arc<State>, req: Request) -> Result<Response, Error> {
     if req.body.is_pending() {
         return Ok(Response::get_body_and_reprocess(1024 * 1024));
     }
@@ -59,7 +59,7 @@ fn put(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
     ))
 }
 
-fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
+fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
     match (req.method(), req.url().path()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("PUT", "/upload") => put(state, req),
@@ -80,7 +80,8 @@ pub fn main() {
     let executor = safina_executor::Executor::default();
     let cache_dir = TempDir::new().unwrap();
     let state = Arc::new(State::new());
-    let request_handler = move |req: Request| log_response(&req, handle_req(&state, &req)).unwrap();
+    let request_handler =
+        move |req: Request| log_request_and_response(req, |req| handle_req(state, req));
     executor
         .block_on(
             HttpServerBuilder::new()

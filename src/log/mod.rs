@@ -12,8 +12,8 @@ pub use log_file_writer::LogFileWriter;
 use logger::log;
 pub use logger::set_global_logger;
 pub use logger::{
-    add_thread_local_log_tag, clear_thread_local_log_tags, with_thread_local_log_tags,
-    LoggerStoppedError,
+    add_thread_local_log_tag, add_thread_local_log_tags_from_request, clear_thread_local_log_tags,
+    with_thread_local_log_tags, LoggerStoppedError,
 };
 use std::fmt::{Display, Formatter};
 use std::time::SystemTime;
@@ -83,17 +83,11 @@ pub fn debug(msg: impl Into<String>, tags: impl Into<TagList>) -> Result<(), Log
 ///
 /// # Errors
 /// Returns `Err` when the global logger has stopped.
-#[allow(clippy::needless_pass_by_value)]
 #[allow(clippy::module_name_repetitions)]
-pub fn log_response(
-    req: &Request,
-    result: Result<Response, Error>,
-) -> Result<Response, LoggerStoppedError> {
+pub fn log_response(result: Result<Response, Error>) -> Result<Response, LoggerStoppedError> {
     match result {
         Ok(response) => {
             let mut tags = Vec::new();
-            tags.push(Tag::new("http_method", req.method()));
-            tags.push(Tag::new("path", req.url().path()));
             tags.push(Tag::new("code", response.code));
             if let Some(body_len) = response.body.len() {
                 tags.push(Tag::new("body_len", body_len));
@@ -112,8 +106,6 @@ pub fn log_response(
             if let Some(backtrace) = e.backtrace {
                 tags.push(Tag::new("msg", format!("{backtrace:?}")));
             }
-            tags.push(Tag::new("http_method", req.method()));
-            tags.push(Tag::new("path", req.url().path()));
             tags.push(Tag::new("code", response.code));
             if let Some(body_len) = response.body.len() {
                 tags.push(Tag::new("body_len", body_len));
@@ -122,4 +114,30 @@ pub fn log_response(
             Ok(response)
         }
     }
+}
+
+/// Adds thread-local log tags from the request and then calls the handler `f`.
+/// When `f` does logging, the log messages will include the request id, HTTP method, and path.
+/// When `f` returns, this function makes a new log event for the result
+/// and sends it to the global logger.
+///
+/// When the result of `f` is an [`Error`] without a response,
+/// this function uses [`Response::internal_server_errror_500`] to make one.
+///
+/// Returns the response.
+///
+/// Clears thread-local log tags.
+///
+/// # Errors
+/// Returns `Err` when the global logger has stopped.
+#[allow(clippy::module_name_repetitions)]
+pub fn log_request_and_response<F: FnOnce(Request) -> Result<Response, Error>>(
+    req: Request,
+    f: F,
+) -> Response {
+    clear_thread_local_log_tags();
+    add_thread_local_log_tags_from_request(&req);
+    let response = log_response(f(req)).unwrap();
+    clear_thread_local_log_tags();
+    response
 }

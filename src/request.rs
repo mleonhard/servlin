@@ -1,5 +1,6 @@
 use crate::head::read_http_head;
 use crate::http_error::HttpError;
+use crate::rand::next_insecure_rand_u64;
 use crate::{AsciiString, ContentType, HeaderList, RequestBody, Response};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
@@ -10,6 +11,7 @@ use url::Url;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Request {
+    pub id: u64,
     pub remote_addr: SocketAddr,
     pub method: String,
     pub url: Url,
@@ -240,6 +242,7 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
         (false, None, _) => RequestBody::empty(),
     };
     Ok(Request {
+        id: next_insecure_rand_u64(),
         remote_addr,
         method: head.method,
         url: head.url,

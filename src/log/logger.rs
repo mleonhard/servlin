@@ -3,6 +3,7 @@ use crate::log::tag::Tag;
 use crate::log::tag_list::TagList;
 use crate::log::tag_value::TagValue;
 use crate::log::Level;
+use crate::Request;
 use std::cell::RefCell;
 use std::io::Write;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
@@ -137,6 +138,12 @@ pub fn clear_thread_local_log_tags() {
 
 pub fn with_thread_local_log_tags<R, F: FnOnce(&[Tag]) -> R>(f: F) -> R {
     THREAD_LOCAL_TAGS.with(|cell| f(cell.borrow().as_slice()))
+}
+
+pub fn add_thread_local_log_tags_from_request(req: &Request) {
+    add_thread_local_log_tag("http_method", req.method());
+    add_thread_local_log_tag("path", req.url().path());
+    add_thread_local_log_tag("request_id", req.id);
 }
 
 #[allow(clippy::module_name_repetitions)]

@@ -37,7 +37,7 @@
 #![forbid(unsafe_code)]
 use serde::Deserialize;
 use serde_json::json;
-use servlin::log::log_response;
+use servlin::log::log_request_and_response;
 use servlin::reexport::{safina_executor, safina_timer};
 use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -66,16 +66,16 @@ impl State {
     }
 }
 
-fn get_count(state: &Arc<State>) -> Response {
+fn get_count(state: Arc<State>) -> Response {
     Response::json(200, json!({ "count": state.get() })).unwrap()
 }
 
-fn increment(state: &Arc<State>) -> Response {
+fn increment(state: Arc<State>) -> Response {
     state.increment();
     Response::json(200, json!({ "count": state.get() })).unwrap()
 }
 
-fn add(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
+fn add(state: Arc<State>, req: Request) -> Result<Response, Error> {
     #[derive(Deserialize)]
     struct Input {
         num: usize,
@@ -90,7 +90,7 @@ fn add(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
     Ok(Response::json(200, json!({ "count": state.get() })).unwrap())
 }
 
-fn handle_req(state: &Arc<State>, req: &Request) -> Result<Response, Error> {
+fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
     match (req.method(), req.url().path()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("GET", "/get") => Ok(get_count(state)),
@@ -105,7 +105,8 @@ pub fn main() {
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();
     let state = Arc::new(State::new());
-    let request_handler = move |req: Request| log_response(&req, handle_req(&state, &req)).unwrap();
+    let request_handler =
+        move |req: Request| log_request_and_response(req, |req| handle_req(state, req));
     executor
         .block_on(
             HttpServerBuilder::new()

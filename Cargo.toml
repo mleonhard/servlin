@@ -24,6 +24,7 @@ include_dir = { version = "0.7", optional = true }
 #libflate = "1"
 once_cell = "1"
 permit = "^0.2.1"
+rand = { version = "^0.8.5", features = ["small_rng"] }
 safe-regex = "^0.2.5"
 safina-executor = { version = "^0.3.3" }
 safina-sync = { version = "^0.2.4" }
