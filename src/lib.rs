@@ -50,14 +50,14 @@
 //!     Request,
 //!     Response
 //! };
-//! use servlin::log::log_response;
+//! use servlin::log::log_request_and_response;
 //! use servlin::reexport::{safina_executor, safina_timer};
 //! use std::sync::Arc;
 //! use temp_dir::TempDir;
 //!
 //! struct State {}
 //!
-//! fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Error> {
+//! fn hello(_state: Arc<State>, req: Request) -> Result<Response, Error> {
 //!     #[derive(Deserialize)]
 //!     struct Input {
 //!         name: String,
@@ -67,7 +67,7 @@
 //!     .unwrap())
 //! }
 //!
-//! fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Error> {
+//! fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
 //!     match (req.method(), req.url().path()) {
 //!         ("GET", "/ping") => Ok(Response::text(200, "ok")),
 //!         ("POST", "/hello") => hello(state, req),
@@ -77,7 +77,7 @@
 //!
 //! let state = Arc::new(State {});
 //! let request_handler = move |req: Request| {
-//!     log_response(&req, handle_req(state, &req)).unwrap()
+//!     log_request_and_response(req, |req| handle_req(state, req))
 //! };
 //! let cache_dir = TempDir::new().unwrap();
 //! safina_timer::start_timer_thread();
@@ -104,6 +104,7 @@
 //!
 //! # Changelog
 //! - v0.1.2 - Add:
+//!    - `log_request_and_response` and other logging tooling
 //!    - `Response::ok_200()`
 //!    - `Response::unauthorized_401()`
 //!    - `Response::forbidden_403()`

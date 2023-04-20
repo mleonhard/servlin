@@ -90,7 +90,7 @@ pub fn log_response(result: Result<Response, Error>) -> Result<Response, LoggerS
             let mut tags = Vec::new();
             tags.push(Tag::new("code", response.code));
             if let Some(body_len) = response.body.len() {
-                tags.push(Tag::new("body_len", body_len));
+                tags.push(Tag::new("response_body_len", body_len));
             }
             log(SystemTime::now(), Level::Info, tags)?;
             Ok(response)
@@ -108,7 +108,7 @@ pub fn log_response(result: Result<Response, Error>) -> Result<Response, LoggerS
             }
             tags.push(Tag::new("code", response.code));
             if let Some(body_len) = response.body.len() {
-                tags.push(Tag::new("body_len", body_len));
+                tags.push(Tag::new("response_body_len", body_len));
             }
             log(e.time, Level::Error, tags)?;
             Ok(response)
@@ -130,6 +130,9 @@ pub fn log_response(result: Result<Response, Error>) -> Result<Response, LoggerS
 ///
 /// # Errors
 /// Returns `Err` when the global logger has stopped.
+///
+/// # Panics
+/// Panics when the global logger has stopped ([`LoggerStoppedError`]).
 #[allow(clippy::module_name_repetitions)]
 pub fn log_request_and_response<F: FnOnce(Request) -> Result<Response, Error>>(
     req: Request,

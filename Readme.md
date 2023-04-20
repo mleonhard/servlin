@@ -50,14 +50,14 @@ use servlin::{
     Request,
     Response
 };
-use servlin::log::log_response;
+use servlin::log::log_request_and_response;
 use servlin::reexport::{safina_executor, safina_timer};
 use std::sync::Arc;
 use temp_dir::TempDir;
 
 struct State {}
 
-fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Error> {
+fn hello(_state: Arc<State>, req: Request) -> Result<Response, Error> {
     #[derive(Deserialize)]
     struct Input {
         name: String,
@@ -67,7 +67,7 @@ fn hello(_state: Arc<State>, req: &Request) -> Result<Response, Error> {
     .unwrap())
 }
 
-fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Error> {
+fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
     match (req.method(), req.url().path()) {
         ("GET", "/ping") => Ok(Response::text(200, "ok")),
         ("POST", "/hello") => hello(state, req),
@@ -77,7 +77,7 @@ fn handle_req(state: Arc<State>, req: &Request) -> Result<Response, Error> {
 
 let state = Arc::new(State {});
 let request_handler = move |req: Request| {
-    log_response(&req, handle_req(state, &req)).unwrap()
+    log_request_and_response(req, |req| handle_req(state, req))
 };
 let cache_dir = TempDir::new().unwrap();
 safina_timer::start_timer_thread();
@@ -107,8 +107,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.1.2
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.6.0
-                                                       │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 4/4        91/91        16/16  0/0     1/1      ☢️  │   ├── async-lock 2.7.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.3
 0/0        28/28        4/4    0/0     0/0      ☢️  │   ├── blocking 1.3.1
@@ -144,6 +142,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      ❓  │   │                   ├── quote 1.0.26
 0/0        4/4          0/0    0/0     0/0      ☢️  │   │                   └── unicode-ident 1.0.8
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 1.13.0
+                                                       │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-net 1.7.0
                                                        │   [build-dependencies]
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
@@ -157,14 +157,12 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 1/1        16/18        1/1    0/0     0/0      ☢️  │   │   ├── log 0.4.17
 0/0        0/0          0/0    0/0     0/0      🔒  │   │   ├── parking 2.1.0
 0/1        11/250       5/16   1/4     0/5      ☢️  │   │   ├── polling 2.7.0
+                                                       │   │   │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   └── autocfg 1.1.0
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   ├── cfg-if 1.0.0
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   ├── libc 0.2.141
 1/1        16/18        1/1    0/0     0/0      ☢️  │   │   │   └── log 0.4.17
-                                                       │   │   │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   └── autocfg 1.1.0
 44/360     1571/6038    1/2    0/0     6/21     ☢️  │   │   ├── rustix 0.37.11
-                                                       │   │   │   [build-dependencies]
-0/1        0/201        0/2    0/0     0/4      ❓  │   │   │   └── cc 1.0.79
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   ├── bitflags 1.3.2
 0/0        32/100       0/0    0/0     0/0      ☢️  │   │   │   ├── errno 0.3.1
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   │   └── libc 0.2.141
@@ -174,10 +172,12 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   │       └── libc 0.2.141
 0/0        7/7          0/0    0/0     0/0      ☢️  │   │   │   ├── itoa 1.0.6
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   └── libc 0.2.141
+                                                       │   │   │   [build-dependencies]
+0/1        0/201        0/2    0/0     0/4      ❓  │   │   │   └── cc 1.0.79
 0/0        24/24        0/0    0/0     3/3      ☢️  │   │   ├── slab 0.4.8
+0/0        5/5          0/0    0/0     0/0      ☢️  │   │   │   └── serde 1.0.160
                                                        │   │   │   [build-dependencies]
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   └── autocfg 1.1.0
-0/0        5/5          0/0    0/0     0/0      ☢️  │   │   │   └── serde 1.0.160
 3/6        540/673      2/4    0/0     3/4      ☢️  │   │   ├── socket2 0.4.9
 0/0        21/21        0/0    0/0     4/4      ☢️  │   │   └── waker-fn 1.1.0
 0/0        28/28        4/4    0/0     0/0      ☢️  │   ├── blocking 1.3.1
@@ -191,7 +191,20 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        15/15        0/0    0/0     3/3      ☢️  │       ├── proc-macro2 1.0.56
 0/0        0/0          0/0    0/0     0/0      ❓  │       └── quote 1.0.26
 1/1        79/125       5/9    0/0     2/4      ☢️  ├── once_cell 1.17.1
-0/0        0/0          0/0    0/0     0/0      🔒  ├── permit 0.2.0
+0/0        0/0          0/0    0/0     0/0      🔒  ├── permit 0.2.1
+0/0        32/32        0/0    0/0     0/0      ☢️  ├── rand 0.8.5
+1/24       10/449       0/2    0/0     5/50     ☢️  │   ├── libc 0.2.141
+1/1        16/18        1/1    0/0     0/0      ☢️  │   ├── log 0.4.17
+0/0        0/0          0/0    0/0     0/0      ❓  │   ├── rand_chacha 0.3.1
+2/2        636/712      0/0    0/0     17/25    ☢️  │   │   ├── ppv-lite86 0.2.17
+0/0        2/2          0/0    0/0     0/0      ☢️  │   │   ├── rand_core 0.6.4
+3/7        71/224       1/1    0/0     3/3      ☢️  │   │   │   ├── getrandom 0.2.9
+0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   │   ├── cfg-if 1.0.0
+1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   │   └── libc 0.2.141
+0/0        5/5          0/0    0/0     0/0      ☢️  │   │   │   └── serde 1.0.160
+0/0        5/5          0/0    0/0     0/0      ☢️  │   │   └── serde 1.0.160
+0/0        2/2          0/0    0/0     0/0      ☢️  │   ├── rand_core 0.6.4
+0/0        5/5          0/0    0/0     0/0      ☢️  │   └── serde 1.0.160
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safe-regex 0.2.5
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safe-regex-macro 0.2.5
 0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.36
@@ -231,7 +244,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        3/3          0/0    0/0     0/0      ☢️      ├── percent-encoding 2.2.0
 0/0        5/5          0/0    0/0     0/0      ☢️      └── serde 1.0.160
 
-102/449    6488/13169   82/129 3/6     75/158 
+107/458    7229/14139   83/130 3/6     95/186 
 
 ```
 # Alternatives
@@ -239,6 +252,7 @@ See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/mai
 
 # Changelog
 - v0.1.2 - Add:
+   - `log_request_and_response` and other logging tooling
    - `Response::ok_200()`
    - `Response::unauthorized_401()`
    - `Response::forbidden_403()`

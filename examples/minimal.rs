@@ -11,8 +11,22 @@
 //!
 //! Make a request to it:
 //! ```
-//! $ curl http://127.0.0.1:8000/   
+//! $ curl -v http://127.0.0.1:8000/
+//! *   Trying 127.0.0.1:8000...
+//! * Connected to 127.0.0.1 (127.0.0.1) port 8000 (#0)
+//! > GET / HTTP/1.1
+//! > Host: 127.0.0.1:8000
+//! > User-Agent: curl/7.79.1
+//! > Accept: */*
+//! >
+//! * Mark bundle as not supporting multiuse
+//! < HTTP/1.1 404 Not Found
+//! < content-type: text/plain; charset=UTF-8
+//! < content-length: 9
+//! <
+//! * Connection #0 to host 127.0.0.1 left intact
 //! not found
+//! $
 //! ```
 #![forbid(unsafe_code)]
 use servlin::reexport::{safina_executor, safina_timer};

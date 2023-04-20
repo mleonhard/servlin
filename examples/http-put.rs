@@ -3,23 +3,29 @@
 //!
 //! Start the server:
 //! ```
-//! cargo run --package servlin --example http-put
-//!     Finished dev [unoptimized + debuginfo] target(s) in 0.04s
+//! $ cargo run --package servlin --example http-put
+//!    Compiling servlin v0.1.2 (/Users/user/servlin)
+//!     Finished dev [unoptimized + debuginfo] target(s) in 2.56s
 //!      Running `target/debug/examples/http-put`
 //! Access the server at http://127.0.0.1:8000/upload
-//! INFO PUT /upload => 200 len=44
-//! INFO PUT /upload => 200 len=44
 //! ^C
+//! $ cat log.20230420T172728Z-0
+//! {"time":"2023-04-20T17:27:28Z","level":"info","msg":"Starting log writer","time_ns":1682011648182924000}
+//! {"time":"2023-04-20T17:27:37Z","level":"info","code":200,"response_body_len":44,"http_method":"PUT","path":"/upload","request_id":13447028046809572982,"time_ns":1682011657080608000}
+//! {"time":"2023-04-20T17:27:43Z","level":"info","code":200,"response_body_len":44,"http_method":"PUT","path":"/upload","request_id":10015697617888059338,"time_ns":1682011663410536000}
+//! $
 //! ```
 //!
 //! Make requests to it:
 //! ```
-//! $ echo -n abc >abc.txt                                       
-//! $ curl http://127.0.0.1:8000/upload --upload-file abc.txt    
+//! $ cargo run --package servlin --features urlencoded --example html_form
+//! $ echo -n abc >abc.txt
+//! $ curl http://127.0.0.1:8000/upload --upload-file abc.txt
 //! Upload received, body_len=3, upload_count=1
-//! $ echo -n 12345 >12345.txt                                   
+//! $ echo -n 12345 >12345.txt
 //! $ curl http://127.0.0.1:8000/upload --upload-file 12345.txt
 //! Upload received, body_len=5, upload_count=2
+//! $
 //! ```
 #![forbid(unsafe_code)]
 use servlin::log::{log_request_and_response, set_global_logger, LogFileWriter};
@@ -43,6 +49,7 @@ impl State {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn put(state: Arc<State>, req: Request) -> Result<Response, Error> {
     if req.body.is_pending() {
         return Ok(Response::get_body_and_reprocess(1024 * 1024));

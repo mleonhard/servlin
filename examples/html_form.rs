@@ -3,18 +3,20 @@
 //!
 //! Start the server:
 //! ```
-//! % cargo run --package servlin --features urlencoded --example html_form
-//!    Compiling servlin v0.1.0 (/x/servlin)
-//!     Finished dev [unoptimized + debuginfo] target(s) in 2.35s
+//! cargo run --package servlin --features urlencoded --example html_form
+//!     Finished dev [unoptimized + debuginfo] target(s) in 0.25s
 //!      Running `target/debug/examples/html_form`
 //! Access the server at http://127.0.0.1:8000/
-//! INFO GET / => 200 len=370
-//! INFO POST /increment => 303 len=0
-//! INFO GET / => 200 len=370
-//! INFO POST /increment => 303 len=0
-//! INFO GET / => 200 len=370
-//! INFO POST /add => 303 len=0
-//! INFO GET / => 200 len=370
+//! 2023-04-20T17:18:57Z info "code":200,"body_len":370,"http_method":"GET","path":"/","request_id":3504837461057921534
+//! 2023-04-20T17:18:57Z info "code":404,"body_len":9,"http_method":"GET","path":"/favicon.ico","request_id":14979834421061568265
+//! 2023-04-20T17:19:08Z info "code":303,"body_len":0,"http_method":"POST","path":"/increment","request_id":10633635939599229141
+//! 2023-04-20T17:19:08Z info "code":200,"body_len":370,"http_method":"GET","path":"/","request_id":2615853109542701666
+//! 2023-04-20T17:19:08Z info "code":404,"body_len":9,"http_method":"GET","path":"/favicon.ico","request_id":6599307416411604969
+//! 2023-04-20T17:19:15Z info "code":303,"body_len":0,"http_method":"POST","path":"/increment","request_id":1471059950980094153
+//! 2023-04-20T17:19:15Z info "code":200,"body_len":370,"http_method":"GET","path":"/","request_id":13807176225544983707
+//! 2023-04-20T17:19:15Z info "code":404,"body_len":9,"http_method":"GET","path":"/favicon.ico","request_id":6733001312936409561
+//! 2023-04-20T17:19:24Z info "code":303,"body_len":0,"http_method":"POST","path":"/add","request_id":2450901135286845771
+//! 2023-04-20T17:19:24Z info "code":200,"body_len":370,"http_method":"GET","path":"/","request_id":18076069727349126411
 //! ^C
 //! ```
 //!
@@ -51,6 +53,7 @@ impl State {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn index(state: Arc<State>) -> Response {
     Response::html(
         200,
@@ -74,11 +77,13 @@ fn index(state: Arc<State>) -> Response {
     )
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn increment(state: Arc<State>) -> Response {
     state.increment();
     Response::redirect_303("/")
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn add(state: Arc<State>, req: Request) -> Result<Response, Error> {
     #[derive(Deserialize)]
     struct Input {

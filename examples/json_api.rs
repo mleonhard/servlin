@@ -3,19 +3,20 @@
 //!
 //! Start the server:
 //! ```
-//! cargo run --package servlin --features json --example json_api
-//!    Compiling servlin v0.1.0 (/x/servlin)
-//!     Finished dev [unoptimized + debuginfo] target(s) in 2.20s
+//! % cargo run --package servlin --features json --example json_api
+//!     Finished dev [unoptimized + debuginfo] target(s) in 0.12s
 //!      Running `target/debug/examples/json_api`
-//! INFO GET /get => 200 len=11
-//! INFO POST /increment => 200 len=11
-//! INFO POST /add => 200 len=11
+//! Access the API at http://127.0.0.1:8000/
+//! 2023-04-20T17:29:07Z info "code":200,"response_body_len":11,"http_method":"GET","path":"/get","request_id":11704830503426885018
+//! 2023-04-20T17:29:17Z info "code":200,"response_body_len":11,"http_method":"POST","path":"/increment","request_id":8295975836798953203
+//! 2023-04-20T17:29:17Z info "code":200,"response_body_len":11,"http_method":"POST","path":"/increment","request_id":8295975836798953203
+//! 2023-04-20T17:29:23Z info "code":200,"response_body_len":11,"http_method":"POST","path":"/add","request_id":2174859481348643435
 //! ^C
 //! ```
 //!
 //! Make requests to it:
 //! ```
-//! $ echo -ne 'GET /get HTTP/1.1\r\n\r\n' |nc 127.0.0.1 8000                                                        
+//! $ echo -ne 'GET /get HTTP/1.1\r\n\r\n' |nc 127.0.0.1 8000
 //! HTTP/1.1 200 OK
 //! content-type: application/json; charset=UTF-8
 //! content-length: 11
@@ -26,13 +27,13 @@
 //! content-type: application/json; charset=UTF-8
 //! content-length: 11
 //!
-//! {"count":1}
+//! {"count":2}
 //! $ echo -ne 'POST /add HTTP/1.1\r\nContent-type:application/json\r\nContent-length:9\r\n\r\n{"num":3}' |nc 127.0.0.1 8000
 //! HTTP/1.1 200 OK
 //! content-type: application/json; charset=UTF-8
 //! content-length: 11
 //!
-//! {"count":4}
+//! {"count":5}
 //! ```
 #![forbid(unsafe_code)]
 use serde::Deserialize;
@@ -66,15 +67,18 @@ impl State {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn get_count(state: Arc<State>) -> Response {
     Response::json(200, json!({ "count": state.get() })).unwrap()
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn increment(state: Arc<State>) -> Response {
     state.increment();
     Response::json(200, json!({ "count": state.get() })).unwrap()
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn add(state: Arc<State>, req: Request) -> Result<Response, Error> {
     #[derive(Deserialize)]
     struct Input {

@@ -4,11 +4,10 @@
 //! Start the server:
 //! ```
 //! $ cargo run --package servlin --example events-sse
-//!    Compiling servlin v0.1.0 (/x/servlin)
-//!     Finished dev [unoptimized + debuginfo] target(s) in 1.09s
+//!     Finished dev [unoptimized + debuginfo] target(s) in 0.12s
 //!      Running `target/debug/examples/events-sse`
 //! Access the server at http://127.0.0.1:8000/subscribe
-//! INFO GET /subscribe => 200 streamed
+//! 2023-04-20T17:17:04Z info "code":200,"http_method":"GET","path":"/subscribe","request_id":3849933270728705814
 //! ^C
 //! ```
 //!
@@ -62,6 +61,7 @@ fn event_sender_thread(state: Arc<State>, permit: Permit) {
 }
 
 #[allow(clippy::unnecessary_wraps)]
+#[allow(clippy::needless_pass_by_value)]
 fn subscribe(state: Arc<State>, _req: Request) -> Result<Response, Error> {
     let (sender, response) = Response::event_stream();
     state.subscribers.lock().unwrap().push(sender);
