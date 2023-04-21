@@ -42,26 +42,22 @@ impl RequestBody {
     }
 
     #[must_use]
-    pub fn length_is_known(&self) -> bool {
-        self != &RequestBody::PendingUnknown
+    pub fn is_empty(&self) -> Option<bool> {
+        self.len().map(|len| len == 0)
     }
 
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
+    /// Returns the body length, if it is known.
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     #[allow(clippy::match_same_arms)]
-    pub fn len(&self) -> u64 {
+    pub fn len(&self) -> Option<u64> {
         match self {
-            RequestBody::PendingUnknown => 0,
-            RequestBody::PendingKnown(len) => *len,
-            RequestBody::StaticBytes(b) => u64::try_from(b.len()).unwrap(),
-            RequestBody::StaticStr(s) => u64::try_from(s.len()).unwrap(),
-            RequestBody::Vec(v) => u64::try_from(v.len()).unwrap(),
-            RequestBody::File(.., len) | RequestBody::TempFile(.., len) => *len,
+            RequestBody::PendingUnknown => None,
+            RequestBody::PendingKnown(len) => Some(*len),
+            RequestBody::StaticBytes(b) => Some(u64::try_from(b.len()).unwrap()),
+            RequestBody::StaticStr(s) => Some(u64::try_from(s.len()).unwrap()),
+            RequestBody::Vec(v) => Some(u64::try_from(v.len()).unwrap()),
+            RequestBody::File(.., len) | RequestBody::TempFile(.., len) => Some(*len),
         }
     }
 

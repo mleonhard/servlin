@@ -52,7 +52,7 @@ impl Request {
     /// The server then tries to read the request body.
     /// If it reads more than `max_len` bytes, it stops and returns `413 Payload Too Large`.
     pub fn recv_body(self, max_len: u64) -> Result<Request, Response> {
-        if self.body.len() > max_len {
+        if self.body.len().unwrap_or(0) > max_len {
             Err(Response::payload_too_large_413())
         } else if self.body().is_pending() {
             Err(Response::get_body_and_reprocess(max_len))
@@ -84,7 +84,7 @@ impl Request {
                 "expected x-www-form-urlencoded request body",
             ))
         } else if self.body.is_pending() {
-            if self.body.length_is_known() {
+            if self.body.len().is_some() {
                 Err(Response::payload_too_large_413())
             } else {
                 Err(Response::length_required_411())
@@ -123,7 +123,7 @@ impl Request {
         if self.content_type != ContentType::Json {
             Err(Response::text(400, "expected json request body"))
         } else if self.body.is_pending() {
-            if self.body.length_is_known() {
+            if self.body.len().is_some() {
                 Err(Response::payload_too_large_413())
             } else {
                 Err(Response::length_required_411())

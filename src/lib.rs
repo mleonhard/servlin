@@ -103,16 +103,18 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
-//! - v0.1.2 - Add:
-//!    - `log_request_and_response` and other logging tooling
-//!    - `Response::ok_200()`
-//!    - `Response::unauthorized_401()`
-//!    - `Response::forbidden_403()`
-//!    - `Response::internal_server_errror_500()`
-//!    - `Response::not_implemented_501()`
-//!    - `Response::service_unavailable_503()`
-//!    - `EventSender::is_connected()`
-//!    - `PORT_env()`
+//! - v0.2.0
+//!   - Added:
+//!     - `log_request_and_response` and other logging tooling
+//!     - `Response::ok_200()`
+//!     - `Response::unauthorized_401()`
+//!     - `Response::forbidden_403()`
+//!     - `Response::internal_server_errror_500()`
+//!     - `Response::not_implemented_501()`
+//!     - `Response::service_unavailable_503()`
+//!     - `EventSender::is_connected()`
+//!     - `PORT_env()`
+//!   - Removed `RequestBody::length_is_known` and changed `len` and `is_empty` to return `Option`.
 //! - v0.1.1 - Add `EventSender::unconnected`.
 //! - v0.1.0 - Rename library to Servlin.
 //!

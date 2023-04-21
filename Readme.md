@@ -105,8 +105,10 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.1.2
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.2.0
 0/0        4/4          0/0    0/0     2/2      ☢️  ├── async-fs 1.6.0
+                                                       │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 4/4        91/91        16/16  0/0     1/1      ☢️  │   ├── async-lock 2.7.0
 0/0        106/116      4/8    0/0     0/0      ☢️  │   │   └── event-listener 2.5.3
 0/0        28/28        4/4    0/0     0/0      ☢️  │   ├── blocking 1.3.1
@@ -142,14 +144,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      ❓  │   │                   ├── quote 1.0.26
 0/0        4/4          0/0    0/0     0/0      ☢️  │   │                   └── unicode-ident 1.0.8
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 1.13.0
-                                                       │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-net 1.7.0
-                                                       │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 0/0        2/4          0/0    0/0     0/0      ☢️  │   ├── async-io 1.13.0
-                                                       │   │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   │   └── autocfg 1.1.0
 4/4        91/91        16/16  0/0     1/1      ☢️  │   │   ├── async-lock 2.7.0
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   ├── cfg-if 1.0.0
 0/0        168/168      2/2    0/0     1/1      ☢️  │   │   ├── concurrent-queue 2.2.0
@@ -157,12 +153,14 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 1/1        16/18        1/1    0/0     0/0      ☢️  │   │   ├── log 0.4.17
 0/0        0/0          0/0    0/0     0/0      🔒  │   │   ├── parking 2.1.0
 0/1        11/250       5/16   1/4     0/5      ☢️  │   │   ├── polling 2.7.0
-                                                       │   │   │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   └── autocfg 1.1.0
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   ├── cfg-if 1.0.0
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   ├── libc 0.2.141
 1/1        16/18        1/1    0/0     0/0      ☢️  │   │   │   └── log 0.4.17
+                                                       │   │   │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   └── autocfg 1.1.0
 44/360     1571/6038    1/2    0/0     6/21     ☢️  │   │   ├── rustix 0.37.11
+                                                       │   │   │   [build-dependencies]
+0/1        0/201        0/2    0/0     0/4      ❓  │   │   │   └── cc 1.0.79
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   ├── bitflags 1.3.2
 0/0        32/100       0/0    0/0     0/0      ☢️  │   │   │   ├── errno 0.3.1
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   │   └── libc 0.2.141
@@ -172,16 +170,18 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   │       └── libc 0.2.141
 0/0        7/7          0/0    0/0     0/0      ☢️  │   │   │   ├── itoa 1.0.6
 1/24       10/449       0/2    0/0     5/50     ☢️  │   │   │   └── libc 0.2.141
-                                                       │   │   │   [build-dependencies]
-0/1        0/201        0/2    0/0     0/4      ❓  │   │   │   └── cc 1.0.79
 0/0        24/24        0/0    0/0     3/3      ☢️  │   │   ├── slab 0.4.8
 0/0        5/5          0/0    0/0     0/0      ☢️  │   │   │   └── serde 1.0.160
                                                        │   │   │   [build-dependencies]
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   │   └── autocfg 1.1.0
 3/6        540/673      2/4    0/0     3/4      ☢️  │   │   ├── socket2 0.4.9
 0/0        21/21        0/0    0/0     4/4      ☢️  │   │   └── waker-fn 1.1.0
+                                                       │   │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   │   └── autocfg 1.1.0
 0/0        28/28        4/4    0/0     0/0      ☢️  │   ├── blocking 1.3.1
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 1.13.0
+                                                       │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── fixed-buffer 0.5.0
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-io 0.3.28
 0/0        0/0          0/0    0/0     0/0      ❓  ├── futures-io 0.3.28
@@ -251,16 +251,18 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
-- v0.1.2 - Add:
-   - `log_request_and_response` and other logging tooling
-   - `Response::ok_200()`
-   - `Response::unauthorized_401()`
-   - `Response::forbidden_403()`
-   - `Response::internal_server_errror_500()`
-   - `Response::not_implemented_501()`
-   - `Response::service_unavailable_503()`
-   - `EventSender::is_connected()`
-   - `PORT_env()`
+- v0.2.0
+  - Added:
+    - `log_request_and_response` and other logging tooling
+    - `Response::ok_200()`
+    - `Response::unauthorized_401()`
+    - `Response::forbidden_403()`
+    - `Response::internal_server_errror_500()`
+    - `Response::not_implemented_501()`
+    - `Response::service_unavailable_503()`
+    - `EventSender::is_connected()`
+    - `PORT_env()`
+  - Removed `RequestBody::length_is_known` and changed `len` and `is_empty` to return `Option`.
 - v0.1.1 - Add `EventSender::unconnected`.
 - v0.1.0 - Rename library to Servlin.
 

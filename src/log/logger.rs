@@ -198,10 +198,14 @@ pub fn with_thread_local_log_tags<R, F: FnOnce(&[Tag]) -> R>(f: F) -> R {
 }
 
 pub fn add_thread_local_log_tags_from_request(req: &Request) {
-    // TODO: Add request body len.
     add_thread_local_log_tag("http_method", req.method());
     add_thread_local_log_tag("path", req.url().path());
     add_thread_local_log_tag("request_id", req.id);
+    if let Some(len) = req.body.len() {
+        add_thread_local_log_tag("request_body_len", len);
+    } else {
+        add_thread_local_log_tag("request_body", "pending");
+    }
 }
 
 #[allow(clippy::module_name_repetitions)]

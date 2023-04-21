@@ -19,7 +19,13 @@ use std::path::{Path, PathBuf};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ReadState {
     Head,
-    /// Body(len: Option<u64>, expect_continue: bool, chunked: bool, gzip: bool)
+    // TODO: Switch to this:
+    // Body {
+    //     len: Option<u64>,
+    //     expect_continue: bool,
+    //     chunked: bool,
+    //     gzip: bool,
+    // },
     Body(Option<u64>, bool, bool, bool),
     Shutdown,
 }
@@ -243,11 +249,11 @@ where
     //dbg!("handle_http_conn_once");
     let mut req = http_conn.read_request().await?;
     //dbg!(&req);
-    if req.body.is_pending() {
-        if req.body.length_is_known() && req.body.len() <= (small_body_len as u64) {
+    match &req.body {
+        RequestBody::PendingKnown(len) if *len <= (small_body_len as u64) => {
             req.body = http_conn.read_body_to_vec().await?;
-            //dbg!(&req);
-        } else {
+        }
+        RequestBody::PendingKnown(..) | RequestBody::PendingUnknown => {
             //dbg!("request_handler");
             let response = request_handler.clone()(req.clone()).await;
             //dbg!(&response);
@@ -261,6 +267,7 @@ where
                 }
             }
         }
+        _ => {}
     }
     //dbg!("request_handler");
     let response = request_handler(req).await;
