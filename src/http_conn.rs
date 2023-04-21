@@ -19,14 +19,12 @@ use std::path::{Path, PathBuf};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ReadState {
     Head,
-    // TODO: Switch to this:
-    // Body {
-    //     len: Option<u64>,
-    //     expect_continue: bool,
-    //     chunked: bool,
-    //     gzip: bool,
-    // },
-    Body(Option<u64>, bool, bool, bool),
+    Body {
+        len: Option<u64>,
+        expect_continue: bool,
+        chunked: bool,
+        gzip: bool,
+    },
     Shutdown,
 }
 
@@ -91,18 +89,24 @@ impl HttpConn {
         }
         match self.read_state {
             ReadState::Head => {}
-            ReadState::Body(..) => return Err(HttpError::BodyNotRead),
+            ReadState::Body { .. } => return Err(HttpError::BodyNotRead),
             ReadState::Shutdown => return Err(HttpError::Disconnected),
         }
         self.write_state = WriteState::Response;
         let req = read_http_request(self.remote_addr, &mut self.buf, &mut self.stream).await?;
         self.read_state = match &req.body {
-            RequestBody::PendingKnown(len) => {
-                ReadState::Body(Some(*len), req.expect_continue, req.chunked, req.gzip)
-            }
-            RequestBody::PendingUnknown => {
-                ReadState::Body(None, req.expect_continue, req.chunked, req.gzip)
-            }
+            RequestBody::PendingKnown(len) => ReadState::Body {
+                len: Some(*len),
+                expect_continue: req.expect_continue,
+                chunked: req.chunked,
+                gzip: req.gzip,
+            },
+            RequestBody::PendingUnknown => ReadState::Body {
+                len: None,
+                expect_continue: req.expect_continue,
+                chunked: req.chunked,
+                gzip: req.gzip,
+            },
             _ => ReadState::Head,
         };
         Ok(req)
@@ -135,11 +139,15 @@ impl HttpConn {
             ReadState::Head => Err(HttpError::BodyNotAvailable),
             // TODO: Support chunked transfer encoding, as required by the HTTP/1.1 spec.
             // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1
-            ReadState::Body(_len, _expect_continue, true, _)
-            | ReadState::Body(_len, _expect_continue, _, true) => {
+            ReadState::Body { chunked: true, .. } | ReadState::Body { gzip: true, .. } => {
                 Err(HttpError::UnsupportedTransferEncoding)
             }
-            ReadState::Body(Some(len_u64), expect_continue, false, false) => {
+            ReadState::Body {
+                len: Some(len_u64),
+                expect_continue,
+                chunked: false,
+                gzip: false,
+            } => {
                 let len_usize =
                     usize::try_from(len_u64).map_err(|_| HttpError::InvalidContentLength)?;
                 if expect_continue {
@@ -148,7 +156,12 @@ impl HttpConn {
                 self.read_state = ReadState::Head;
                 read_http_body_to_vec((&mut self.buf).chain(&mut self.stream), len_usize).await
             }
-            ReadState::Body(None, expect_continue, false, false) => {
+            ReadState::Body {
+                len: None,
+                expect_continue,
+                chunked: false,
+                gzip: false,
+            } => {
                 if expect_continue {
                     self.write_http_continue().await?;
                 }
@@ -177,21 +190,33 @@ impl HttpConn {
             ReadState::Head => Err(HttpError::BodyNotAvailable),
             // TODO: Support chunked transfer encoding, as required by the HTTP/1.1 spec.
             // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1
-            ReadState::Body(_len, _expect_continue, true, _)
-            | ReadState::Body(_len, _expect_continue, _, true) => {
+            ReadState::Body { chunked: true, .. } | ReadState::Body { gzip: true, .. } => {
                 Err(HttpError::UnsupportedTransferEncoding)
             }
-            ReadState::Body(Some(len), _expect_continue, false, false) if len > max_len => {
-                Err(HttpError::BodyTooLong)
-            }
-            ReadState::Body(Some(len), expect_continue, false, false) => {
+            ReadState::Body {
+                len: Some(len),
+                chunked: false,
+                gzip: false,
+                ..
+            } if len > max_len => Err(HttpError::BodyTooLong),
+            ReadState::Body {
+                len: Some(len),
+                expect_continue,
+                chunked: false,
+                gzip: false,
+            } => {
                 if expect_continue {
                     self.write_http_continue().await?;
                 }
                 self.read_state = ReadState::Head;
                 read_http_body_to_file((&mut self.buf).chain(&mut self.stream), len, dir).await
             }
-            ReadState::Body(None, expect_continue, false, false) => {
+            ReadState::Body {
+                len: None,
+                expect_continue,
+                chunked: false,
+                gzip: false,
+            } => {
                 if expect_continue {
                     self.write_http_continue().await?;
                 }
