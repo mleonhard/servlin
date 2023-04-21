@@ -6,8 +6,9 @@ use crate::log::Level;
 use crate::Request;
 use std::cell::RefCell;
 use std::io::Write;
+use std::ops::Deref;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use std::time::SystemTime;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -82,49 +83,105 @@ pub fn start_stdout_jsonl_logger_thread() -> SyncSender<LogEvent> {
     sender
 }
 
-pub static GLOBAL_LOGGER: once_cell::sync::OnceCell<Mutex<SyncSender<LogEvent>>> =
+#[derive(Debug)]
+pub enum GlobalLoggerState {
+    None,
+    Some(SyncSender<LogEvent>),
+    Default(SyncSender<LogEvent>),
+}
+impl GlobalLoggerState {
+    #[must_use]
+    pub fn is_none(&self) -> bool {
+        matches!(self, GlobalLoggerState::None)
+    }
+
+    #[must_use]
+    pub fn is_some(&self) -> bool {
+        matches!(self, GlobalLoggerState::Some(..))
+    }
+}
+
+pub static GLOBAL_LOGGER: once_cell::sync::OnceCell<Mutex<GlobalLoggerState>> =
     once_cell::sync::OnceCell::new();
 
 thread_local! {
-    pub static THREAD_LOCAL_LOGGER: RefCell<Option<SyncSender<LogEvent>>> = RefCell::new(None);
     pub static THREAD_LOCAL_TAGS: RefCell<Vec<Tag>> = RefCell::new(Vec::new());
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct GlobalLoggerAlreadySetError {}
 
-/// Sets the global logger.  A process can call this once.
-/// The logging functions log to stdout until you call this.
+#[allow(clippy::module_name_repetitions)]
+pub fn lock_global_logger() -> MutexGuard<'static, GlobalLoggerState> {
+    GLOBAL_LOGGER
+        .get_or_init(|| Mutex::new(GlobalLoggerState::None))
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+#[derive(Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ClearGlobalLoggerOnDrop {}
+impl Drop for ClearGlobalLoggerOnDrop {
+    fn drop(&mut self) {
+        let mut guard = lock_global_logger();
+        assert!(guard.is_some());
+        *guard = GlobalLoggerState::None;
+    }
+}
+
+/// Sets the global logger.
+/// Returns a [`ClearGlobalLoggerOnDrop`] which clears the global logger when it drops.
 ///
 /// # Errors
-/// Returns `Err` when the function has previous been called.
+/// Returns `Err` when a global logger is already set.
 #[allow(clippy::module_name_repetitions)]
-pub fn set_global_logger(sender: SyncSender<LogEvent>) -> Result<(), GlobalLoggerAlreadySetError> {
-    GLOBAL_LOGGER
-        .set(Mutex::new(sender))
-        .map_err(|_| GlobalLoggerAlreadySetError {})
+pub fn set_global_logger(
+    sender: SyncSender<LogEvent>,
+) -> Result<ClearGlobalLoggerOnDrop, GlobalLoggerAlreadySetError> {
+    let mut mutex_guard = lock_global_logger();
+    if mutex_guard.is_some() {
+        return Err(GlobalLoggerAlreadySetError {});
+    }
+    *mutex_guard = GlobalLoggerState::Some(sender);
+    Ok(ClearGlobalLoggerOnDrop {})
+}
+
+pub struct GlobalLoggerGuard {
+    mutex_guard: MutexGuard<'static, GlobalLoggerState>,
+}
+impl GlobalLoggerGuard {
+    #[must_use]
+    pub fn new(mutex_guard: MutexGuard<'static, GlobalLoggerState>) -> Option<Self> {
+        if mutex_guard.is_none() {
+            None
+        } else {
+            Some(Self { mutex_guard })
+        }
+    }
+}
+impl Deref for GlobalLoggerGuard {
+    type Target = SyncSender<LogEvent>;
+
+    fn deref(&self) -> &Self::Target {
+        match &*self.mutex_guard {
+            GlobalLoggerState::None => unreachable!(),
+            GlobalLoggerState::Some(sender) | GlobalLoggerState::Default(sender) => sender,
+        }
+    }
 }
 
 /// Gets the logger previously passed to [`set_global_logger`].
-/// Returns [`StdoutLogger`] if no global logger was set.
+/// When no global logger has been set, starts a default [`StdoutLogger`] and returns it.
+/// Calling [`set_global_logger`] later will replace this default logger.
 #[allow(clippy::missing_panics_doc)]
 #[allow(clippy::module_name_repetitions)]
-pub fn with_global_logger<R, F: FnOnce(&SyncSender<LogEvent>) -> R>(f: F) -> R {
-    THREAD_LOCAL_LOGGER.with(|cell| {
-        let mut opt_sender = cell.borrow_mut();
-        if let Some(sender) = opt_sender.as_ref() {
-            f(sender)
-        } else {
-            let sender = GLOBAL_LOGGER
-                .get_or_init(|| Mutex::new(start_stdout_logger_thread()))
-                .lock()
-                .unwrap()
-                .clone();
-            let result = f(&sender);
-            opt_sender.replace(sender);
-            result
-        }
-    })
+#[must_use]
+pub fn global_logger() -> GlobalLoggerGuard {
+    let mut mutex_guard = lock_global_logger();
+    if mutex_guard.is_none() {
+        *mutex_guard = GlobalLoggerState::Default(start_stdout_logger_thread());
+    }
+    GlobalLoggerGuard::new(mutex_guard).unwrap()
 }
 
 pub fn add_thread_local_log_tag(name: &'static str, value: impl Into<TagValue>) {
@@ -153,6 +210,8 @@ pub struct LoggerStoppedError {}
 
 /// Make a new log event and sends it to the global logger.
 ///
+/// Logs to stdout when no global logger is set.
+///
 /// # Errors
 /// Returns `Err` when the global logger has stopped.
 pub fn log(
@@ -163,5 +222,7 @@ pub fn log(
     let mut tags = tags.into();
     with_thread_local_log_tags(|thread_tags| tags.0.extend_from_slice(thread_tags));
     let event = LogEvent { time, level, tags };
-    with_global_logger(|sender| sender.send(event)).map_err(|_| LoggerStoppedError {})
+    global_logger()
+        .send(event)
+        .map_err(|_| LoggerStoppedError {})
 }
