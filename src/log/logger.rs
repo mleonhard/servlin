@@ -58,13 +58,7 @@ pub fn start_stdout_logger_thread() -> SyncSender<LogEvent> {
             let time = event.time.iso8601_utc();
             let level = event.level;
             let mut tags = event.tags;
-            if let Some(msg_index) = tags.iter().position(|tag| tag.name == "msg") {
-                let msg_tag = tags.remove(msg_index);
-                let msg = msg_tag.value;
-                println!("{time} {level} {msg} {tags}");
-            } else {
-                println!("{time} {level} {tags}");
-            }
+            println!("{time} {level} {tags}");
         }
     });
     sender
@@ -225,6 +219,15 @@ pub fn log(
 ) -> Result<(), LoggerStoppedError> {
     let mut tags = tags.into();
     with_thread_local_log_tags(|thread_tags| tags.0.extend_from_slice(thread_tags));
+    tags.0.sort_by_key(|tag| match tag.name {
+        "msg" => 0u8,
+        "http_method" => 1,
+        "path" => 2,
+        "request_body_len" => 3,
+        "request_body" => 4,
+        "response_body_len" => 5,
+        _ => 99,
+    });
     let event = LogEvent { time, level, tags };
     global_logger()
         .send(event)
