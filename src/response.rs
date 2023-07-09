@@ -7,7 +7,7 @@ use std::io::Write;
 use crate::event::EventReceiver;
 use crate::http_error::HttpError;
 use crate::util::{copy_async, copy_chunked_async};
-use crate::{AsciiString, ContentType, Cookie, EventSender, HeaderList, ResponseBody};
+use crate::{AsciiString, ContentType, Cookie, Error, EventSender, HeaderList, ResponseBody};
 use safina_sync::sync_channel;
 use std::fmt::Debug;
 use std::sync::Mutex;
@@ -79,10 +79,14 @@ impl Response {
     /// # Errors
     /// Returns a 404 Not Found response if the file is not found in the included dir.
     #[cfg(feature = "include_dir")]
-    pub fn include_dir(path: &str, dir: &'static include_dir::Dir) -> Result<Response, Response> {
+    // TODO: Change this to accept only GET and HEAD requests.
+    // TODO: Change this to handle HEAD requests properly.
+    pub fn include_dir(path: &str, dir: &'static include_dir::Dir) -> Result<Response, Error> {
         let path = path.strip_prefix('/').unwrap_or(path);
         let path = if path.is_empty() { "index.html" } else { path };
-        let file = dir.get_file(path).ok_or_else(Response::not_found_404)?;
+        let file = dir
+            .get_file(path)
+            .ok_or_else(|| Error::client_error(Response::not_found_404()))?;
         let extension = std::path::Path::new(path)
             .extension()
             .map_or("", |os_str| os_str.to_str().unwrap_or(""));
