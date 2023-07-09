@@ -211,14 +211,14 @@ impl LogFileWriter {
         let mut file = LogFile::create(&path_prefix)?;
         let mut buffer: Vec<u8> = Vec::new();
         LogEvent::new(Level::Info, tag("msg", "Starting log writer"))
-            .write_json(&mut buffer)
+            .write_jsonl(&mut buffer)
             .unwrap();
         file.write_all(&buffer)?;
         buffer.clear();
         let (sender, receiver): (SyncSender<LogEvent>, Receiver<LogEvent>) = sync_channel(100);
         std::thread::spawn(move || {
             for event in receiver {
-                event.write_json(&mut buffer).unwrap();
+                event.write_jsonl(&mut buffer).unwrap();
                 let now = SystemTime::now();
                 if file.len + (buffer.len() as u64) > builder.max_write_bytes
                     || file.age(now) > builder.max_write_age

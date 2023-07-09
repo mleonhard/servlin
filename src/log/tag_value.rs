@@ -15,6 +15,7 @@ pub enum TagValue {
     U32(u32),
     U64(u64),
     U128(u128),
+    Usize(usize),
     Float(String),
     Null,
 }
@@ -35,18 +36,27 @@ impl TagValue {
             TagValue::U32(..) => 10,
             TagValue::U64(..) => 11,
             TagValue::U128(..) => 12,
-            TagValue::Float(..) => 13,
-            TagValue::Null => 14,
+            TagValue::Usize(..) => 13,
+            TagValue::Float(..) => 14,
+            TagValue::Null => 15,
         }
     }
 }
 impl From<&str> for TagValue {
     fn from(value: &str) -> Self {
+        // TODO: Constrain length.
         Self::String(value.to_string())
+    }
+}
+impl From<&String> for TagValue {
+    fn from(value: &String) -> Self {
+        // TODO: Constrain length.
+        Self::String(value.clone())
     }
 }
 impl From<String> for TagValue {
     fn from(value: String) -> Self {
+        // TODO: Constrain length.
         Self::String(value)
     }
 }
@@ -105,6 +115,11 @@ impl From<u128> for TagValue {
         Self::U128(value)
     }
 }
+impl From<usize> for TagValue {
+    fn from(value: usize) -> Self {
+        Self::Usize(value)
+    }
+}
 impl From<f32> for TagValue {
     fn from(value: f32) -> Self {
         Self::Float(format!("{value}"))
@@ -139,6 +154,7 @@ impl Display for TagValue {
             TagValue::U32(x) => Display::fmt(&x, f),
             TagValue::U64(x) => Display::fmt(&x, f),
             TagValue::U128(x) => Display::fmt(&x, f),
+            TagValue::Usize(x) => Display::fmt(&x, f),
             TagValue::Float(x) => Display::fmt(&x, f),
             TagValue::Null => write!(f, "null"),
         }

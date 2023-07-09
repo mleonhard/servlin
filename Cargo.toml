@@ -30,6 +30,7 @@ safina-executor = { version = "^0.3.3" }
 safina-sync = { version = "^0.2.4" }
 safina-timer = { version = "^0.1.11" }
 serde = { version = "1", optional = true, features = ["derive"] }
+# TODO: Prevent these deps from appearing as features.
 serde_json = { version = "1", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 temp-dir = "^0.1.11"

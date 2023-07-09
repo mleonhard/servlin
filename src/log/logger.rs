@@ -30,7 +30,8 @@ impl LogEvent {
     ///
     /// # Errors
     /// Returns `Err` when it fails to write to `f`.
-    pub fn write_json(&self, f: &mut impl Write) -> Result<(), std::io::Error> {
+    pub fn write_jsonl(&self, f: &mut impl Write) -> Result<(), std::io::Error> {
+        // TODO: Constraint line length.
         // "time_ns":1681457536082810000,"time":"2023-04-14T00:32:16.082-07:00"
         let time_ns = self.time.epoch_ns();
         let dt = self.time.to_datetime();
@@ -57,7 +58,7 @@ pub fn start_stdout_logger_thread() -> SyncSender<LogEvent> {
         for event in receiver {
             let time = event.time.iso8601_utc();
             let level = event.level;
-            let mut tags = event.tags;
+            let tags = event.tags;
             println!("{time} {level} {tags}");
         }
     });
@@ -71,7 +72,7 @@ pub fn start_stdout_jsonl_logger_thread() -> SyncSender<LogEvent> {
     std::thread::spawn(move || {
         let mut stdout = std::io::stdout();
         for event in receiver {
-            event.write_json(&mut stdout).unwrap();
+            event.write_jsonl(&mut stdout).unwrap();
         }
     });
     sender
