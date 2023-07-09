@@ -341,6 +341,7 @@ fn read_http_head_subsequent() {
 }
 
 #[test]
+#[allow(clippy::redundant_clone)]
 fn head_derive() {
     let head1 = Head::try_read(&mut FixedBuf::from(
         *b"A /1 HTTP/1.1\r\nH1: V1\r\nh2:v2\r\n\r\n",

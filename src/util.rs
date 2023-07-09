@@ -29,7 +29,7 @@ pub async fn copy_async(
     mut reader: impl AsyncRead + Unpin,
     mut writer: impl AsyncWrite + Unpin,
 ) -> CopyResult {
-    let mut buf = <FixedBuf<65536>>::new();
+    let mut buf = Box::pin(<FixedBuf<65536>>::new());
     let mut num_copied = 0;
     loop {
         match reader.read(buf.writable()).await {
@@ -82,7 +82,7 @@ pub async fn copy_chunked_async(
 ) -> CopyResult {
     let mut num_copied = 0;
     loop {
-        let mut buf = [0_u8; 65536];
+        let mut buf = Box::pin([0_u8; 65536]);
         let len = match reader.read(&mut buf[6..65534]).await {
             Ok(0) => break,
             Ok(len) => len,
