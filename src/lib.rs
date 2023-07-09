@@ -114,7 +114,9 @@
 //!     - `Response::service_unavailable_503()`
 //!     - `EventSender::is_connected()`
 //!     - `PORT_env()`
-//!   - Removed `RequestBody::length_is_known` and changed `len` and `is_empty` to return `Option`.
+//!   - Removed `print_log_response` and `RequestBody::length_is_known`
+//!   - Changed `RequestBody::len` and `is_empty` to return `Option`.
+//!   - Bugfixes
 //! - v0.1.1 - Add `EventSender::unconnected`.
 //! - v0.1.0 - Rename library to Servlin.
 //!
