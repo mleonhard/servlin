@@ -57,7 +57,7 @@ impl Add for TagList {
     type Output = TagList;
 
     fn add(mut self, rhs: Self) -> Self::Output {
-        self.0.extend(rhs.0.into_iter());
+        self.0.extend(rhs.0);
         self
     }
 }

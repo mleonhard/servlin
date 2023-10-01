@@ -92,8 +92,8 @@ impl Response {
         } else if let Some(file) = dir.get_file(path) {
             Some(file)
         } else {
-            let dir_path = path.trim_end_matches("/");
-            dir.get_file(format!("{}/index.html", dir_path))
+            let dir_path = path.trim_end_matches('/');
+            dir.get_file(format!("{dir_path}/index.html"))
         }
         .ok_or_else(|| Error::client_error(Response::not_found_404()))?;
         let extension = std::path::Path::new(path)
