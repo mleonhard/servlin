@@ -7,9 +7,9 @@ use std::io::Write;
 use crate::event::EventReceiver;
 use crate::http_error::HttpError;
 use crate::util::{copy_async, copy_chunked_async};
-#[cfg(feature = "include_dir")]
-use crate::Error;
 use crate::{AsciiString, ContentType, Cookie, EventSender, HeaderList, ResponseBody};
+#[cfg(feature = "include_dir")]
+use crate::{Error, Request};
 use safina_sync::sync_channel;
 use std::fmt::Debug;
 use std::sync::Mutex;
@@ -83,12 +83,19 @@ impl Response {
     #[cfg(feature = "include_dir")]
     // TODO: Change this to accept only GET and HEAD requests.
     // TODO: Change this to handle HEAD requests properly.
-    pub fn include_dir(path: &str, dir: &'static include_dir::Dir) -> Result<Response, Error> {
+    // TODO: Honor Accept request header.
+    pub fn include_dir(req: &Request, dir: &'static include_dir::Dir) -> Result<Response, Error> {
+        let path = req.url.path();
         let path = path.strip_prefix('/').unwrap_or(path);
-        let path = if path.is_empty() { "index.html" } else { path };
-        let file = dir
-            .get_file(path)
-            .ok_or_else(|| Error::client_error(Response::not_found_404()))?;
+        let file = if path.is_empty() {
+            dir.get_file("index.html")
+        } else if let Some(file) = dir.get_file(path) {
+            Some(file)
+        } else {
+            let dir_path = path.trim_end_matches("/");
+            dir.get_file(format!("{}/index.html", dir_path))
+        }
+        .ok_or_else(|| Error::client_error(Response::not_found_404()))?;
         let extension = std::path::Path::new(path)
             .extension()
             .map_or("", |os_str| os_str.to_str().unwrap_or(""));

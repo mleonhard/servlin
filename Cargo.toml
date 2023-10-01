@@ -7,7 +7,7 @@ keywords = ["web", "http", "server", "async", "threaded"]
 license = "MIT OR Apache-2.0"
 name = "servlin"
 repository = "https://github.com/mleonhard/servlin"
-version = "0.2.0"
+version = "0.3.0"
 
 [features]
 default = []
