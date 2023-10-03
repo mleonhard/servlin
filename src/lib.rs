@@ -103,6 +103,9 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.3.1
+//!   - Add `Response::redirect_301`
+//!   - `Response::include_dir` to redirect from `/somedir` to `/somedir/` so relative URLs will work.
 //! - v0.3.0 - Changed `Response::include_dir` to take `&Request` and look for `index.html` in dirs.
 //! - v0.2.0
 //!   - Added:

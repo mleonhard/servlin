@@ -91,9 +91,13 @@ impl Response {
             dir.get_file("index.html")
         } else if let Some(file) = dir.get_file(path) {
             Some(file)
-        } else {
+        } else if path.ends_with('/') {
             let dir_path = path.trim_end_matches('/');
             dir.get_file(format!("{dir_path}/index.html"))
+        } else if let Some(_dir) = dir.get_dir(path) {
+            return Ok(Response::redirect_301(format!("{path}/")));
+        } else {
+            None
         }
         .ok_or_else(|| Error::client_error(Response::not_found_404()))?;
         let extension = std::path::Path::new(path)
@@ -163,6 +167,17 @@ impl Response {
     #[must_use]
     pub fn no_content_204() -> Self {
         Response::new(204)
+    }
+
+    /// Tell the client to GET `location`.
+    ///
+    /// The client should store this redirect.
+    ///
+    /// # Panics
+    /// Panics when `location` is not US-ASCII.
+    #[must_use]
+    pub fn redirect_301(location: impl AsRef<str>) -> Self {
+        Response::new(301).with_header("location", location.as_ref().try_into().unwrap())
     }
 
     /// Tell the client to GET `location`.
