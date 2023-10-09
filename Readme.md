@@ -105,7 +105,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.3.1
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.3.2
 0/0        0/4          0/0    0/0     0/2      ❓  ├── async-fs 1.6.0
 0/4        0/230        0/40   0/0     0/12     ❓  │   ├── async-lock 2.8.0
 0/0        0/116        0/8    0/0     0/0      ❓  │   │   └── event-listener 2.5.3
@@ -147,6 +147,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
                                                        │   [build-dependencies]
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── autocfg 1.1.0
 0/0        0/4          0/0    0/0     0/0      ❓  │   ├── async-io 1.13.0
+                                                       │   │   [build-dependencies]
+0/0        0/0          0/0    0/0     0/0      ❓  │   │   └── autocfg 1.1.0
 0/4        0/230        0/40   0/0     0/12     ❓  │   │   ├── async-lock 2.8.0
 0/0        0/0          0/0    0/0     0/0      ❓  │   │   ├── cfg-if 1.0.0
 0/0        0/168        0/2    0/0     0/1      ❓  │   │   ├── concurrent-queue 2.2.0
@@ -178,8 +180,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/5          0/0    0/0     0/0      ❓  │   │   │   └── serde 1.0.188
 0/6        0/673        0/4    0/0     0/4      ❓  │   │   ├── socket2 0.4.9
 0/0        0/21         0/0    0/0     0/4      ❓  │   │   └── waker-fn 1.1.0
-                                                       │   │   [build-dependencies]
-0/0        0/0          0/0    0/0     0/0      ❓  │   │   └── autocfg 1.1.0
 0/0        0/28         0/4    0/0     0/0      ❓  │   ├── blocking 1.3.1
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 1.13.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── fixed-buffer 0.5.0
@@ -251,6 +251,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.3.2 - Fix bug in `Response::include_dir` redirects.
 - v0.3.1
   - Add `Response::redirect_301`
   - `Response::include_dir` to redirect from `/somedir` to `/somedir/` so relative URLs will work.

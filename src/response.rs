@@ -95,7 +95,7 @@ impl Response {
             let dir_path = path.trim_end_matches('/');
             dir.get_file(format!("{dir_path}/index.html"))
         } else if let Some(_dir) = dir.get_dir(path) {
-            return Ok(Response::redirect_301(format!("{path}/")));
+            return Ok(Response::redirect_301(format!("/{path}/")));
         } else {
             None
         }
