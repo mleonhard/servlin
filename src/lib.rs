@@ -77,7 +77,7 @@
 //!
 //! let state = Arc::new(State {});
 //! let request_handler = move |req: Request| {
-//!     log_request_and_response(req, |req| handle_req(state, req))
+//!     log_request_and_response(req, |req| handle_req(state, req)).unwrap()
 //! };
 //! let cache_dir = TempDir::new().unwrap();
 //! safina_timer::start_timer_thread();
@@ -103,7 +103,9 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
-//! - v0.3.3 - Add `Response::unprocessable_entity_422`.
+//! - v0.4.0
+//!   - Changed `log_request_and_response` to return `Result`.
+//!   - Added `Response::unprocessable_entity_422`.
 //! - v0.3.2 - Fix bug in `Response::include_dir` redirects.
 //! - v0.3.1
 //!   - Add `Response::redirect_301`

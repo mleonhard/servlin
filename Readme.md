@@ -77,7 +77,7 @@ fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
 
 let state = Arc::new(State {});
 let request_handler = move |req: Request| {
-    log_request_and_response(req, |req| handle_req(state, req))
+    log_request_and_response(req, |req| handle_req(state, req)).unwrap()
 };
 let cache_dir = TempDir::new().unwrap();
 safina_timer::start_timer_thread();
@@ -105,7 +105,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.3.2
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.4.0
 0/0        0/4          0/0    0/0     0/2      ❓  ├── async-fs 1.6.0
 0/4        0/230        0/40   0/0     0/12     ❓  │   ├── async-lock 2.8.0
 0/0        0/116        0/8    0/0     0/0      ❓  │   │   └── event-listener 2.5.3
@@ -251,7 +251,9 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
-- v0.3.3 - Add `Response::unprocessable_entity_422`.
+- v0.4.0
+  - Changed `log_request_and_response` to return `Result`.
+  - Added `Response::unprocessable_entity_422`.
 - v0.3.2 - Fix bug in `Response::include_dir` redirects.
 - v0.3.1
   - Add `Response::redirect_301`

@@ -130,17 +130,14 @@ pub fn log_response(result: Result<Response, Error>) -> Result<Response, LoggerS
 ///
 /// # Errors
 /// Returns `Err` when the global logger has stopped.
-///
-/// # Panics
-/// Panics when the global logger has stopped ([`LoggerStoppedError`]).
 #[allow(clippy::module_name_repetitions)]
 pub fn log_request_and_response<F: FnOnce(Request) -> Result<Response, Error>>(
     req: Request,
     f: F,
-) -> Response {
+) -> Result<Response, LoggerStoppedError> {
     clear_thread_local_log_tags();
     add_thread_local_log_tags_from_request(&req);
-    let response = log_response(f(req)).unwrap();
+    let result = log_response(f(req));
     clear_thread_local_log_tags();
-    response
+    result
 }

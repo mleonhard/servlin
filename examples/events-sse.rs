@@ -86,7 +86,7 @@ pub fn main() {
     safina_timer::start_timer_thread();
     let executor = safina_executor::Executor::default();
     let request_handler =
-        move |req: Request| log_request_and_response(req, |req| handle_req(state, req));
+        move |req: Request| log_request_and_response(req, |req| handle_req(state, req)).unwrap();
     executor
         .block_on(
             HttpServerBuilder::new()

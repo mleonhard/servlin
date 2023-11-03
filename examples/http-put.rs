@@ -88,7 +88,7 @@ pub fn main() {
     let cache_dir = TempDir::new().unwrap();
     let state = Arc::new(State::new());
     let request_handler =
-        move |req: Request| log_request_and_response(req, |req| handle_req(state, req));
+        move |req: Request| log_request_and_response(req, |req| handle_req(state, req)).unwrap();
     executor
         .block_on(
             HttpServerBuilder::new()
