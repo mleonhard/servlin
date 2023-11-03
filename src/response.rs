@@ -131,9 +131,9 @@ impl Response {
     /// # Errors
     /// Returns an error when it fails to serialize `v`.
     #[cfg(feature = "json")]
-    pub fn json(code: u16, v: impl serde::Serialize) -> Result<Response, String> {
+    pub fn json(code: u16, v: impl serde::Serialize) -> Result<Response, Error> {
         let body_vec = serde_json::to_vec(&v)
-            .map_err(|e| format!("error serializing response to json: {e}"))?;
+            .map_err(|e| Error::server_error(format!("error serializing response to json: {e}")))?;
         Ok(Self::new(code)
             .with_type(ContentType::Json)
             .with_body(body_vec))

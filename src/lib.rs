@@ -104,6 +104,7 @@
 //!
 //! # Changelog
 //! - v0.4.0
+//!   - Changed `Response::json` to return `Result<Response, Error>`.
 //!   - Changed `log_request_and_response` to return `Result`.
 //!   - Added `Response::unprocessable_entity_422`.
 //! - v0.3.2 - Fix bug in `Response::include_dir` redirects.
