@@ -103,6 +103,7 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.3.3 - Add `Response::unprocessable_entity_422`.
 //! - v0.3.2 - Fix bug in `Response::include_dir` redirects.
 //! - v0.3.1
 //!   - Add `Response::redirect_301`
