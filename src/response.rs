@@ -7,9 +7,11 @@ use std::io::Write;
 use crate::event::EventReceiver;
 use crate::http_error::HttpError;
 use crate::util::{copy_async, copy_chunked_async};
-use crate::{AsciiString, ContentType, Cookie, EventSender, HeaderList, ResponseBody};
+#[cfg(any(feature = "include_dir", feature = "json"))]
+use crate::Error;
 #[cfg(feature = "include_dir")]
-use crate::{Error, Request};
+use crate::Request;
+use crate::{AsciiString, ContentType, Cookie, EventSender, HeaderList, ResponseBody};
 use safina_sync::sync_channel;
 use std::fmt::Debug;
 use std::sync::Mutex;
