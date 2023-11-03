@@ -226,8 +226,9 @@ impl Response {
     }
 
     #[must_use]
-    pub fn unprocessable_entity_422(body: &impl ToString) -> Self {
-        Response::text(422, body.to_string())
+    pub fn unprocessable_entity_422(body: impl Into<String>) -> Self {
+        let body: String = body.into();
+        Response::text(422, body)
     }
 
     #[must_use]
