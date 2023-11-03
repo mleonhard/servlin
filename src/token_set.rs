@@ -58,7 +58,7 @@ impl TokenSet {
     /// Returns an error when `timeout` passes and it has not obtained a token.
     pub fn wait_token_timeout(&self, timeout: Duration) -> Result<Token, TimeOut> {
         match self.1.recv_timeout(timeout) {
-            Ok(_) => Ok(Token(self.0.clone())),
+            Ok(()) => Ok(Token(self.0.clone())),
             Err(RecvTimeoutError::Timeout) => Err(TimeOut),
             Err(RecvTimeoutError::Disconnected) => unreachable!(),
         }

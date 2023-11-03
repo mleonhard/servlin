@@ -17,7 +17,7 @@ impl PartialEq for PrefixFile {
 impl Eq for PrefixFile {}
 impl PartialOrd for PrefixFile {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        other.mtime.partial_cmp(&self.mtime)
+        Some(self.cmp(other))
     }
 }
 impl Ord for PrefixFile {

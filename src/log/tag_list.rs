@@ -102,7 +102,7 @@ impl PartialEq for TagList {
 }
 impl PartialOrd for TagList {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.as_slice().partial_cmp(other.0.as_slice())
+        Some(self.cmp(other))
     }
 }
 
@@ -118,7 +118,7 @@ impl<A: Into<Tag>> From<A> for TagList {
 }
 // From tuples of length 0 through 20.
 impl From<()> for TagList {
-    fn from(_: ()) -> Self {
+    fn from((): ()) -> Self {
         TagList(vec![])
     }
 }

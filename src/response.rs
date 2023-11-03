@@ -226,7 +226,7 @@ impl Response {
     }
 
     #[must_use]
-    pub fn unprocessable_entity_422(body: impl ToString) -> Self {
+    pub fn unprocessable_entity_422(body: &impl ToString) -> Self {
         Response::text(422, body.to_string())
     }
 
