@@ -3,7 +3,7 @@ use crate::log::tag::Tag;
 use crate::log::tag_list::TagList;
 use crate::log::tag_value::TagValue;
 use crate::log::Level;
-use crate::Request;
+use crate::{Error, Request};
 use std::cell::RefCell;
 use std::io::Write;
 use std::ops::Deref;
@@ -206,6 +206,11 @@ pub fn add_thread_local_log_tags_from_request(req: &Request) {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct LoggerStoppedError {}
+impl From<LoggerStoppedError> for Error {
+    fn from(_: LoggerStoppedError) -> Self {
+        Error::new().with_msg("LoggerStoppedError")
+    }
+}
 
 /// Make a new log event and sends it to the global logger.
 ///

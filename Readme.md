@@ -251,6 +251,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.4.1 - Implement `From<LoggerStoppedError>`` for `Error`.
 - v0.4.0
   - Changed `Response::json` to return `Result<Response, Error>`.
   - Changed `log_request_and_response` to return `Result`.
@@ -281,6 +282,8 @@ See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/mai
 - Fix limitations above
 - Support [HEAD](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD)
   responses that have Content-Length set and no body.
+- Add a server-wide limit on upload body size.
+- Limit disk usage for caching uploads.
 - Update `rust-webserver-comparison.md`
   - Add missing data
   - Add other servers from <https://www.arewewebyet.org/topics/frameworks/>
