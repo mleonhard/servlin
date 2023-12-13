@@ -251,7 +251,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
-- v0.4.1 - Implement `From<LoggerStoppedError>`` for `Error`.
+- v0.4.1 - Implement `From<LoggerStoppedError>` for `Error`.
 - v0.4.0
   - Changed `Response::json` to return `Result<Response, Error>`.
   - Changed `log_request_and_response` to return `Result`.
