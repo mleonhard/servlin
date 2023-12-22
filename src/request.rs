@@ -137,6 +137,26 @@ impl Request {
             })
         }
     }
+
+    /// Returns None when the request has no body.
+    ///
+    /// # Errors
+    /// Returns an error when:
+    /// - the request body was not received
+    /// - the request content type is not `application/json`
+    /// - we fail to parse the body as JSON data
+    /// - we fail to deserialize the body into a `T`
+    ///
+    /// # Panics
+    /// Panics when the request body was saved to a file and it fails to read the file.
+    #[cfg(feature = "json")]
+    pub fn opt_json<T: serde::de::DeserializeOwned>(&self) -> Result<Option<T>, Response> {
+        if self.body.is_empty().unwrap_or(false) {
+            Ok(None)
+        } else {
+            Ok(Some(self.json()?))
+        }
+    }
 }
 impl Debug for Request {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
