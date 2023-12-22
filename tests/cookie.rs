@@ -7,12 +7,9 @@ fn value1() -> AsciiString {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Cookie::new called with empty `name`")]
 fn empty_name_should_panic() {
-    assert_eq!(
-        Cookie::new("", value1()).to_string(),
-        "=value1; HttpOnly; Max-Age=2592000; SameSite=Strict; Secure",
-    );
+    Cookie::new("", value1()).to_string();
 }
 
 #[test]
