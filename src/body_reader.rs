@@ -1,5 +1,5 @@
 use crate::event::EventReceiver;
-use std::io::Cursor;
+use std::io::{Cursor, ErrorKind, SeekFrom};
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -31,6 +31,18 @@ impl<'x> std::io::Read for BodyReader<'x> {
                 mutex_event_receiver.lock().unwrap().read(buf)
             }
             BodyReader::File(file) => file.read(buf),
+        }
+    }
+}
+impl<'x> std::io::Seek for BodyReader<'x> {
+    fn seek(&mut self, pos: SeekFrom) -> Result<u64, std::io::Error> {
+        match self {
+            BodyReader::Cursor(cursor) => cursor.seek(pos),
+            BodyReader::EventReceiver(..) => Err(std::io::Error::new(
+                ErrorKind::Unsupported,
+                "BodyReader::EventReceiver cannot seek",
+            )),
+            BodyReader::File(file) => file.seek(pos),
         }
     }
 }
