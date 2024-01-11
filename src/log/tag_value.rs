@@ -1,4 +1,6 @@
+use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
+use std::path::Path;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum TagValue {
@@ -58,6 +60,16 @@ impl From<String> for TagValue {
     fn from(value: String) -> Self {
         // TODO: Constrain length.
         Self::String(value)
+    }
+}
+impl From<Cow<'_, str>> for TagValue {
+    fn from(value: Cow<'_, str>) -> Self {
+        Self::String(value.into_owned())
+    }
+}
+impl From<&Path> for TagValue {
+    fn from(value: &Path) -> Self {
+        Self::String(value.to_string_lossy().to_string())
     }
 }
 impl From<bool> for TagValue {
