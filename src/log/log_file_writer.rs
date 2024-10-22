@@ -6,7 +6,7 @@ use crate::Error;
 use std::fs::{File, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::time::{Duration, SystemTime};
 
 pub struct LogFile {
@@ -70,14 +70,44 @@ impl LogFile {
 }
 
 #[allow(clippy::module_name_repetitions)]
-pub struct LogFileWriterBuilder {
+pub struct LogFileWriter {
     pub max_keep_age: Option<Duration>,
     pub max_keep_bytes: u64,
     pub max_write_age: Duration,
     pub max_write_bytes: u64,
     pub path_prefix: PathBuf,
 }
-impl LogFileWriterBuilder {
+impl LogFileWriter {
+    /// Creates a new struct to write log files.
+    /// It writes files with names that start with `path_prefix`.
+    ///
+    /// DATA LOSS WARNING: Automatically deletes files that match
+    /// `path_prefix` so the total size of the files is `max_keep_bytes`.
+    /// Deletes the oldest files.
+    ///
+    /// # Panics
+    /// Panics when `path_prefix` does not end with a filename part.
+    ///
+    /// # Example
+    /// ```no_run
+    /// use std::path::PathBuf;
+    /// use servlin::log::LogFileWriter;
+    /// let writer = LogFileWriter::new_builder(
+    ///     PathBuf::from("/var/log/server.log"),
+    ///     100 * 1024 * 1024,
+    /// ).start_writer_thread();
+    /// ```
+    #[must_use]
+    pub fn new_builder(path_prefix: impl Into<PathBuf>, max_keep_bytes: u64) -> LogFileWriter {
+        LogFileWriter {
+            max_keep_age: None,
+            max_keep_bytes,
+            max_write_age: Duration::from_secs(24 * 3600),
+            max_write_bytes: 10 * 1024 * 1024,
+            path_prefix: path_prefix.into(),
+        }
+    }
+
     /// Configures the struct to continuously delete files that match `path_prefix`
     /// and are older than `max_keep_age`.
     ///
@@ -128,63 +158,12 @@ impl LogFileWriterBuilder {
     ///
     /// # Errors
     /// Returns `Err` when it fails to create the first log file.
-    pub fn start_writer_thread(self) -> Result<SyncSender<LogEvent>, Error> {
-        LogFileWriter::start_writer_thread(self)
-    }
-}
-
-#[derive(Clone)]
-pub struct LogFileWriter(Sender<LogEvent>);
-impl LogFileWriter {
-    /// Creates a new struct to write log files.
-    /// It writes files with names that start with `path_prefix`.
-    ///
-    /// DATA LOSS WARNING: Automatically deletes files that match
-    /// `path_prefix` so the total size of the files is `max_keep_bytes`.
-    /// Deletes the oldest files.
-    ///
-    /// # Panics
-    /// Panics when `path_prefix` does not end with a filename part.
-    ///
-    /// # Example
-    /// ```no_run
-    /// use std::path::PathBuf;
-    /// use servlin::log::LogFileWriter;
-    /// let writer = LogFileWriter::new_builder(
-    ///     PathBuf::from("/var/log/server.log"),
-    ///     100 * 1024 * 1024,
-    /// ).start_writer_thread();
-    /// ```
-    #[must_use]
-    pub fn new_builder(
-        path_prefix: impl Into<PathBuf>,
-        max_keep_bytes: u64,
-    ) -> LogFileWriterBuilder {
-        LogFileWriterBuilder {
-            max_keep_age: None,
-            max_keep_bytes,
-            max_write_age: Duration::from_secs(24 * 3600),
-            max_write_bytes: 10 * 1024 * 1024,
-            path_prefix: path_prefix.into(),
-        }
-    }
-
-    /// Creates the first log file and starts the log file writer thread.
-    ///
-    /// You probably don't want to call this.
-    /// Use `LogFileWriter::new_builder(..).start_writer_thread()` instead.
-    ///
-    /// # Errors
-    /// Returns `Err` when it fails to create the first log file.
     #[allow(clippy::missing_panics_doc)]
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn start_writer_thread(
-        builder: LogFileWriterBuilder,
-    ) -> Result<SyncSender<LogEvent>, Error> {
-        let dir = builder
+    pub fn start_writer_thread(self) -> Result<SyncSender<LogEvent>, Error> {
+        let dir = self
             .path_prefix
             .parent()
-            .ok_or_else(|| format!("path has no parent: {:?}", builder.path_prefix))?;
+            .ok_or_else(|| format!("path has no parent: {:?}", self.path_prefix))?;
         let mut path_prefix = if dir.is_absolute() {
             dir.to_path_buf()
         } else {
@@ -196,10 +175,10 @@ impl LogFileWriter {
         .map_err(|e| {
             format!(
                 "error getting canonical path of {:?}: {e}",
-                builder.path_prefix
+                self.path_prefix
             )
         })?;
-        let file_name = builder.path_prefix.file_name().ok_or_else(|| {
+        let file_name = self.path_prefix.file_name().ok_or_else(|| {
             format!(
                 "path_prefix does not contain a filename part: {:?}",
                 path_prefix.to_string_lossy()
@@ -207,7 +186,7 @@ impl LogFileWriter {
         })?;
         path_prefix.push(Path::new(file_name));
         let mut file_set = PrefixFileSet::new(&path_prefix)?;
-        file_set.delete_oldest_while_over_max_len(builder.max_keep_bytes)?;
+        file_set.delete_oldest_while_over_max_len(self.max_keep_bytes)?;
         let mut file = LogFile::create(&path_prefix)?;
         let mut buffer: Vec<u8> = Vec::new();
         LogEvent::new(Level::Info, tag("msg", "Starting log writer"))
@@ -220,8 +199,8 @@ impl LogFileWriter {
             for event in receiver {
                 event.write_jsonl(&mut buffer).unwrap();
                 let now = SystemTime::now();
-                if file.len + (buffer.len() as u64) > builder.max_write_bytes
-                    || file.age(now) > builder.max_write_age
+                if file.len + (buffer.len() as u64) > self.max_write_bytes
+                    || file.age(now) > self.max_write_age
                 {
                     file_set.push(PrefixFile {
                         path: file.path.clone(),
@@ -230,12 +209,12 @@ impl LogFileWriter {
                     });
                     file = LogFile::create(&path_prefix).unwrap();
                 }
-                if let Some(duration) = builder.max_keep_age {
+                if let Some(duration) = self.max_keep_age {
                     file_set.delete_older_than(now, duration).unwrap();
                 }
                 file_set
                     .delete_oldest_while_over_max_len(
-                        builder.max_keep_bytes - file.len - (buffer.len() as u64),
+                        self.max_keep_bytes - file.len - (buffer.len() as u64),
                     )
                     .unwrap();
                 file.write_all(&buffer).unwrap();

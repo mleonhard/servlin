@@ -103,6 +103,7 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.5.0 2024-10-21 - Remove `LogFileWriterBuilder`.
 //! - v0.4.3 - Implement `From<Cow<'_, str>>` and `From<&Path>` for `TagValue`.
 //! - v0.4.2 - Implement `Seek` for `BodyReader`.
 //! - v0.4.1
