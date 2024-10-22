@@ -15,26 +15,26 @@ json = ["serde", "serde_json"]
 urlencoded = ["serde", "serde_urlencoded"]
 
 [dependencies]
-async-fs = "^1.5.0"
-async-net = "^1.6"
+async-fs = "2"
+async-net = "2"
 fixed-buffer = { version = "1", features = ["futures-io"] }
-futures-io = "^0.3.21"
-futures-lite = "^1.12.0"
+futures-io = "0.3"
+futures-lite = "2"
 include_dir = { version = "0.7", optional = true }
 #libflate = "1"
 once_cell = "1"
-permit = "^0.2.1"
-rand = { version = "^0.8.5", features = ["small_rng"] }
-safe-regex = "^0.3.0"
-safina-executor = { version = "^0.3.3" }
-safina-sync = { version = "^0.2.4" }
-safina-timer = { version = "^0.1.11" }
+permit = "^0.2"
+rand = { version = "0.8", features = ["small_rng"] }
+safe-regex = "0.3"
+safina-executor = { version = "0.3" }
+safina-sync = { version = "0.2" }
+safina-timer = { version = "0.1" }
 serde = { version = "1", optional = true, features = ["derive"] }
 # TODO: Prevent these deps from appearing as features.
 serde_json = { version = "1", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
-temp-dir = "^0.1.11"
-temp-file = "^0.1.7"
+temp-dir = "0.1"
+temp-file = "0.1"
 url = "2"
 
 [dev-dependencies]
