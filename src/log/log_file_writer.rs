@@ -53,7 +53,7 @@ impl LogFile {
     ///
     /// # Errors
     /// Returns `Err` when it fails to write to the file.
-    pub fn write_all(&mut self, buffer: &Vec<u8>) -> Result<(), String> {
+    pub fn write_all(&mut self, buffer: &[u8]) -> Result<(), String> {
         self.file
             .write_all(buffer)
             .map_err(|e| format!("error writing file {:?}: {e:?}", self.path))?;
@@ -189,9 +189,7 @@ impl LogFileWriter {
         file_set.delete_oldest_while_over_max_len(self.max_keep_bytes)?;
         let mut file = LogFile::create(&path_prefix)?;
         let mut buffer: Vec<u8> = Vec::new();
-        LogEvent::new(Level::Info, tag("msg", "Starting log writer"))
-            .write_jsonl(&mut buffer)
-            .unwrap();
+        LogEvent::new(Level::Info, tag("msg", "Starting log writer")).write_jsonl(&mut buffer)?;
         file.write_all(&buffer)?;
         buffer.clear();
         let (sender, receiver): (SyncSender<LogEvent>, Receiver<LogEvent>) = sync_channel(100);

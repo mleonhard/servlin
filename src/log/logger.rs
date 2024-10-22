@@ -100,7 +100,7 @@ pub static GLOBAL_LOGGER: once_cell::sync::OnceCell<Mutex<GlobalLoggerState>> =
     once_cell::sync::OnceCell::new();
 
 thread_local! {
-    pub static THREAD_LOCAL_TAGS: RefCell<Vec<Tag>> = RefCell::new(Vec::new());
+    pub static THREAD_LOCAL_TAGS: RefCell<Vec<Tag>> = const { RefCell::new(Vec::new()) };
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

@@ -12,7 +12,8 @@ use std::task::{Context, Poll};
 pub enum Event {
     /// Message(data)
     Message(String),
-    /// Custom(event_type, data)<br>
+    /// `Custom(event_type, data)`
+    ///
     /// Use [`Event::custom`] to make this variant.
     Custom(String, String),
 }
