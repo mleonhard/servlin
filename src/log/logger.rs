@@ -96,8 +96,7 @@ impl GlobalLoggerState {
     }
 }
 
-pub static GLOBAL_LOGGER: once_cell::sync::OnceCell<Mutex<GlobalLoggerState>> =
-    once_cell::sync::OnceCell::new();
+pub static GLOBAL_LOGGER: Mutex<GlobalLoggerState> = Mutex::new(GlobalLoggerState::None);
 
 thread_local! {
     pub static THREAD_LOCAL_TAGS: RefCell<Vec<Tag>> = const { RefCell::new(Vec::new()) };
@@ -109,7 +108,6 @@ pub struct GlobalLoggerAlreadySetError {}
 #[allow(clippy::module_name_repetitions)]
 pub fn lock_global_logger() -> MutexGuard<'static, GlobalLoggerState> {
     GLOBAL_LOGGER
-        .get_or_init(|| Mutex::new(GlobalLoggerState::None))
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }

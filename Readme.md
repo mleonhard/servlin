@@ -105,7 +105,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.5.0
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.5.1
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-fs 2.1.2
 4/4        222/222      40/40  0/0     13/13    ☢️  │   ├── async-lock 3.4.0
 0/0        2/2          0/0    0/0     0/0      ☢️  │   │   ├── event-listener-strategy 0.5.2
@@ -165,7 +165,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-io 0.3.31
 0/0        0/0          0/0    0/0     0/0      ❓  ├── futures-io 0.3.31
 0/0        0/0          0/0    0/0     0/0      ❓  ├── futures-lite 2.3.0
-0/0        74/117       5/9    0/0     2/4      ☢️  ├── once_cell 1.20.2
 0/0        0/0          0/0    0/0     0/0      🔒  ├── permit 0.2.1
 0/0        32/32        0/0    0/0     0/0      ☢️  ├── rand 0.8.5
 1/90       10/596       0/2    0/0     5/69     ☢️  │   ├── libc 0.2.161
@@ -220,6 +219,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.5.1 2024-10-26 - Remove dependency on `once_cell`.
 - v0.5.0 2024-10-21 - Remove `LogFileWriterBuilder`.
 - v0.4.3 - Implement `From<Cow<'_, str>>` and `From<&Path>` for `TagValue`.
 - v0.4.2 - Implement `Seek` for `BodyReader`.
