@@ -2,8 +2,8 @@
 
 use permit::Permit;
 use safe_regex::{Matcher0, Matcher1};
-use safina_executor::Executor;
-use safina_sync::Receiver;
+use safina::executor::Executor;
+use safina::sync::Receiver;
 use servlin::{socket_addr_127_0_0_1_any_port, HttpServerBuilder, Request, Response};
 use std::future::Future;
 use std::io::{ErrorKind, Read, Write};
@@ -160,10 +160,10 @@ pub fn read_for(
 
 #[allow(clippy::missing_panics_doc)]
 pub fn async_test<Fut: Future<Output = ()> + Send + 'static>(fut: Fut) {
-    safina_timer::start_timer_thread();
-    safina_executor::Executor::new(2, 1)
+    safina::timer::start_timer_thread();
+    safina::executor::Executor::new(2, 1)
         .unwrap()
-        .block_on(safina_timer::with_timeout(fut, Duration::from_secs(10)))
+        .block_on(safina::timer::with_timeout(fut, Duration::from_secs(10)))
         .unwrap();
 }
 
@@ -225,9 +225,9 @@ impl TestServer {
     where
         F: FnOnce(Request) -> Response + 'static + Clone + Send + Sync,
     {
-        safina_timer::start_timer_thread();
+        safina::timer::start_timer_thread();
         let permit = Permit::new();
-        let executor = safina_executor::Executor::new(1, 1)?;
+        let executor = Executor::new(1, 1)?;
         let cache_dir = TempDir::new()?;
         let (addr, stopped_receiver): (SocketAddr, Receiver<()>) = executor.block_on(
             HttpServerBuilder::new()
@@ -305,8 +305,8 @@ pub async fn connected_streams() -> (async_net::TcpStream, async_net::TcpStream)
         .await
         .unwrap();
     let listen_addr = listener.local_addr().unwrap();
-    let (sender, mut receiver) = safina_sync::oneshot();
-    safina_executor::spawn(async move {
+    let (sender, mut receiver) = safina::sync::oneshot();
+    safina::executor::spawn(async move {
         let _result = sender.send(listener.accept().await.unwrap().0);
     });
     let stream0 = async_net::TcpStream::connect(listen_addr).await.unwrap();

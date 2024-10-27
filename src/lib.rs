@@ -51,7 +51,6 @@
 //!     Response
 //! };
 //! use servlin::log::log_request_and_response;
-//! use servlin::reexport::{safina_executor, safina_timer};
 //! use std::sync::Arc;
 //! use temp_dir::TempDir;
 //!
@@ -63,8 +62,7 @@
 //!         name: String,
 //!     }
 //!     let input: Input = req.json()?;
-//!     Ok(Response::json(200, json!({"message": format!("Hello, {}!", input.name)}))
-//!     .unwrap())
+//!     Ok(Response::json(200, json!({"message": format!("Hello, {}!", input.name)}))?)
 //! }
 //!
 //! fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
@@ -80,8 +78,8 @@
 //!     log_request_and_response(req, |req| handle_req(state, req)).unwrap()
 //! };
 //! let cache_dir = TempDir::new().unwrap();
-//! safina_timer::start_timer_thread();
-//! let executor = safina_executor::Executor::new(1, 9).unwrap();
+//! safina::timer::start_timer_thread();
+//! let executor = safina::executor::Executor::new(1, 9).unwrap();
 //! # let permit = permit::Permit::new();
 //! # let server_permit = permit.new_sub();
 //! # std::thread::spawn(move || {
@@ -103,6 +101,9 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.6.0 2024-10-26
+//!    - Remove `servlin::reexports` module.
+//!    - Use `safina` v0.4.0.
 //! - v0.5.1 2024-10-26 - Remove dependency on `once_cell`.
 //! - v0.5.0 2024-10-21 - Remove `LogFileWriterBuilder`.
 //! - v0.4.3 - Implement `From<Cow<'_, str>>` and `From<&Path>` for `TagValue`.
@@ -212,13 +213,6 @@ pub mod internal {
     pub use crate::util::*;
 }
 
-pub mod reexport {
-    pub use permit;
-    pub use safina_executor;
-    pub use safina_sync;
-    pub use safina_timer;
-}
-
 use crate::accept::accept_loop;
 use crate::http_conn::handle_http_conn;
 use crate::token_set::TokenSet;
@@ -287,7 +281,6 @@ impl HttpServerBuilder {
     /// # Example
     /// ```
     /// use servlin::{HttpServerBuilder, Request, Response};
-    /// use servlin::reexport::{safina_executor, safina_timer};
     /// use std::io::Read;
     ///
     /// let cache_dir = temp_dir::TempDir::new().unwrap();
@@ -304,8 +297,8 @@ impl HttpServerBuilder {
     /// #     std::thread::sleep(std::time::Duration::from_millis(100));
     /// #     drop(permit);
     /// # });
-    /// safina_timer::start_timer_thread();
-    /// safina_executor::Executor::default().block_on(
+    /// safina::timer::start_timer_thread();
+    /// safina::executor::Executor::default().block_on(
     ///     HttpServerBuilder::new()
     /// #       .permit(server_permit)
     ///         .receive_large_bodies(cache_dir.path())
@@ -342,13 +335,12 @@ impl HttpServerBuilder {
     /// # Example
     /// ```
     /// use servlin::{Response, HttpServerBuilder};
-    /// use servlin::reexport::{safina_executor, safina_timer};
     /// use std::net::SocketAddr;
     /// use permit::Permit;
     /// # fn do_some_requests(addr: SocketAddr) -> Result<(),()> { Ok(()) }
     ///
-    /// safina_timer::start_timer_thread();
-    /// let executor = safina_executor::Executor::default();
+    /// safina::timer::start_timer_thread();
+    /// let executor = safina::executor::Executor::default();
     /// let permit = Permit::new();
     /// let (addr, stopped_receiver) = executor.block_on(
     ///     HttpServerBuilder::new()
@@ -357,7 +349,7 @@ impl HttpServerBuilder {
     /// ).unwrap();
     /// do_some_requests(addr).unwrap();
     /// drop(permit); // Tell server to shut down.
-    /// stopped_receiver.recv(); // Wait for server to stop.
+    /// stopped_receiver.recv().unwrap(); // Wait for server to stop.
     /// ```
     #[must_use]
     pub fn permit(mut self, p: Permit) -> Self {
@@ -376,19 +368,19 @@ impl HttpServerBuilder {
     pub async fn spawn<F>(
         self,
         request_handler: F,
-    ) -> Result<(SocketAddr, safina_sync::Receiver<()>), std::io::Error>
+    ) -> Result<(SocketAddr, safina::sync::Receiver<()>), std::io::Error>
     where
         F: FnOnce(Request) -> Response + 'static + Clone + Send + Sync,
     {
         let async_request_handler = |req: Request| async move {
             let request_handler_clone = request_handler.clone();
-            safina_executor::schedule_blocking(move || request_handler_clone(req))
+            safina::executor::schedule_blocking(move || request_handler_clone(req))
                 .await
                 .unwrap_or_else(|_| Response::text(500, "Server error"))
         };
         let conn_handler = move |permit, token, stream: async_net::TcpStream, addr| {
             let http_conn = HttpConn::new(addr, stream);
-            safina_executor::spawn(handle_http_conn(
+            safina::executor::spawn(handle_http_conn(
                 permit,
                 token,
                 http_conn,
@@ -400,8 +392,8 @@ impl HttpServerBuilder {
         let listener = TcpListener::bind(self.listen_addr).await?;
         let addr = listener.local_addr()?;
         let token_set = TokenSet::new(self.max_conns);
-        let (sender, receiver) = safina_sync::oneshot();
-        safina_executor::spawn(async move {
+        let (sender, receiver) = safina::sync::oneshot();
+        safina::executor::spawn(async move {
             accept_loop(self.permit, listener, token_set, conn_handler).await;
             // TODO: Wait for connection tokens to return.
             let _ignored = sender.send(());

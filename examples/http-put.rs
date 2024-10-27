@@ -29,7 +29,6 @@
 //! ```
 #![forbid(unsafe_code)]
 use servlin::log::{log_request_and_response, set_global_logger, LogFileWriter};
-use servlin::reexport::{safina_executor, safina_timer};
 use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
 use std::io::Read;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -83,8 +82,8 @@ pub fn main() {
             .unwrap(),
     )
     .unwrap();
-    safina_timer::start_timer_thread();
-    let executor = safina_executor::Executor::default();
+    safina::timer::start_timer_thread();
+    let executor = safina::executor::Executor::default();
     let cache_dir = TempDir::new().unwrap();
     let state = Arc::new(State::new());
     let request_handler =

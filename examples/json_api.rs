@@ -39,7 +39,6 @@
 use serde::Deserialize;
 use serde_json::json;
 use servlin::log::log_request_and_response;
-use servlin::reexport::{safina_executor, safina_timer};
 use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -106,8 +105,8 @@ fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
 
 pub fn main() {
     println!("Access the API at http://127.0.0.1:8000/");
-    safina_timer::start_timer_thread();
-    let executor = safina_executor::Executor::default();
+    safina::timer::start_timer_thread();
+    let executor = safina::executor::Executor::default();
     let state = Arc::new(State::new());
     let request_handler =
         move |req: Request| log_request_and_response(req, |req| handle_req(state, req)).unwrap();

@@ -2,7 +2,7 @@ mod test_util;
 
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
-use safina_sync::Receiver;
+use safina::sync::Receiver;
 use servlin::internal::{read_http_request, HttpError};
 use servlin::{AsciiString, ContentType, Request, RequestBody};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
@@ -212,8 +212,8 @@ fn method() {
 async fn read_http_request_task() -> (async_net::TcpStream, Receiver<Result<Request, HttpError>>) {
     let (mut stream0, stream1) = connected_streams().await;
     let addr = stream1.local_addr().unwrap();
-    let (sender, receiver) = safina_sync::sync_channel(10);
-    safina_executor::spawn(async move {
+    let (sender, receiver) = safina::sync::sync_channel(10);
+    safina::executor::spawn(async move {
         let mut buf = <FixedBuf<1000>>::new();
         loop {
             match read_http_request(addr, &mut buf, &mut stream0).await {
@@ -246,7 +246,7 @@ fn read_http_request_multiple_writes() {
         let (mut stream, mut receiver) = read_http_request_task().await;
         stream.write_all(b"A / HTTP/1.1\r\n\r\n").await.unwrap();
         stream.flush().await.unwrap();
-        safina_timer::sleep_for(Duration::from_millis(100)).await;
+        safina::timer::sleep_for(Duration::from_millis(100)).await;
         stream.write_all(b"B / HTTP/1.1\r\n\r\n").await.unwrap();
         assert_eq!("A", receiver.async_recv().await.unwrap().unwrap().method());
         assert_eq!("B", receiver.async_recv().await.unwrap().unwrap().method());

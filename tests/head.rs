@@ -5,8 +5,8 @@ mod test_util;
 use crate::test_util::TestServer;
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
-use safina_sync::Receiver;
-use safina_timer::sleep_for;
+use safina::sync::Receiver;
+use safina::timer::sleep_for;
 use servlin::internal::{read_http_head, Head, HeadError, HttpError};
 use servlin::{AsciiString, Response};
 use std::time::Duration;
@@ -239,8 +239,8 @@ fn head_try_read_reads() {
 
 async fn read_http_head_task() -> (async_net::TcpStream, Receiver<Result<Head, HttpError>>) {
     let (mut stream0, stream1) = connected_streams().await;
-    let (sender, receiver) = safina_sync::sync_channel(5);
-    safina_executor::spawn(async move {
+    let (sender, receiver) = safina::sync::sync_channel(5);
+    safina::executor::spawn(async move {
         loop {
             let result = read_http_head(&mut <FixedBuf<1000>>::new(), &mut stream0).await;
             let result_is_err = result.is_err();

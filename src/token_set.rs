@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use safina_sync::{sync_channel, Receiver, SyncSender};
+use safina::sync::{sync_channel, Receiver, SyncSender};
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::Duration;
 
@@ -34,7 +34,7 @@ impl TokenSet {
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     pub fn new(size: usize) -> Self {
-        let (sender, receiver) = safina_sync::sync_channel(size);
+        let (sender, receiver) = sync_channel(size);
         for _ in 0..size {
             sender.try_send(()).unwrap();
         }

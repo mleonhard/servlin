@@ -12,7 +12,7 @@ use crate::Error;
 #[cfg(feature = "include_dir")]
 use crate::Request;
 use crate::{AsciiString, ContentType, Cookie, EventSender, HeaderList, ResponseBody};
-use safina_sync::sync_channel;
+use safina::sync::sync_channel;
 use std::fmt::Debug;
 use std::sync::Mutex;
 

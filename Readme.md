@@ -51,7 +51,6 @@ use servlin::{
     Response
 };
 use servlin::log::log_request_and_response;
-use servlin::reexport::{safina_executor, safina_timer};
 use std::sync::Arc;
 use temp_dir::TempDir;
 
@@ -63,8 +62,7 @@ fn hello(_state: Arc<State>, req: Request) -> Result<Response, Error> {
         name: String,
     }
     let input: Input = req.json()?;
-    Ok(Response::json(200, json!({"message": format!("Hello, {}!", input.name)}))
-    .unwrap())
+    Ok(Response::json(200, json!({"message": format!("Hello, {}!", input.name)}))?)
 }
 
 fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
@@ -80,8 +78,8 @@ let request_handler = move |req: Request| {
     log_request_and_response(req, |req| handle_req(state, req)).unwrap()
 };
 let cache_dir = TempDir::new().unwrap();
-safina_timer::start_timer_thread();
-let executor = safina_executor::Executor::new(1, 9).unwrap();
+safina::timer::start_timer_thread();
+let executor = safina::executor::Executor::new(1, 9).unwrap();
 executor.block_on(
     HttpServerBuilder::new()
         .listen_addr(socket_addr_127_0_0_1(8271))
@@ -105,7 +103,8 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.5.1
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.6.0
+0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.4.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-fs 2.1.2
 4/4        222/222      40/40  0/0     13/13    ☢️  │   ├── async-lock 3.4.0
 0/0        2/2          0/0    0/0     0/0      ☢️  │   │   ├── event-listener-strategy 0.5.2
@@ -138,7 +137,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        14/14        1/1    0/0     0/0      ☢️  │   │   └── tracing 0.1.40
 0/0        11/191       0/0    0/0     2/2      ☢️  │   │       ├── pin-project-lite 0.2.14
 0/0        96/96        5/5    0/0     2/2      ☢️  │   │       └── tracing-core 0.1.32
-0/0        74/117       5/9    0/0     2/4      ☢️  │   │           └── once_cell 1.20.2
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 2.3.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-net 2.0.0
 0/0        68/114       19/22  1/1     4/8      ☢️  │   ├── async-io 2.3.4
@@ -194,12 +192,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      🔒  │           ├── safe-proc-macro2 1.0.67
 0/0        0/0          0/0    0/0     0/0      🔒  │           └── safe-quote 1.0.15
 0/0        0/0          0/0    0/0     0/0      🔒  │               └── safe-proc-macro2 1.0.67
-0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-executor 0.3.3
-0/0        0/0          0/0    0/0     0/0      🔒  │   ├── safina-sync 0.2.4
-0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-threadpool 0.2.4
-0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-sync 0.2.4
-0/0        0/0          0/0    0/0     0/0      🔒  ├── safina-timer 0.1.11
-0/0        74/117       5/9    0/0     2/4      ☢️  │   └── once_cell 1.20.2
 0/0        0/0          0/0    0/0     0/0      🔒  ├── temp-dir 0.1.14
 0/0        0/0          0/0    0/0     0/0      🔒  ├── temp-file 0.1.9
 0/0        0/0          0/0    0/0     0/0      ❓  └── url 2.5.2
@@ -212,13 +204,16 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      🔒      │           └── tinyvec_macros 0.1.1
 0/0        8/8          0/0    0/0     0/0      ☢️      └── percent-encoding 2.3.1
 
-71/502     5447/11766   115/158 11/14   103/210
+71/502     5373/11649   110/149 11/14   101/206
 
 ```
 # Alternatives
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.6.0 2024-10-26
+   - Remove `servlin::reexports` module.
+   - Use `safina` v0.4.0.
 - v0.5.1 2024-10-26 - Remove dependency on `once_cell`.
 - v0.5.0 2024-10-21 - Remove `LogFileWriterBuilder`.
 - v0.4.3 - Implement `From<Cow<'_, str>>` and `From<&Path>` for `TagValue`.

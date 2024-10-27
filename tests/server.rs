@@ -1,6 +1,6 @@
 use crate::test_util::check_elapsed;
 use permit::Permit;
-use safina_sync::Receiver;
+use safina::sync::Receiver;
 use servlin::{socket_addr_127_0_0_1_any_port, HttpServerBuilder};
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -9,9 +9,9 @@ mod test_util;
 
 #[test]
 fn server_quick_shutdown() {
-    safina_timer::start_timer_thread();
+    safina::timer::start_timer_thread();
     let permit = Permit::new();
-    let executor = safina_executor::Executor::new(1, 1).unwrap();
+    let executor = safina::executor::Executor::new(1, 1).unwrap();
     let (_, stopped_receiver): (SocketAddr, Receiver<()>) = executor
         .block_on(
             HttpServerBuilder::new()

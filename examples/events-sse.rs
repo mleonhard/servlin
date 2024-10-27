@@ -23,7 +23,6 @@
 #![forbid(unsafe_code)]
 use permit::Permit;
 use servlin::log::log_request_and_response;
-use servlin::reexport::{safina_executor, safina_timer};
 use servlin::{
     socket_addr_127_0_0_1, Error, Event, EventSender, HttpServerBuilder, Request, Response,
 };
@@ -83,8 +82,8 @@ pub fn main() {
     let state = Arc::new(State::new());
     let state_clone = state.clone();
     std::thread::spawn(move || event_sender_thread(state_clone, event_sender_thread_permit));
-    safina_timer::start_timer_thread();
-    let executor = safina_executor::Executor::default();
+    safina::timer::start_timer_thread();
+    let executor = safina::executor::Executor::default();
     let request_handler =
         move |req: Request| log_request_and_response(req, |req| handle_req(state, req)).unwrap();
     executor

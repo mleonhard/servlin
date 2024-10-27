@@ -2,7 +2,6 @@
 #![forbid(unsafe_code)]
 // use serde::Deserialize;
 // use serde_json::json;
-// use servlin::reexport::{safina_executor, safina_timer};
 // use servlin::{print_log_response, socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
 // use std::io::Read;
 // use std::sync::atomic::{AtomicUsize, Ordering};
@@ -79,8 +78,8 @@
 // };
 
 pub fn main() {
-    // safina_timer::start_timer_thread();
-    // let executor = safina_executor::Executor::default();
+    // safina::timer::start_timer_thread();
+    // let executor = safina::executor::Executor::default();
     // let cache_dir = TempDir::new().unwrap();
     // let state = Arc::new(State {
     //     upload_count: AtomicUsize::new(0),

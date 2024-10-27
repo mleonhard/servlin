@@ -3,7 +3,7 @@
 /// - <https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events>
 use crate::util::escape_and_elide;
 use futures_lite::FutureExt;
-use safina_sync::SyncSender;
+use safina::sync::SyncSender;
 use std::io::{Read, Write};
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -93,7 +93,7 @@ impl EventSender {
 
 // TODO: Support reading messages that are larger than `buf`.
 #[allow(clippy::module_name_repetitions)]
-pub struct EventReceiver(pub safina_sync::Receiver<Event>);
+pub struct EventReceiver(pub safina::sync::Receiver<Event>);
 impl futures_io::AsyncRead for EventReceiver {
     fn poll_read(
         mut self: Pin<&mut Self>,

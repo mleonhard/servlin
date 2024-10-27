@@ -21,7 +21,7 @@ where
     let (stream0, stream1) = connected_streams().await;
     let addr = stream1.local_addr().unwrap();
     let temp_dir = TempDir::new().unwrap();
-    safina_executor::spawn(async move {
+    safina::executor::spawn(async move {
         handle_http_conn(
             Permit::new(),
             Token::new(),
@@ -43,13 +43,13 @@ async fn read_response(
     let mut buf = Vec::new();
     while Instant::now() < deadline {
         let mut chunk = [0_u8; 1024];
-        let result = safina_timer::with_timeout(
+        let result = safina::timer::with_timeout(
             async { stream.read(&mut chunk).await },
             Duration::from_millis(10),
         )
         .await;
         match result {
-            Err(safina_timer::DeadlineExceeded) => {}
+            Err(safina::timer::DeadlineExceededError) => {}
             Ok(Ok(0)) => break,
             Ok(Ok(num_read)) => buf.extend(&chunk[..num_read]),
             Ok(Err(e)) => return Err(e),

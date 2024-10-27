@@ -1,6 +1,6 @@
 use crate::head::HeadError;
 use crate::Response;
-use safina_timer::{DeadlineError, DeadlineExceeded};
+use safina::timer::{DeadlineError, DeadlineExceededError};
 use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -181,8 +181,8 @@ impl From<HttpError> for Response {
         }
     }
 }
-impl From<DeadlineExceeded> for HttpError {
-    fn from(_: DeadlineExceeded) -> Self {
+impl From<DeadlineExceededError> for HttpError {
+    fn from(_: DeadlineExceededError) -> Self {
         HttpError::HandlerDeadlineExceeded
     }
 }

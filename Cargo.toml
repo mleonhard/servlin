@@ -7,7 +7,7 @@ keywords = ["web", "http", "server", "async", "threaded"]
 license = "MIT OR Apache-2.0"
 name = "servlin"
 repository = "https://github.com/mleonhard/servlin"
-version = "0.5.1"
+version = "0.6.0"
 
 [features]
 default = []
@@ -25,9 +25,7 @@ include_dir = { version = "0.7", optional = true }
 permit = "^0.2"
 rand = { version = "0.8", features = ["small_rng"] }
 safe-regex = "0.3"
-safina-executor = { version = "0.3" }
-safina-sync = { version = "0.2" }
-safina-timer = { version = "0.1" }
+safina = { version = "0.4", path = "../safina-rs/safina", features = ["executor", "sync", "timer"] }
 serde = { version = "1", optional = true, features = ["derive"] }
 # TODO: Prevent these deps from appearing as features.
 serde_json = { version = "1", optional = true }
