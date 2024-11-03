@@ -101,6 +101,7 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.6.1 2024-11-03 - Implement `Into<TagList>` for arrays.
 //! - v0.6.0 2024-11-02
 //!    - Remove `servlin::reexports` module.
 //!    - Use `safina` v0.6.0.

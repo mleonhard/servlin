@@ -103,7 +103,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.6.0
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.6.1
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.6.0
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-macros 0.1.3
 0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.67
@@ -243,6 +243,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.6.1 2024-11-03 - Implement `Into<TagList>` for arrays.
 - v0.6.0 2024-11-02
    - Remove `servlin::reexports` module.
    - Use `safina` v0.6.0.

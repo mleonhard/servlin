@@ -106,16 +106,24 @@ impl PartialOrd for TagList {
     }
 }
 
-impl From<Vec<Tag>> for TagList {
-    fn from(v: Vec<Tag>) -> Self {
-        Self(v)
-    }
-}
 impl<A: Into<Tag>> From<A> for TagList {
     fn from(a: A) -> Self {
         TagList(vec![a.into()])
     }
 }
+
+impl From<Vec<Tag>> for TagList {
+    fn from(v: Vec<Tag>) -> Self {
+        Self(v)
+    }
+}
+
+impl<const SIZE: usize, T: Into<Tag> + Sized> From<[T; SIZE]> for TagList {
+    fn from(value: [T; SIZE]) -> Self {
+        TagList(value.into_iter().map(Into::into).collect())
+    }
+}
+
 // From tuples of length 0 through 20.
 impl From<()> for TagList {
     fn from((): ()) -> Self {
