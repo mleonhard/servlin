@@ -101,9 +101,9 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
-//! - v0.6.0 2024-10-26
+//! - v0.6.0 2024-11-02
 //!    - Remove `servlin::reexports` module.
-//!    - Use `safina` v0.4.0.
+//!    - Use `safina` v0.6.0.
 //! - v0.5.1 2024-10-26 - Remove dependency on `once_cell`.
 //! - v0.5.0 2024-10-21 - Remove `LogFileWriterBuilder`.
 //! - v0.4.3 - Implement `From<Cow<'_, str>>` and `From<&Path>` for `TagValue`.
@@ -298,12 +298,15 @@ impl HttpServerBuilder {
     /// #     drop(permit);
     /// # });
     /// safina::timer::start_timer_thread();
-    /// safina::executor::Executor::default().block_on(
+    /// safina::executor::Executor::new(1, 1)
+    ///   .unwrap()
+    ///   .block_on(
     ///     HttpServerBuilder::new()
-    /// #       .permit(server_permit)
-    ///         .receive_large_bodies(cache_dir.path())
-    ///         .spawn_and_join(handler)
-    /// ).unwrap();
+    /// #     .permit(server_permit)
+    ///       .receive_large_bodies(cache_dir.path())
+    ///       .spawn_and_join(handler)
+    ///   )
+    ///   .unwrap();
     /// ```
     #[must_use]
     pub fn receive_large_bodies(mut self, cache_dir: &std::path::Path) -> Self {
@@ -334,13 +337,15 @@ impl HttpServerBuilder {
     ///
     /// # Example
     /// ```
-    /// use servlin::{Response, HttpServerBuilder};
     /// use std::net::SocketAddr;
-    /// use permit::Permit;
+    /// use std::sync::Arc;
+    /// use permit::Permit;    
+    /// use safina::executor::Executor;
+    /// use servlin::{Response, HttpServerBuilder};
     /// # fn do_some_requests(addr: SocketAddr) -> Result<(),()> { Ok(()) }
     ///
     /// safina::timer::start_timer_thread();
-    /// let executor = safina::executor::Executor::default();
+    /// let executor: Arc<Executor> = Arc::default();
     /// let permit = Permit::new();
     /// let (addr, stopped_receiver) = executor.block_on(
     ///     HttpServerBuilder::new()

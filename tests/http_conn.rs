@@ -1,8 +1,9 @@
 mod test_util;
 
-use crate::test_util::{async_test, connected_streams};
+use crate::test_util::connected_streams;
 use futures_lite::{AsyncReadExt, AsyncWriteExt};
 use permit::Permit;
+use safina::async_test;
 use servlin::internal::{handle_http_conn, Token};
 use servlin::{HttpConn, Request, Response};
 use std::future::Future;
@@ -59,99 +60,91 @@ async fn read_response(
         .map_err(|_| std::io::Error::new(ErrorKind::InvalidData, "response is not UTF-8"))
 }
 
-#[test]
-fn handle_http_conn_ok() {
-    async_test(async {
-        let mut stream =
-            handle_http_conn_task(|_req: Request| async { Response::text(200, "ok") }).await;
-        stream.write_all(b"M / HTTP/1.1\r\n\r\n").await.unwrap();
-        assert_eq!(
-            "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 2\r\n\r\nok",
-            read_response(&mut stream, MILLIS_100)
-                .await
-                .unwrap()
-                .as_str()
-        );
-    });
+#[async_test]
+async fn handle_http_conn_ok() {
+    let mut stream =
+        handle_http_conn_task(|_req: Request| async { Response::text(200, "ok") }).await;
+    stream.write_all(b"M / HTTP/1.1\r\n\r\n").await.unwrap();
+    assert_eq!(
+        "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 2\r\n\r\nok",
+        read_response(&mut stream, MILLIS_100)
+            .await
+            .unwrap()
+            .as_str()
+    );
 }
 
-#[test]
-fn handle_http_conn_shutdown() {
-    async_test(async {
-        let mut stream =
-            handle_http_conn_task(|_req: Request| async { Response::text(200, "ok") }).await;
-        stream.shutdown(Shutdown::Write).unwrap();
-        assert_eq!(
-            "",
-            read_response(&mut stream, MILLIS_100)
-                .await
-                .unwrap()
-                .as_str()
-        );
-    });
+#[async_test]
+async fn handle_http_conn_shutdown() {
+    let mut stream =
+        handle_http_conn_task(|_req: Request| async { Response::text(200, "ok") }).await;
+    stream.shutdown(Shutdown::Write).unwrap();
+    assert_eq!(
+        "",
+        read_response(&mut stream, MILLIS_100)
+            .await
+            .unwrap()
+            .as_str()
+    );
 }
 
-#[test]
-fn handle_http_conn_upload() {
-    async_test(async {
-        let mut stream = handle_http_conn_task(|req: Request| async move {
-            let mut body_string = String::new();
-            req.body
-                .async_reader()
-                .await
-                .unwrap()
-                .read_to_string(&mut body_string)
-                .await
-                .unwrap();
-            Response::text(200, format!("read {body_string:?}"))
-        })
-        .await;
-        stream
-            .write_all(b"M / HTTP/1.1\r\ncontent-length:3\r\n\r\nabc")
+#[async_test]
+async fn handle_http_conn_upload() {
+    let mut stream = handle_http_conn_task(|req: Request| async move {
+        let mut body_string = String::new();
+        req.body
+            .async_reader()
+            .await
+            .unwrap()
+            .read_to_string(&mut body_string)
             .await
             .unwrap();
-        assert_eq!(
+        Response::text(200, format!("read {body_string:?}"))
+    })
+    .await;
+    stream
+        .write_all(b"M / HTTP/1.1\r\ncontent-length:3\r\n\r\nabc")
+        .await
+        .unwrap();
+    assert_eq!(
             "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 10\r\n\r\nread \"abc\"",
             read_response(&mut stream, MILLIS_100)
                 .await
                 .unwrap()
                 .as_str()
         );
-    });
 }
 
-#[test]
-fn handle_http_conn_upload_large() {
-    async_test(async {
-        let mut stream = handle_http_conn_task(|req: Request| async move {
-            if req.body.is_pending() {
-                return Response::get_body_and_reprocess(10_000_000);
-            }
-            let mut body_string = String::new();
-            req.body
-                .async_reader()
-                .await
-                .unwrap()
-                .read_to_string(&mut body_string)
-                .await
-                .unwrap();
-            Response::text(200, format!("got {}", body_string.len()))
-        })
-        .await;
-        stream
-            .write_all(b"M / HTTP/1.1\r\ncontent-length:10000000\r\n\r\n")
+#[async_test]
+async fn handle_http_conn_upload_large() {
+    let mut stream = handle_http_conn_task(|req: Request| async move {
+        if req.body.is_pending() {
+            return Response::get_body_and_reprocess(10_000_000);
+        }
+        let mut body_string = String::new();
+        req.body
+            .async_reader()
+            .await
+            .unwrap()
+            .read_to_string(&mut body_string)
             .await
             .unwrap();
-        for _ in 0..10_000 {
-            stream.write_all(&[b'a'; 1000]).await.unwrap();
-        }
-        stream.flush().await.unwrap();
-        assert_eq!(
+        Response::text(200, format!("got {}", body_string.len()))
+    })
+    .await;
+    stream
+        .write_all(b"M / HTTP/1.1\r\ncontent-length:10000000\r\n\r\n")
+        .await
+        .unwrap();
+    for _ in 0..10_000 {
+        stream.write_all(&[b'a'; 1000]).await.unwrap();
+    }
+    stream.flush().await.unwrap();
+    assert_eq!(
             "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 12\r\n\r\ngot 10000000",
             read_response(&mut stream, Duration::from_secs(3))
                 .await
                 .unwrap()
                 .as_str()
         );
-    });
 }

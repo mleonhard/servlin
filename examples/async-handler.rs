@@ -79,7 +79,7 @@
 
 pub fn main() {
     // safina::timer::start_timer_thread();
-    // let executor = safina::executor::Executor::default();
+    // let executor: Arc<Executor> = Arc::default();
     // let cache_dir = TempDir::new().unwrap();
     // let state = Arc::new(State {
     //     upload_count: AtomicUsize::new(0),

@@ -23,6 +23,7 @@
 //! Access the form with your web browser:
 //! <http://127.0.0.1:8000/>
 #![forbid(unsafe_code)]
+use safina::executor::Executor;
 use serde::Deserialize;
 use servlin::log::log_request_and_response;
 use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
@@ -111,7 +112,7 @@ fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
 pub fn main() {
     println!("Access the server at http://127.0.0.1:8000/");
     safina::timer::start_timer_thread();
-    let executor = safina::executor::Executor::default();
+    let executor: Arc<Executor> = Arc::default();
     let state = Arc::new(State::new());
     let request_handler =
         move |req: Request| log_request_and_response(req, |req| handle_req(state, req)).unwrap();

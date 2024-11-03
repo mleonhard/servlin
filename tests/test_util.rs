@@ -1,11 +1,9 @@
 #![allow(dead_code)]
-
 use permit::Permit;
 use safe_regex::{Matcher0, Matcher1};
 use safina::executor::Executor;
 use safina::sync::Receiver;
 use servlin::{socket_addr_127_0_0_1_any_port, HttpServerBuilder, Request, Response};
-use std::future::Future;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr};
 use std::ops::Range;
@@ -156,15 +154,6 @@ pub fn read_for(
     }
     String::from_utf8(bytes)
         .map_err(|_| std::io::Error::new(ErrorKind::InvalidData, "bytes are not UTF-8"))
-}
-
-#[allow(clippy::missing_panics_doc)]
-pub fn async_test<Fut: Future<Output = ()> + Send + 'static>(fut: Fut) {
-    safina::timer::start_timer_thread();
-    safina::executor::Executor::new(2, 1)
-        .unwrap()
-        .block_on(safina::timer::with_timeout(fut, Duration::from_secs(10)))
-        .unwrap();
 }
 
 #[derive(Debug, Eq, PartialEq)]

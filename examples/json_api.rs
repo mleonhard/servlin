@@ -36,6 +36,7 @@
 //! {"count":5}
 //! ```
 #![forbid(unsafe_code)]
+use safina::executor::Executor;
 use serde::Deserialize;
 use serde_json::json;
 use servlin::log::log_request_and_response;
@@ -90,7 +91,7 @@ fn add(state: Arc<State>, req: Request) -> Result<Response, Error> {
         input.num
     };
     state.add(num);
-    Ok(Response::json(200, json!({ "count": state.get() })).unwrap())
+    Response::json(200, json!({ "count": state.get() }))
 }
 
 fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
@@ -106,7 +107,7 @@ fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
 pub fn main() {
     println!("Access the API at http://127.0.0.1:8000/");
     safina::timer::start_timer_thread();
-    let executor = safina::executor::Executor::default();
+    let executor: Arc<Executor> = Arc::default();
     let state = Arc::new(State::new());
     let request_handler =
         move |req: Request| log_request_and_response(req, |req| handle_req(state, req)).unwrap();

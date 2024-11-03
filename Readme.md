@@ -104,7 +104,12 @@ Symbols:
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
 0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.6.0
-0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.4.0
+0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.6.0
+0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-macros 0.1.3
+0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.67
+0/0        4/4          0/0    0/0     0/0      ☢️  │       │   └── unicode-ident 1.0.13
+0/0        0/0          0/0    0/0     0/0      🔒  │       └── safe-quote 1.0.15
+0/0        0/0          0/0    0/0     0/0      🔒  │           └── safe-proc-macro2 1.0.67
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-fs 2.1.2
 4/4        222/222      40/40  0/0     13/13    ☢️  │   ├── async-lock 3.4.0
 0/0        2/2          0/0    0/0     0/0      ☢️  │   │   ├── event-listener-strategy 0.5.2
@@ -202,11 +207,9 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safe-regex 0.3.0
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safe-regex-macro 0.3.0
 0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.67
-0/0        4/4          0/0    0/0     0/0      ☢️  │       │   └── unicode-ident 1.0.13
 0/0        0/0          0/0    0/0     0/0      🔒  │       └── safe-regex-compiler 0.3.0
 0/0        0/0          0/0    0/0     0/0      🔒  │           ├── safe-proc-macro2 1.0.67
 0/0        0/0          0/0    0/0     0/0      🔒  │           └── safe-quote 1.0.15
-0/0        0/0          0/0    0/0     0/0      🔒  │               └── safe-proc-macro2 1.0.67
 0/0        5/5          0/0    0/0     0/0      ☢️  ├── serde 1.0.210
 0/0        66/69        0/0    0/0     0/0      ☢️  ├── serde_json 1.0.132
 0/0        7/7          0/0    0/0     0/0      ☢️  │   ├── itoa 1.0.11
@@ -240,9 +243,9 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
-- v0.6.0 2024-10-26
+- v0.6.0 2024-11-02
    - Remove `servlin::reexports` module.
-   - Use `safina` v0.4.0.
+   - Use `safina` v0.6.0.
 - v0.5.1 2024-10-26 - Remove dependency on `once_cell`.
 - v0.5.0 2024-10-21 - Remove `LogFileWriterBuilder`.
 - v0.4.3 - Implement `From<Cow<'_, str>>` and `From<&Path>` for `TagValue`.

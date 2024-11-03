@@ -5,12 +5,13 @@ mod test_util;
 use crate::test_util::TestServer;
 use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
+use safina::async_test;
 use safina::sync::Receiver;
 use safina::timer::sleep_for;
 use servlin::internal::{read_http_head, Head, HeadError, HttpError};
 use servlin::{AsciiString, Response};
 use std::time::Duration;
-use test_util::{async_test, connected_streams};
+use test_util::connected_streams;
 
 #[test]
 fn request_line() {
@@ -252,92 +253,80 @@ async fn read_http_head_task() -> (async_net::TcpStream, Receiver<Result<Head, H
     (stream1, receiver)
 }
 
-#[test]
-fn read_http_head_ok() {
-    async_test(async {
-        let (mut stream, mut receiver) = read_http_head_task().await;
-        stream.write_all(b"M / HTTP/1.1\r\n\r\n").await.unwrap();
-        let head = receiver.async_recv().await.unwrap().unwrap();
-        assert_eq!("M", head.method);
-        assert_eq!("/", head.url.path());
-        assert!(head.headers.is_empty());
-    });
+#[async_test]
+async fn read_http_head_ok() {
+    let (mut stream, mut receiver) = read_http_head_task().await;
+    stream.write_all(b"M / HTTP/1.1\r\n\r\n").await.unwrap();
+    let head = receiver.async_recv().await.unwrap().unwrap();
+    assert_eq!("M", head.method);
+    assert_eq!("/", head.url.path());
+    assert!(head.headers.is_empty());
 }
 
-#[test]
-fn read_http_head_error() {
-    async_test(async {
-        let (mut stream, mut receiver) = read_http_head_task().await;
-        stream.write_all(b"M / BADPROTO\r\n\r\n").await.unwrap();
-        assert_eq!(
-            Err(HttpError::UnsupportedProtocol),
-            receiver.async_recv().await.unwrap()
-        );
-    });
+#[async_test]
+async fn read_http_head_error() {
+    let (mut stream, mut receiver) = read_http_head_task().await;
+    stream.write_all(b"M / BADPROTO\r\n\r\n").await.unwrap();
+    assert_eq!(
+        Err(HttpError::UnsupportedProtocol),
+        receiver.async_recv().await.unwrap()
+    );
 }
 
-#[test]
-fn read_http_head_too_long() {
-    async_test(async {
-        let (mut stream, mut receiver) = read_http_head_task().await;
-        stream.write_all(&[b'a'; 10_000]).await.unwrap();
-        assert_eq!(
-            Err(HttpError::HeadTooLong),
-            receiver.async_recv().await.unwrap()
-        );
-    });
+#[async_test]
+async fn read_http_head_too_long() {
+    let (mut stream, mut receiver) = read_http_head_task().await;
+    stream.write_all(&[b'a'; 10_000]).await.unwrap();
+    assert_eq!(
+        Err(HttpError::HeadTooLong),
+        receiver.async_recv().await.unwrap()
+    );
 }
 
-#[test]
-fn read_http_head_truncated() {
-    async_test(async {
-        let (mut stream, mut receiver) = read_http_head_task().await;
-        stream.write_all(b"M / HTTP/1.1\r\n\r").await.unwrap();
-        drop(stream);
-        assert_eq!(
-            Err(HttpError::Truncated),
-            receiver.async_recv().await.unwrap()
-        );
-    });
+#[async_test]
+async fn read_http_head_truncated() {
+    let (mut stream, mut receiver) = read_http_head_task().await;
+    stream.write_all(b"M / HTTP/1.1\r\n\r").await.unwrap();
+    drop(stream);
+    assert_eq!(
+        Err(HttpError::Truncated),
+        receiver.async_recv().await.unwrap()
+    );
 }
 
-#[test]
-fn read_http_head_multiple_writes() {
-    async_test(async {
-        let (mut stream, mut receiver) = read_http_head_task().await;
-        stream.write_all(b"M / HTTP/1.1\r\n").await.unwrap();
-        stream.flush().await.unwrap();
-        sleep_for(Duration::from_millis(100)).await;
-        stream.write_all(b"\r\n").await.unwrap();
-        stream.flush().await.unwrap();
-        let head = receiver.async_recv().await.unwrap().unwrap();
-        assert_eq!("M", head.method);
-        assert_eq!("/", head.url.path());
-        assert!(head.headers.is_empty());
-    });
+#[async_test]
+async fn read_http_head_multiple_writes() {
+    let (mut stream, mut receiver) = read_http_head_task().await;
+    stream.write_all(b"M / HTTP/1.1\r\n").await.unwrap();
+    stream.flush().await.unwrap();
+    sleep_for(Duration::from_millis(100)).await;
+    stream.write_all(b"\r\n").await.unwrap();
+    stream.flush().await.unwrap();
+    let head = receiver.async_recv().await.unwrap().unwrap();
+    assert_eq!("M", head.method);
+    assert_eq!("/", head.url.path());
+    assert!(head.headers.is_empty());
 }
 
-#[test]
-fn read_http_head_subsequent() {
-    async_test(async {
-        let (mut stream, mut receiver) = read_http_head_task().await;
-        stream.write_all(b"M /1 HTTP/1.1\r\n\r\n").await.unwrap();
-        assert_eq!(
-            "/1",
-            receiver.async_recv().await.unwrap().unwrap().url.path()
-        );
-        stream.write_all(b"M /2 HTTP/1.1\r\n\r\n").await.unwrap();
-        assert_eq!(
-            "/2",
-            receiver.async_recv().await.unwrap().unwrap().url.path()
-        );
-        drop(stream);
-        assert_eq!(
-            Err(HttpError::Disconnected),
-            receiver.async_recv().await.unwrap()
-        );
-        receiver.async_recv().await.unwrap_err();
-    });
+#[async_test]
+async fn read_http_head_subsequent() {
+    let (mut stream, mut receiver) = read_http_head_task().await;
+    stream.write_all(b"M /1 HTTP/1.1\r\n\r\n").await.unwrap();
+    assert_eq!(
+        "/1",
+        receiver.async_recv().await.unwrap().unwrap().url.path()
+    );
+    stream.write_all(b"M /2 HTTP/1.1\r\n\r\n").await.unwrap();
+    assert_eq!(
+        "/2",
+        receiver.async_recv().await.unwrap().unwrap().url.path()
+    );
+    drop(stream);
+    assert_eq!(
+        Err(HttpError::Disconnected),
+        receiver.async_recv().await.unwrap()
+    );
+    receiver.async_recv().await.unwrap_err();
 }
 
 #[test]

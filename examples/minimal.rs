@@ -29,11 +29,13 @@
 //! $
 //! ```
 #![forbid(unsafe_code)]
+use safina::executor::Executor;
 use servlin::{socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
+use std::sync::Arc;
 
 pub fn main() {
     safina::timer::start_timer_thread();
-    let executor = safina::executor::Executor::default();
+    let executor: Arc<Executor> = Arc::default();
     executor
         .block_on(
             HttpServerBuilder::new()
