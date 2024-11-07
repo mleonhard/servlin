@@ -400,6 +400,8 @@ impl HttpServerBuilder {
         let token_set = TokenSet::new(self.max_conns);
         let (sender, receiver) = safina::sync::oneshot();
         safina::executor::spawn(async move {
+            // TODONT: Don't make spawn accept_loop tasks, since that reduces throughput.
+            //   To speed this up, use a separate accepter thread, or multiple threads.
             accept_loop(self.permit, listener, token_set, conn_handler).await;
             // TODO: Wait for connection tokens to return.
             let _ignored = sender.send(());
