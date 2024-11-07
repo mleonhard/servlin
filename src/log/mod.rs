@@ -79,7 +79,7 @@ pub fn debug(msg: impl Into<String>, tags: impl Into<TagList>) -> Result<(), Log
 /// Returns the response.
 ///
 /// When `result` is an [`Error`] without a response,
-/// this function uses [`Response::internal_server_errror_500`] to make one.
+/// this function uses [`Response::internal_server_error_500`] to make one.
 ///
 /// # Errors
 /// Returns `Err` when the global logger has stopped.
@@ -98,7 +98,7 @@ pub fn log_response(result: Result<Response, Error>) -> Result<Response, LoggerS
         Err(e) => {
             let response = e
                 .response
-                .unwrap_or_else(Response::internal_server_errror_500);
+                .unwrap_or_else(Response::internal_server_error_500);
             let mut tags = e.tags;
             if let Some(msg) = e.msg {
                 tags.push(Tag::new("msg", msg));
@@ -122,7 +122,7 @@ pub fn log_response(result: Result<Response, Error>) -> Result<Response, LoggerS
 /// and sends it to the global logger.
 ///
 /// When the result of `f` is an [`Error`] without a response,
-/// this function uses [`Response::internal_server_errror_500`] to make one.
+/// this function uses [`Response::internal_server_error_500`] to make one.
 ///
 /// Returns the response.
 ///

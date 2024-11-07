@@ -234,7 +234,7 @@ impl Response {
     }
 
     #[must_use]
-    pub fn internal_server_errror_500() -> Self {
+    pub fn internal_server_error_500() -> Self {
         Response::new(500)
     }
 
