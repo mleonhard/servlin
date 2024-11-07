@@ -16,7 +16,7 @@ pub use logger::{
     with_thread_local_log_tags, LoggerStoppedError,
 };
 use std::fmt::{Display, Formatter};
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 pub use tag::tag;
 use tag::Tag;
 pub use tag_list::*;
@@ -135,9 +135,11 @@ pub fn log_request_and_response<F: FnOnce(Request) -> Result<Response, Error>>(
     req: Request,
     f: F,
 ) -> Result<Response, LoggerStoppedError> {
+    let before = Instant::now();
     clear_thread_local_log_tags();
     add_thread_local_log_tags_from_request(&req);
-    let result = log_response(f(req));
-    clear_thread_local_log_tags();
-    result
+    let handler_result = f(req);
+    add_thread_local_log_tag("duration_ms", before.elapsed().as_millis());
+    let log_result = log_response(handler_result);
+    log_result
 }

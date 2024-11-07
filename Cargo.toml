@@ -7,13 +7,14 @@ keywords = ["web", "http", "server", "async", "threaded"]
 license = "MIT OR Apache-2.0"
 name = "servlin"
 repository = "https://github.com/mleonhard/servlin"
-version = "0.6.1"
+version = "0.6.2"
 
 [features]
 default = []
 json = ["serde", "serde_json"]
 urlencoded = ["serde", "serde_urlencoded"]
 
+# TODO: Don't include default features.
 [dependencies]
 async-fs = "2"
 async-net = "2"
