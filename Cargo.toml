@@ -14,29 +14,28 @@ default = []
 json = ["serde", "serde_json"]
 urlencoded = ["serde", "serde_urlencoded"]
 
-# TODO: Don't include default features.
 [dependencies]
-async-fs = "2"
-async-net = "2"
-fixed-buffer = { version = "1", features = ["futures-io"] }
-futures-io = "0.3"
-futures-lite = "2"
+async-fs = { version = "2", default-features = false, features = [] }
+async-net = { version = "2", default-features = false, features = [] }
+fixed-buffer = { version = "1", default-features = false, features = ["futures-io"] }
+futures-io = { version = "0.3", default-features = false, features = [] }
+futures-lite = { version = "2", default-features = false, features = [] }
 include_dir = { version = "0.7", optional = true }
 #libflate = "1"
-permit = "^0.2"
-rand = { version = "0.8", features = ["small_rng"] }
-safe-regex = "0.3"
-safina = { version = "0.6", path = "../safina-rs/safina", features = ["executor", "sync", "timer"] }
-serde = { version = "1", optional = true, features = ["derive"] }
+permit = { version = "^0.2", default-features = false, features = [] }
+rand = { version = "0.8", default-features = false, features = ["getrandom", "small_rng"] }
+safe-regex = { version = "0.3", default-features = false, features = [] }
+safina = { version = "0.6", path = "../safina-rs/safina", default-features = false, features = ["executor", "sync", "threadpool", "timer"] }
+serde = { version = "1", optional = true, default-features = false, features = ["derive"] }
 # TODO: Prevent these deps from appearing as features.
-serde_json = { version = "1", optional = true }
-serde_urlencoded = { version = "0.7", optional = true }
-temp-dir = "0.1"
-temp-file = "0.1"
-url = "2"
+serde_json = { version = "1", optional = true, default-features = false, features = ["std"] }
+serde_urlencoded = { version = "0.7", optional = true, default-features = false, features = [] }
+temp-dir = { version = "0.1", default-features = false, features = [] }
+temp-file = { version = "0.1", default-features = false, features = [] }
+url = { version = "2", default-features = false, features = [] }
 
 [dev-dependencies]
-safina = { version = "0.6", path = "../safina-rs/safina", features = ["async_test"] }
+safina = { version = "0.6", path = "../safina-rs/safina", default-features = false, features = ["async_test"] }
 
 [[example]]
 name = "html_form"
