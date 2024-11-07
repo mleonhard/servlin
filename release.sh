@@ -11,7 +11,7 @@ if ! (git branch --show-current | grep -q -E '^main$'); then
 fi
 
 # Get version line from Cargo.toml.
-version=$(cargo pkgid |cut -d '#' -f 2)
+version=$(cargo pkgid |cut -d '@' -f 2)
 # Check the value.
 if ! (echo "$version" | grep -q -E '^[0-9]+\.[0-9]+\.[0-9]+$'); then
   echo "Cargo.toml has invalid version '$version'"
