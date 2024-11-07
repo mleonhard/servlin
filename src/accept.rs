@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use crate::log::error;
 use crate::token_set::{Token, TokenSet};
 use async_net::TcpListener;
 use futures_lite::FutureExt;
@@ -117,6 +118,7 @@ pub async fn accept_loop<F>(
                 conn_handler.clone()(permit.new_sub(), token, stream, addr);
             }
             Some(AcceptResult::TooManyOpenFiles) => {
+                error("too many open files, unable to accept connection", ()).unwrap();
                 safina::timer::sleep_for(Duration::from_millis(500)).await;
             }
             Some(AcceptResult::Err(e)) => panic!("error accepting connection: {e}"),
