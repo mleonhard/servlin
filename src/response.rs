@@ -234,6 +234,11 @@ impl Response {
     }
 
     #[must_use]
+    pub fn too_many_requests_429() -> Self {
+        Response::text(429, "Too many requests.")
+    }
+
+    #[must_use]
     pub fn internal_server_error_500() -> Self {
         Response::new(500)
     }
