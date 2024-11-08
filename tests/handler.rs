@@ -29,7 +29,7 @@ fn panics() {
     let server = TestServer::start(|_req| panic!("ignore this panic")).unwrap();
     assert_eq!(
         server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
-        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 12\r\n\r\nServer error",
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\nconnection: close\r\ncontent-length: 12\r\n\r\nServer error",
     );
 }
 
@@ -150,6 +150,15 @@ fn method_not_allowed_405() {
 }
 
 #[test]
+fn connection_close_on_5xx() {
+    let server = TestServer::start(|_req| Response::new(500)).unwrap();
+    assert_eq!(
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
+        "HTTP/1.1 500 Internal Server Error\r\nconnection: close\r\ncontent-length: 0\r\n\r\n",
+    );
+}
+
+#[test]
 fn duplicate_content_type_header() {
     let server = TestServer::start(|_req| {
         Response::text(200, "t1").with_header("Content-type", "text/plain".try_into().unwrap())
@@ -228,7 +237,7 @@ fn body_not_pending() {
         server
             .exchange("M / HTTP/1.1\r\ncontent-length:3\r\n\r\nabc")
             .unwrap(),
-        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\nconnection: close\r\ncontent-length: 21\r\n\r\nInternal server error",
     );
 }
 
@@ -237,7 +246,7 @@ fn already_got_body() {
     let server = TestServer::start(|_req| Response::get_body_and_reprocess(70_000)).unwrap();
     assert_eq!(
         server.exchange(req_with_len(66_000)).unwrap(),
-        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\nconnection: close\r\ncontent-length: 21\r\n\r\nInternal server error",
     );
 }
 
@@ -265,7 +274,7 @@ fn error_writing_body_file() {
     std::thread::sleep(Duration::from_millis(100));
     assert_eq!(
         server.exchange(req_with_len(66_000)).unwrap(),
-        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 21\r\n\r\nInternal server error",
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\nconnection: close\r\ncontent-length: 21\r\n\r\nInternal server error",
     );
 }
 
@@ -286,7 +295,7 @@ fn error_reading_body_file() {
     server.cache_dir.take();
     assert_eq!(
         read_to_string(&mut tcp_stream).unwrap(),
-        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 12\r\n\r\nServer error",
+        "HTTP/1.1 500 Internal Server Error\r\ncontent-type: text/plain; charset=UTF-8\r\nconnection: close\r\ncontent-length: 12\r\n\r\nServer error",
     );
 }
 

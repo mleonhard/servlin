@@ -140,6 +140,5 @@ pub fn log_request_and_response<F: FnOnce(Request) -> Result<Response, Error>>(
     add_thread_local_log_tags_from_request(&req);
     let handler_result = f(req);
     add_thread_local_log_tag("duration_ms", before.elapsed().as_millis());
-    let log_result = log_response(handler_result);
-    log_result
+    log_response(handler_result)
 }

@@ -102,8 +102,9 @@
 //!
 //! # Changelog
 //! - v0.7.0 2024-11-06
-//!    - `log_request_and_response` to log duration_ms tag.
+//!    - `log_request_and_response` to log `duration_ms` tag.
 //!    - Fix typo in function name `Response::internal_server_errror_500`.
+//!    - Close connection on 5xx error.
 //! - v0.6.1 2024-11-03 - Implement `Into<TagList>` for arrays.
 //! - v0.6.0 2024-11-02
 //!    - Remove `servlin::reexports` module.

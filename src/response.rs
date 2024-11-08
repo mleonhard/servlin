@@ -468,6 +468,7 @@ pub fn reason_phrase(code: u16) -> &'static str {
 pub async fn write_http_response(
     mut writer: impl AsyncWrite + Unpin,
     response: &Response,
+    close: bool,
 ) -> Result<(), HttpError> {
     //dbg!("write_http_response", &response);
     if !response.is_normal() {
@@ -493,6 +494,9 @@ pub async fn write_http_response(
             response.content_type.as_str()
         )
         .unwrap();
+    }
+    if close {
+        write!(head_bytes, "connection: close\r\n",).unwrap();
     }
     if let Some(body_len) = response.body.len() {
         if response.headers.get_only("content-length").is_some() {

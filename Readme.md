@@ -143,6 +143,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        14/14        1/1    0/0     0/0      ☢️  │   │   └── tracing 0.1.40
 0/0        11/191       0/0    0/0     2/2      ☢️  │   │       ├── pin-project-lite 0.2.14
 0/0        96/96        5/5    0/0     2/2      ☢️  │   │       └── tracing-core 0.1.32
+0/0        0/117        0/9    0/0     0/4      ❓  │   │           └── once_cell 1.20.2
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 2.3.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-net 2.0.0
 0/0        68/114       19/22  1/1     4/8      ☢️  │   ├── async-io 2.3.4
@@ -226,7 +227,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        8/8          0/0    0/0     0/0      ☢️      ├── percent-encoding 2.3.1
 0/0        5/5          0/0    0/0     0/0      ☢️      └── serde 1.0.210
 
-101/547    7066/13878   105/144 3/6     187/322
+101/547    7066/13995   105/153 3/6     187/326
 
 ```
 # Alternatives
@@ -234,8 +235,9 @@ See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/mai
 
 # Changelog
 - v0.7.0 2024-11-06
-   - `log_request_and_response` to log duration_ms tag.
+   - `log_request_and_response` to log `duration_ms` tag.
    - Fix typo in function name `Response::internal_server_errror_500`.
+   - Close connection on 5xx error.
 - v0.6.1 2024-11-03 - Implement `Into<TagList>` for arrays.
 - v0.6.0 2024-11-02
    - Remove `servlin::reexports` module.

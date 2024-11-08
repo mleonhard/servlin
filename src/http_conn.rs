@@ -56,7 +56,7 @@ impl HttpConn {
 
     #[must_use]
     pub fn is_ready(&self) -> bool {
-        self.read_state == ReadState::Head
+        self.read_state == ReadState::Head && self.write_state == WriteState::None
     }
 
     pub fn shutdown_write(&mut self) {
@@ -243,10 +243,14 @@ impl HttpConn {
             WriteState::Shutdown => return Err(HttpError::Disconnected),
         }
         let mut write_counter = AsyncWriteCounter::new(&mut self.stream);
-        let result = write_http_response(&mut write_counter, response).await;
+        let close = (500..=599).contains(&response.code);
+        let result = write_http_response(&mut write_counter, response, close).await;
         if result.is_ok() {
             if !response.is_1xx() {
                 self.write_state = WriteState::None;
+            }
+            if close {
+                self.shutdown_write();
             }
         } else if write_counter.num_bytes_written() > 0 {
             self.shutdown_write();
