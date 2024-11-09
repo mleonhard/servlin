@@ -106,7 +106,7 @@
 //!    - Fix typo in function name `Response::internal_server_errror_500`.
 //!    - Close connection on 5xx error.
 //!    - Add `Response::too_many_requests_429`.
-//! - v0.6.1 2024-11-03 - Implement `Into<TagList>` for arrays.
+//!    - Implement `Into<TagList>` for arrays.
 //! - v0.6.0 2024-11-02
 //!    - Remove `servlin::reexports` module.
 //!    - Use `safina` v0.6.0.
@@ -385,6 +385,13 @@ impl HttpServerBuilder {
     {
         let async_request_handler = |req: Request| async move {
             let request_handler_clone = request_handler.clone();
+            // TODO: Handle threadpool backpressure.
+            //   - Keep set of pending requests, worker threads pull from it.
+            //   - Async task checks and removes disconnected connections
+            //   - send 503s
+            //   - priorities
+            //   - rate limits
+            //   - timeout request handlers with permit
             safina::executor::schedule_blocking(move || request_handler_clone(req))
                 .await
                 .unwrap_or_else(|_| Response::text(500, "Server error"))
@@ -405,8 +412,8 @@ impl HttpServerBuilder {
         let token_set = TokenSet::new(self.max_conns);
         let (sender, receiver) = safina::sync::oneshot();
         safina::executor::spawn(async move {
-            // TODONT: Don't make spawn accept_loop tasks, since that reduces throughput.
-            //   To speed this up, use a separate accepter thread, or multiple threads.
+            // Let's not make spawn accept_loop tasks, since that reduces throughput.
+            // To speed this up, we could use a separate accepter thread, or multiple threads.
             accept_loop(self.permit, listener, token_set, conn_handler).await;
             // TODO: Wait for connection tokens to return.
             let _ignored = sender.send(());
