@@ -101,6 +101,7 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.7.1 2024-11-16 - Add [`Request::parse_url`].
 //! - v0.7.0 2024-11-06
 //!    - `log_request_and_response` to log `duration_ms` tag.
 //!    - Fix typo in function name `Response::internal_server_errror_500`.

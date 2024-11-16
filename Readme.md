@@ -103,7 +103,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.7.0
+0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.7.1
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.6.0
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-macros 0.1.3
 0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.67
@@ -234,6 +234,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
+- v0.7.1 2024-11-16 - Add [`Request::parse_url`].
 - v0.7.0 2024-11-06
    - `log_request_and_response` to log `duration_ms` tag.
    - Fix typo in function name `Response::internal_server_errror_500`.

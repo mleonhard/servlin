@@ -95,7 +95,6 @@ impl Request {
                 panic!("error reading body: {e}");
             }
             serde_urlencoded::from_bytes(&buf).map_err(|e| {
-                // Does this make a cross-site-scripting (XSS) vulnerability?
                 Response::text(
                     400,
                     format!(
@@ -156,6 +155,29 @@ impl Request {
         } else {
             Ok(Some(self.json()?))
         }
+    }
+
+    /// Parses the request URL and deserializes it into type `T`.
+    ///
+    /// Treats a missing URL query string (`/foo`) as an empty query string (`/foo?`).
+    ///
+    /// # Errors
+    /// Returns an error when
+    /// - the URL parameters are mal-formed
+    /// - we fail to deserialize the URL parameters into a `T`
+    #[cfg(feature = "urlencoded")]
+    pub fn parse_url<T: serde::de::DeserializeOwned>(&self) -> Result<T, Response> {
+        use crate::util::escape_and_elide;
+        let url_str = self.url.query().unwrap_or_default();
+        serde_urlencoded::from_str(url_str).map_err(|e| {
+            Response::text(
+                400,
+                format!(
+                    "error processing url: {}",
+                    escape_and_elide(e.to_string().as_bytes(), 100)
+                ),
+            )
+        })
     }
 }
 impl Debug for Request {
