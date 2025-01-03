@@ -24,7 +24,7 @@ impl<'x> BodyAsyncReader<'x> {
         Ok(BodyAsyncReader::File(file))
     }
 }
-impl<'x> futures_io::AsyncRead for BodyAsyncReader<'x> {
+impl futures_io::AsyncRead for BodyAsyncReader<'_> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,

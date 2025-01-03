@@ -21,7 +21,7 @@ impl<'x> BodyReader<'x> {
         Ok(Self::File(std::fs::File::open(path.as_ref())?))
     }
 }
-impl<'x> std::io::Read for BodyReader<'x> {
+impl std::io::Read for BodyReader<'_> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, std::io::Error> {
         match self {
             BodyReader::Cursor(cursor) => cursor.read(buf),
@@ -34,7 +34,7 @@ impl<'x> std::io::Read for BodyReader<'x> {
         }
     }
 }
-impl<'x> std::io::Seek for BodyReader<'x> {
+impl std::io::Seek for BodyReader<'_> {
     fn seek(&mut self, pos: SeekFrom) -> Result<u64, std::io::Error> {
         match self {
             BodyReader::Cursor(cursor) => cursor.seek(pos),

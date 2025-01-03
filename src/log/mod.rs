@@ -135,6 +135,7 @@ pub fn log_request_and_response<F: FnOnce(Request) -> Result<Response, Error>>(
     req: Request,
     f: F,
 ) -> Result<Response, LoggerStoppedError> {
+    // TODO: When a client sends a request body, figure out how to avoid logging the request twice, with different request IDs.
     let before = Instant::now();
     clear_thread_local_log_tags();
     add_thread_local_log_tags_from_request(&req);

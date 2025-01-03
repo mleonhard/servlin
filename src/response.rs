@@ -120,9 +120,9 @@ impl Response {
             "svg" => ContentType::Svg,
             _ => ContentType::None,
         };
-        return Ok(Response::new(200)
+        Ok(Response::new(200)
             .with_type(content_type)
-            .with_body(ResponseBody::StaticBytes(file.contents())));
+            .with_body(ResponseBody::StaticBytes(file.contents())))
     }
 
     #[must_use]
