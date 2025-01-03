@@ -8,7 +8,6 @@ Servlin
 A modular HTTP server library in Rust.
 
 # Features
-
 - `forbid(unsafe_code)`
 - Threaded request handlers:<br>
   `FnOnce(Request) -> Response + 'static + Clone + Send + Sync`
@@ -23,27 +22,24 @@ A modular HTTP server library in Rust.
 - Good test coverage (63%)
 
 # Limitations
-
 - New, not proven in production.
 - To do:
-    - Request timeouts
-    - `chunked` transfer-encoding for request bodies
-    - gzip
-    - brotli
-    - TLS
-    - automatically getting TLS certs via ACME
-    - Drop idle connections when approaching connection limit.
-    - Denial-of-Service mitigation: source throttling, minimum throughput
-    - Complete functional test suite
-    - Missing load tests
-    - Disk space usage limits
+  - Request timeouts
+  - `chunked` transfer-encoding for request bodies
+  - gzip
+  - brotli
+  - TLS
+  - automatically getting TLS certs via ACME
+  - Drop idle connections when approaching connection limit.
+  - Denial-of-Service mitigation: source throttling, minimum throughput
+  - Complete functional test suite
+  - Missing load tests
+  - Disk space usage limits
 
 # Examples
-
 Complete examples: [`examples/`](https://github.com/mleonhard/servlin/tree/main/examples).
 
 Simple example:
-
 ```rust
 use serde::Deserialize;
 use serde_json::json;
@@ -93,11 +89,8 @@ executor.block_on(
         .spawn_and_join(request_handler)
 ).unwrap();
 ```
-
 # Cargo Geiger Safety Report
-
 ```
-
 Metric output format: x/y
     x = unsafe code used by the build
     y = total unsafe code found in the crate
@@ -236,68 +229,64 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 101/547    7066/13995   105/153 3/6     187/326
 
 ```
-
 # Alternatives
-
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
-
 - v0.7.0 2025-01-03
-    - `log_request_and_response` to log `duration_ms` tag.
-    - Fix typo in function name `Response::internal_server_errror_500`.
-    - Close connection on 5xx error.
-    - Acceptor thread to log errors, not panic.
-    - Add [`Request::parse_url`].
-    - Add [`Response::too_many_requests_429`].
-    - Implement `Into<TagList>` for arrays.
+  - `log_request_and_response` to log `duration_ms` tag.
+  - Fix typo in function name `Response::internal_server_errror_500`.
+  - Close connection on 5xx error.
+  - Acceptor thread to log errors, not panic.
+  - Add [`Request::parse_url`].
+  - Add [`Response::too_many_requests_429`].
+  - Implement `Into<TagList>` for arrays.
 - v0.6.0 2024-11-02
-    - Remove `servlin::reexports` module.
-    - Use `safina` v0.6.0.
+  - Remove `servlin::reexports` module.
+  - Use `safina` v0.6.0.
 - v0.5.1 2024-10-26 - Remove dependency on `once_cell`.
 - v0.5.0 2024-10-21 - Remove `LogFileWriterBuilder`.
 - v0.4.3 - Implement `From<Cow<'_, str>>` and `From<&Path>` for `TagValue`.
 - v0.4.2 - Implement `Seek` for `BodyReader`.
 - v0.4.1
-    - Add `Request::opt_json`.
-    - Implement `From<LoggerStoppedError>` for `Error`.
+  - Add `Request::opt_json`.
+  - Implement `From<LoggerStoppedError>` for `Error`.
 - v0.4.0
-    - Changed `Response::json` to return `Result<Response, Error>`.
-    - Changed `log_request_and_response` to return `Result`.
-    - Added `Response::unprocessable_entity_422`.
+  - Changed `Response::json` to return `Result<Response, Error>`.
+  - Changed `log_request_and_response` to return `Result`.
+  - Added `Response::unprocessable_entity_422`.
 - v0.3.2 - Fix bug in `Response::include_dir` redirects.
 - v0.3.1
-    - Add `Response::redirect_301`
-    - `Response::include_dir` to redirect from `/somedir` to `/somedir/` so relative URLs will work.
+  - Add `Response::redirect_301`
+  - `Response::include_dir` to redirect from `/somedir` to `/somedir/` so relative URLs will work.
 - v0.3.0 - Changed `Response::include_dir` to take `&Request` and look for `index.html` in dirs.
 - v0.2.0
-    - Added:
-        - `log_request_and_response` and other logging tooling
-        - `Response::ok_200()`
-        - `Response::unauthorized_401()`
-        - `Response::forbidden_403()`
-        - `Response::internal_server_errror_500()`
-        - `Response::not_implemented_501()`
-        - `Response::service_unavailable_503()`
-        - `EventSender::is_connected()`
-        - `PORT_env()`
-    - Removed `print_log_response` and `RequestBody::length_is_known`
-    - Changed `RequestBody::len` and `is_empty` to return `Option`.
-    - Bugfixes
+  - Added:
+    - `log_request_and_response` and other logging tooling
+    - `Response::ok_200()`
+    - `Response::unauthorized_401()`
+    - `Response::forbidden_403()`
+    - `Response::internal_server_errror_500()`
+    - `Response::not_implemented_501()`
+    - `Response::service_unavailable_503()`
+    - `EventSender::is_connected()`
+    - `PORT_env()`
+  - Removed `print_log_response` and `RequestBody::length_is_known`
+  - Changed `RequestBody::len` and `is_empty` to return `Option`.
+  - Bugfixes
 - v0.1.1 - Add `EventSender::unconnected`.
 - v0.1.0 - Rename library to Servlin.
 
 # TO DO
-
 - Fix limitations above
 - Support [HEAD](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD)
   responses that have Content-Length set and no body.
 - Add a server-wide limit on upload body size.
 - Limit disk usage for caching uploads.
 - Update `rust-webserver-comparison.md`
-    - Add missing data
-    - Add other servers from <https://www.arewewebyet.org/topics/frameworks/>
-    - Rearrange
-    - Generate geiger reports for each web server
+  - Add missing data
+  - Add other servers from <https://www.arewewebyet.org/topics/frameworks/>
+  - Rearrange
+  - Generate geiger reports for each web server
 
 License: MIT OR Apache-2.0

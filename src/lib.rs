@@ -102,16 +102,16 @@
 //!
 //! # Changelog
 //! - v0.7.0 2025-01-03
-//!    - `log_request_and_response` to log `duration_ms` tag.
-//!    - Fix typo in function name `Response::internal_server_errror_500`.
-//!    - Close connection on 5xx error.
-//!    - Acceptor thread to log errors, not panic.
-//!    - Add [`Request::parse_url`].
-//!    - Add [`Response::too_many_requests_429`].
-//!    - Implement `Into<TagList>` for arrays.
+//!   - `log_request_and_response` to log `duration_ms` tag.
+//!   - Fix typo in function name `Response::internal_server_errror_500`.
+//!   - Close connection on 5xx error.
+//!   - Acceptor thread to log errors, not panic.
+//!   - Add [`Request::parse_url`].
+//!   - Add [`Response::too_many_requests_429`].
+//!   - Implement `Into<TagList>` for arrays.
 //! - v0.6.0 2024-11-02
-//!    - Remove `servlin::reexports` module.
-//!    - Use `safina` v0.6.0.
+//!   - Remove `servlin::reexports` module.
+//!   - Use `safina` v0.6.0.
 //! - v0.5.1 2024-10-26 - Remove dependency on `once_cell`.
 //! - v0.5.0 2024-10-21 - Remove `LogFileWriterBuilder`.
 //! - v0.4.3 - Implement `From<Cow<'_, str>>` and `From<&Path>` for `TagValue`.
