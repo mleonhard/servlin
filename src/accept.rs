@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::log::error;
+use crate::log::{add_thread_local_log_tag, error};
 use crate::token_set::{Token, TokenSet};
 use async_net::TcpListener;
 use futures_lite::FutureExt;
@@ -100,6 +100,7 @@ pub async fn accept_loop<F>(
 ) where
     F: FnOnce(Permit, Token, async_net::TcpStream, SocketAddr) + 'static + Send + Clone,
 {
+    add_thread_local_log_tag("thread_name", "accept_loop");
     loop {
         let token = token_set.async_wait_token().await;
         if permit.is_revoked() {
@@ -121,7 +122,10 @@ pub async fn accept_loop<F>(
                 error("too many open files, unable to accept connection", ()).unwrap();
                 safina::timer::sleep_for(Duration::from_millis(500)).await;
             }
-            Some(AcceptResult::Err(e)) => panic!("error accepting connection: {e}"),
+            Some(AcceptResult::Err(e)) => {
+                let _ = error(format!("error accepting connection: {e}"), ());
+                safina::timer::sleep_for(Duration::from_millis(500)).await;
+            }
             None => {}
         }
     }
