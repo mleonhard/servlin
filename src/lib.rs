@@ -101,7 +101,7 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
-//! - v0.7.0 2025-01-03
+//! - v0.7.0 2025-06-23
 //!   - `log_request_and_response` to log `duration_ms` tag.
 //!   - Fix typo in function name `Response::internal_server_errror_500`.
 //!   - Close connection on 5xx error.

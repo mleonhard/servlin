@@ -104,12 +104,6 @@ Symbols:
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
 0/0        0/0          0/0    0/0     0/0      🔒  servlin 0.7.0
-0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.6.1
-0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-macros 0.1.3
-0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.95
-0/0        0/0          0/0    0/0     0/0      🔒  │       │   └── unicode-xid 0.2.6
-0/0        0/0          0/0    0/0     0/0      🔒  │       └── safe-quote 1.0.40
-0/0        0/0          0/0    0/0     0/0      🔒  │           └── safe-proc-macro2 1.0.95
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-fs 2.1.2
 4/4        222/222      40/40  0/0     13/13    ☢️  │   ├── async-lock 3.4.0
 0/0        2/2          0/0    0/0     0/0      ☢️  │   │   ├── event-listener-strategy 0.5.4
@@ -143,7 +137,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        14/14        1/1    0/0     0/0      ☢️  │   │   └── tracing 0.1.41
 0/0        11/191       0/0    0/0     2/2      ☢️  │   │       ├── pin-project-lite 0.2.16
 0/0        98/98        5/5    0/0     2/2      ☢️  │   │       └── tracing-core 0.1.34
-0/0        0/124        0/9    0/0     0/5      ❓  │   │           └── once_cell 1.21.3
 0/0        0/0          0/0    0/0     0/0      ❓  │   └── futures-lite 2.6.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── async-net 2.0.0
 0/0        72/118       19/22  1/1     5/9      ☢️  │   ├── async-io 2.4.1
@@ -197,9 +190,15 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safe-regex 0.3.0
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safe-regex-macro 0.3.0
 0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.95
+0/0        0/0          0/0    0/0     0/0      🔒  │       │   └── unicode-xid 0.2.6
 0/0        0/0          0/0    0/0     0/0      🔒  │       └── safe-regex-compiler 0.3.0
 0/0        0/0          0/0    0/0     0/0      🔒  │           ├── safe-proc-macro2 1.0.95
 0/0        0/0          0/0    0/0     0/0      🔒  │           └── safe-quote 1.0.40
+0/0        0/0          0/0    0/0     0/0      🔒  │               └── safe-proc-macro2 1.0.95
+0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.6.0
+0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-macros 0.1.3
+0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.95
+0/0        0/0          0/0    0/0     0/0      🔒  │       └── safe-quote 1.0.40
 0/0        5/5          0/0    0/0     0/0      ☢️  ├── serde 1.0.219
 0/0        72/75        0/0    0/0     0/0      ☢️  ├── serde_json 1.0.140
 0/0        8/8          0/0    0/0     0/0      ☢️  │   ├── itoa 1.0.15
@@ -228,8 +227,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        6/24         2/2    0/0     2/2      ☢️      │   │   │   │   ├── potential_utf 0.1.2
 0/0        5/5          0/0    0/0     0/0      ☢️      │   │   │   │   │   ├── serde 1.0.219
 0/0        5/5          0/0    0/0     0/0      ☢️      │   │   │   │   │   ├── writeable 0.6.1
-0/0        0/2          0/0    0/0     0/0      ❓      │   │   │   │   │   │   └── either 1.15.0
-0/0        5/5          0/0    0/0     0/0      ☢️      │   │   │   │   │   │       └── serde 1.0.219
 1/1        641/657      58/58  5/5     49/49    ☢️      │   │   │   │   │   └── zerovec 0.11.2
 0/0        5/5          0/0    0/0     0/0      ☢️      │   │   │   │   │       ├── serde 1.0.219
 0/0        96/101       24/25  4/4     12/13    ☢️      │   │   │   │   │       ├── yoke 0.8.0
@@ -309,14 +306,14 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        8/8          0/0    0/0     0/0      ☢️      ├── percent-encoding 2.3.1
 0/0        5/5          0/0    0/0     0/0      ☢️      └── serde 1.0.219
 
-117/604    8440/15804   231/283 16/19   264/461
+117/604    8440/15678   231/274 16/19   264/456
 
 ```
 # Alternatives
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
-- v0.7.0 2025-01-03
+- v0.7.0 2025-06-23
   - `log_request_and_response` to log `duration_ms` tag.
   - Fix typo in function name `Response::internal_server_errror_500`.
   - Close connection on 5xx error.
