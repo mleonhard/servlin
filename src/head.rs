@@ -63,6 +63,7 @@ impl Head {
 
     fn parse_request_line(line: &[u8]) -> Result<(String, Url), HeadError> {
         // https://datatracker.ietf.org/doc/html/rfc7230#section-3.1.1
+        // https://datatracker.ietf.org/doc/html/rfc7230#section-5.3
         //     request-line   = method SP request-target SP HTTP-version CRLF
         //     method         = token
         //     request-target = origin-form
@@ -84,7 +85,7 @@ impl Head {
             .ok_or(HeadError::MalformedRequestLine)?;
         let method = std::str::from_utf8(method_bytes).unwrap().to_string();
         let url_string = std::str::from_utf8(path_bytes).map_err(|_| HeadError::MalformedPath)?;
-        if !url_string.starts_with('/') {
+        if url_string != "*" && !url_string.starts_with('/') {
             return Err(HeadError::MalformedPath);
         }
         let url = Url::options()
@@ -162,9 +163,10 @@ impl core::fmt::Debug for Head {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         write!(
             f,
-            "Head{{method={:?}, path={:?}, headers={:?}}}",
+            "Head{{method={:?}, path={:?}, query={:?}, headers={:?}}}",
             self.method,
             self.url.path(),
+            self.url.query().unwrap_or(""),
             self.headers
         )
     }

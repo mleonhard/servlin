@@ -109,6 +109,7 @@
 //!   - Add [`Request::parse_url`].
 //!   - Add [`Response::too_many_requests_429`].
 //!   - Implement `Into<TagList>` for arrays.
+//!   - Support asterisk request target.
 //! - v0.6.0 2024-11-02
 //!   - Remove `servlin::reexports` module.
 //!   - Use `safina` v0.6.0.

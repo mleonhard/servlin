@@ -12,14 +12,37 @@ use servlin::internal::{read_http_head, Head, HeadError, HttpError};
 use servlin::{AsciiString, Response};
 use std::time::Duration;
 use test_util::connected_streams;
+use url::Url;
 
 #[test]
 fn request_line() {
     let server = TestServer::start(|_req| Response::new(200)).unwrap();
     assert_eq!(server.exchange("").unwrap().as_str(), "",);
     assert_eq!(
-        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap().as_str(),
+        server.exchange("M /? HTTP/1.1\r\n\r\n").unwrap().as_str(),
         "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n",
+    );
+    assert_eq!(
+        server.exchange("M /?q HTTP/1.1\r\n\r\n").unwrap().as_str(),
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n",
+    );
+    // asterisk-form
+    assert_eq!(
+        server.exchange("M * HTTP/1.1\r\n\r\n").unwrap().as_str(),
+        "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n",
+    );
+    // absolute-form
+    assert_eq!(
+        server
+            .exchange("M scheme://user@passhost:port/path?param=x HTTP/1.1\r\n\r\n")
+            .unwrap()
+            .as_str(),
+        "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 24\r\n\r\nHttpError::MalformedPath",
+    );
+    // Malformed
+    assert_eq!(
+        server.exchange("M  HTTP/1.1\r\n\r\n").unwrap().as_str(),
+        "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 31\r\n\r\nHttpError::MalformedRequestLine",
     );
     assert_eq!(
         server.exchange(" / HTTP/1.1\r\n\r\n").unwrap().as_str(),
@@ -29,26 +52,33 @@ fn request_line() {
 
 #[test]
 fn try_read_request_line() {
-    Head::try_read(&mut FixedBuf::from(*b"M / HTTP/1.1\r\n\r\n")).unwrap();
-    assert_eq!(
-        Err(HeadError::Truncated),
-        Head::try_read(&mut <FixedBuf<10>>::new())
-    );
-    for (expected_err, req) in [
-        (HeadError::Truncated, ""),
-        (HeadError::MalformedRequestLine, " / HTTP/1.1\r\n\r\n"),
-        (HeadError::MalformedRequestLine, "M  HTTP/1.1\r\n\r\n"),
-        (HeadError::MalformedRequestLine, "M / \r\n\r\n"),
-        (HeadError::Truncated, "M / HTTP/1.1\n\r\n"),
-        (HeadError::Truncated, "M / HTTP/1.1\r\n\r"),
+    for (expected, req) in [
+        (Err(HeadError::Truncated), ""),
+        (Err(HeadError::MalformedRequestLine), " / HTTP/1.1\r\n\r\n"),
+        (Err(HeadError::MalformedRequestLine), "M  HTTP/1.1\r\n\r\n"),
+        (Err(HeadError::MalformedRequestLine), " / HTTP/1.1\r\n\r\n"),
         (
-            HeadError::MalformedHeader,
+            Err(HeadError::MalformedRequestLine),
+            "M / / HTTP/1.1\r\n\r\n",
+        ),
+        (Err(HeadError::Truncated), "M / HTTP/1.1\n\r\n"),
+        (Err(HeadError::Truncated), "M / HTTP/1.1\r\n\r"),
+        (
+            Err(HeadError::MalformedHeader),
             "M / HTTP/1.1\r\nM / HTTP/1.1\r\n\r\n",
+        ),
+        (
+            Ok(Head {
+                method: "M".to_string(),
+                url: Url::parse("http://unknown/").unwrap(),
+                headers: Default::default(),
+            }),
+            "M / HTTP/1.1\r\n\r\n",
         ),
     ] {
         let mut buf: FixedBuf<200> = FixedBuf::new();
         buf.write_bytes(req).unwrap();
-        assert_eq!(Err(expected_err), Head::try_read(&mut buf), "{req:?}");
+        assert_eq!(expected, Head::try_read(&mut buf), "{req:?}");
     }
 }
 
@@ -65,13 +95,47 @@ fn try_read_method() {
 
 #[test]
 fn try_read_url() {
+    // https://datatracker.ietf.org/doc/html/rfc7230#section-5.3
+    // origin-form
     assert_eq!(
-        "/",
-        Head::try_read(&mut FixedBuf::from(*b"M / HTTP/1.1\r\n\r\n",))
-            .unwrap()
-            .url
-            .path()
+        Head::try_read(&mut FixedBuf::from(*b"M / HTTP/1.1\r\n\r\n",)),
+        Ok(Head {
+            method: "M".to_string(),
+            url: Url::parse("http://unknown/").unwrap(),
+            headers: Default::default(),
+        })
     );
+    assert_eq!(
+        Head::try_read(&mut FixedBuf::from(*b"M /? HTTP/1.1\r\n\r\n",)),
+        Ok(Head {
+            method: "M".to_string(),
+            url: Url::parse("http://unknown/?").unwrap(),
+            headers: Default::default(),
+        })
+    );
+    assert_eq!(
+        Head::try_read(&mut FixedBuf::from(*b"M /?q HTTP/1.1\r\n\r\n",)),
+        Ok(Head {
+            method: "M".to_string(),
+            url: Url::parse("http://unknown/?q").unwrap(),
+            headers: Default::default(),
+        })
+    );
+    // asterisk-form
+    assert_eq!(
+        Head::try_read(&mut FixedBuf::from(*b"M * HTTP/1.1\r\n\r\n",)),
+        Ok(Head {
+            method: "M".to_string(),
+            url: Url::parse("http://unknown/*").unwrap(),
+            headers: Default::default(),
+        })
+    );
+    // absolute-form
+    assert_eq!(
+        Err(HeadError::MalformedPath),
+        Head::try_read(&mut FixedBuf::from(*b"M http://h/ HTTP/1.1\r\n\r\n",))
+    );
+    // Malformed
     assert_eq!(
         Err(HeadError::MalformedPath),
         Head::try_read(&mut FixedBuf::from(*b"M a HTTP/1.1\r\n\r\n",))
@@ -83,10 +147,6 @@ fn try_read_url() {
     assert_eq!(
         Err(HeadError::MalformedRequestLine),
         Head::try_read(&mut FixedBuf::from(*b"M /  HTTP/1.1\r\n\r\n",))
-    );
-    assert_eq!(
-        Err(HeadError::MalformedRequestLine),
-        Head::try_read(&mut FixedBuf::from(*b"M / / HTTP/1.1\r\n\r\n",))
     );
 }
 
@@ -333,7 +393,7 @@ async fn read_http_head_subsequent() {
 #[allow(clippy::redundant_clone)]
 fn head_derive() {
     let head1 = Head::try_read(&mut FixedBuf::from(
-        *b"A /1 HTTP/1.1\r\nH1: V1\r\nh2:v2\r\n\r\n",
+        *b"A /1?q=x HTTP/1.1\r\nH1: V1\r\nh2:v2\r\n\r\n",
     ))
     .unwrap();
     let head2 = Head::try_read(&mut FixedBuf::from(*b"B /2 HTTP/1.1\r\n\r\n")).unwrap();
@@ -344,7 +404,7 @@ fn head_derive() {
     assert_ne!(head1, head2);
     // Debug
     assert_eq!(
-        "Head{method=\"A\", path=\"/1\", headers={H1: \"V1\", h2: \"v2\"}}",
+        "Head{method=\"A\", path=\"/1\", query=\"q=x\", headers={H1: \"V1\", h2: \"v2\"}}",
         format!("{head1:?}").as_str()
     );
 }
