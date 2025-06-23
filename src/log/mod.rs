@@ -95,10 +95,14 @@ pub fn log_response(result: Result<Response, Error>) -> Result<Response, LoggerS
             log(SystemTime::now(), Level::Info, tags)?;
             Ok(response)
         }
-        Err(e) => {
-            let response = e
-                .response
-                .unwrap_or_else(Response::internal_server_error_500);
+        Err(mut e) => {
+            let response = if let Some(mut box_response) = e.response.take() {
+                let mut response = Response::ok_200();
+                std::mem::swap(Box::as_mut(&mut box_response), &mut response);
+                response
+            } else {
+                Response::internal_server_error_500()
+            };
             let mut tags = e.tags;
             if let Some(msg) = e.msg {
                 tags.push(Tag::new("msg", msg));

@@ -82,6 +82,7 @@ pub async fn copy_chunked_async(
 ) -> CopyResult {
     let mut num_copied = 0;
     loop {
+        #[allow(clippy::large_stack_arrays)]
         let mut buf = Box::pin([0_u8; 65536]);
         let len = match reader.read(&mut buf[6..65534]).await {
             Ok(0) => break,

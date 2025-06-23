@@ -54,7 +54,7 @@ async fn read_response(
             Ok(Ok(0)) => break,
             Ok(Ok(num_read)) => buf.extend(&chunk[..num_read]),
             Ok(Err(e)) => return Err(e),
-        };
+        }
     }
     String::from_utf8(buf)
         .map_err(|_| std::io::Error::new(ErrorKind::InvalidData, "response is not UTF-8"))

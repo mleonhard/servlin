@@ -7,9 +7,9 @@ use std::time::SystemTime;
 pub struct Error {
     pub msg: Option<String>,
     pub tags: Vec<Tag>,
-    pub response: Option<Response>,
+    pub response: Option<Box<Response>>,
     pub time: SystemTime,
-    pub backtrace: Option<Backtrace>,
+    pub backtrace: Option<Box<Backtrace>>,
 }
 impl Error {
     #[must_use]
@@ -35,7 +35,7 @@ impl Error {
 
     #[must_use]
     pub fn with_backtrace(mut self) -> Self {
-        self.backtrace = Some(Backtrace::capture());
+        self.backtrace = Some(Box::new(Backtrace::capture()));
         self
     }
 
@@ -52,7 +52,7 @@ impl Error {
 
     #[must_use]
     pub fn with_response(mut self, response: Response) -> Self {
-        self.response = Some(response);
+        self.response = Some(Box::new(response));
         self
     }
 

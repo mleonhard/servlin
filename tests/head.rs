@@ -9,7 +9,7 @@ use safina::async_test;
 use safina::sync::Receiver;
 use safina::timer::sleep_for;
 use servlin::internal::{read_http_head, Head, HeadError, HttpError};
-use servlin::{AsciiString, Response};
+use servlin::{AsciiString, HeaderList, Response};
 use std::time::Duration;
 use test_util::connected_streams;
 use url::Url;
@@ -71,7 +71,7 @@ fn try_read_request_line() {
             Ok(Head {
                 method: "M".to_string(),
                 url: Url::parse("http://unknown/").unwrap(),
-                headers: Default::default(),
+                headers: HeaderList::default(),
             }),
             "M / HTTP/1.1\r\n\r\n",
         ),
@@ -102,7 +102,7 @@ fn try_read_url() {
         Ok(Head {
             method: "M".to_string(),
             url: Url::parse("http://unknown/").unwrap(),
-            headers: Default::default(),
+            headers: HeaderList::default(),
         })
     );
     assert_eq!(
@@ -110,7 +110,7 @@ fn try_read_url() {
         Ok(Head {
             method: "M".to_string(),
             url: Url::parse("http://unknown/?").unwrap(),
-            headers: Default::default(),
+            headers: HeaderList::default(),
         })
     );
     assert_eq!(
@@ -118,7 +118,7 @@ fn try_read_url() {
         Ok(Head {
             method: "M".to_string(),
             url: Url::parse("http://unknown/?q").unwrap(),
-            headers: Default::default(),
+            headers: HeaderList::default(),
         })
     );
     // asterisk-form
@@ -127,7 +127,7 @@ fn try_read_url() {
         Ok(Head {
             method: "M".to_string(),
             url: Url::parse("http://unknown/*").unwrap(),
-            headers: Default::default(),
+            headers: HeaderList::default(),
         })
     );
     // absolute-form

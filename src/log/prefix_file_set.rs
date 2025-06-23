@@ -1,3 +1,4 @@
+#![allow(clippy::unnecessary_debug_formatting)]
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::fs::remove_file;

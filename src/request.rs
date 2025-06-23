@@ -234,7 +234,7 @@ pub async fn read_http_request<const BUF_SIZE: usize>(
     let expect_continue = head
         .headers
         .remove_only("expect")
-        .map_or(false, |s| s.as_str() == "100-continue");
+        .is_some_and(|s| s.as_str() == "100-continue");
     let (gzip, chunked) = {
         let opt_ascii_string = head.headers.remove_only("transfer-encoding");
         let mut iter = opt_ascii_string

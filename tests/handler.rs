@@ -13,14 +13,14 @@ mod test_util;
 fn req_with_len(body_len: usize) -> String {
     format!("M / HTTP/1.1\r\ncontent-length:{body_len}\r\n\r\n")
         .chars()
-        .chain(std::iter::repeat('a').take(body_len))
+        .chain(std::iter::repeat_n('a', body_len))
         .collect::<String>()
 }
 
 fn req_without_len(body_len: usize) -> String {
     "POST / HTTP/1.1\r\n\r\n"
         .chars()
-        .chain(std::iter::repeat('a').take(body_len))
+        .chain(std::iter::repeat_n('a', body_len))
         .collect::<String>()
 }
 
@@ -193,6 +193,7 @@ fn get_body() {
         if req.body.is_pending() {
             Response::get_body_and_reprocess(70_000)
         } else {
+            #[allow(clippy::unbuffered_bytes)]
             let len = req.body.reader().unwrap().bytes().count();
             Response::text(200, format!("len={len}"))
         }
@@ -328,6 +329,7 @@ fn expect_100_continue() {
             std::thread::sleep(Duration::from_millis(100));
             Response::get_body_and_reprocess(70_000)
         } else {
+            #[allow(clippy::unbuffered_bytes)]
             let len = req.body.reader().unwrap().bytes().count();
             Response::text(200, format!("len={len}"))
         }
@@ -357,6 +359,7 @@ fn expect_100_continue() {
         "HTTP/1.1 100 Continue\r\ncontent-length: 0\r\n\r\n"
     );
     check_elapsed(before, 100..200).unwrap();
+    #[allow(clippy::large_stack_arrays)]
     tcp_stream.write_all(&[b'a'; 66_000]).unwrap();
     assert_ends_with(read_response(&mut tcp_stream).unwrap(), "len=66000");
 }
@@ -366,7 +369,7 @@ fn client_incomplete_read() {
     let server = TestServer::start(|_req| {
         Response::text(
             200,
-            std::iter::repeat(b'a').take(1_000_000).collect::<Vec<u8>>(),
+            std::iter::repeat_n(b'a', 1_000_000).collect::<Vec<u8>>(),
         )
     })
     .unwrap();

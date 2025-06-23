@@ -54,6 +54,7 @@ fn put(state: Arc<State>, req: Request) -> Result<Response, Error> {
     if req.body.is_pending() {
         return Ok(Response::get_body_and_reprocess(1024 * 1024));
     }
+    #[allow(clippy::unbuffered_bytes)]
     let body_len = req.body.reader()?.bytes().count();
     state.upload_count.fetch_add(1, Ordering::AcqRel);
     Ok(Response::text(

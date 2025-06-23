@@ -1,3 +1,4 @@
+#![allow(clippy::unnecessary_debug_formatting)]
 use crate::internal::ToDateTime;
 use crate::log::logger::LogEvent;
 use crate::log::prefix_file_set::{PrefixFile, PrefixFileSet};
@@ -44,7 +45,7 @@ impl LogFile {
                 Err(e) => {
                     return Err(format!("error creating file {path:?}: {e:?}"));
                 }
-            };
+            }
         }
         unreachable!();
     }
