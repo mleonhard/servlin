@@ -1,0 +1,19 @@
+[package]
+edition = "2024"
+name = "bench"
+publish = false
+version = "0.0.0"
+
+[dependencies]
+permit = { version = "0.2" }
+safina = { version = "0.6", path = "/Users/user/safina-rs/safina" }
+servlin = { version = "0.7", path = ".." }
+criterion = { version = "0.6", default-features = false, features = [] }
+#ntex = { version = "2", features = ["tokio"] }
+#tokio = { version = "1", features = ["net", "rt-multi-thread", "time"] }
+
+[dev-dependencies]
+
+[[bench]]
+name = "bench"
+harness = false
