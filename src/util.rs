@@ -1,4 +1,3 @@
-use fixed_buffer::FixedBuf;
 use futures_io::{AsyncRead, AsyncWrite};
 use futures_lite::{AsyncReadExt, AsyncWriteExt};
 use std::pin::Pin;
@@ -25,21 +24,25 @@ impl CopyResult {
 }
 
 /// Copies bytes from `reader` to `writer`.
+#[allow(clippy::missing_panics_doc)]
 pub async fn copy_async(
     mut reader: impl AsyncRead + Unpin,
     mut writer: impl AsyncWrite + Unpin,
+    expected_len: u64,
 ) -> CopyResult {
-    let mut buf = Box::pin(<FixedBuf<65536>>::new());
+    let block_len = usize::try_from(expected_len)
+        .unwrap_or(usize::MAX)
+        .min(65536);
+    let mut buf: Vec<u8> = vec![0; block_len];
     let mut num_copied = 0;
     loop {
-        match reader.read(buf.writable()).await {
+        let num_read = match reader.read(buf.as_mut_slice()).await {
             Ok(0) => return CopyResult::Ok(num_copied),
-            Ok(n) => buf.wrote(n),
+            Ok(n) => n,
             Err(e) => return CopyResult::ReaderErr(e),
-        }
-        let readable = buf.read_all();
-        match writer.write_all(readable).await {
-            Ok(()) => num_copied += readable.len() as u64,
+        };
+        match writer.write_all(&buf[..num_read]).await {
+            Ok(()) => num_copied += u64::try_from(num_read).unwrap(),
             Err(e) => return CopyResult::WriterErr(e),
         }
     }
@@ -154,7 +157,7 @@ pub fn escape_and_elide(input: &[u8], max_len: usize) -> String {
     }
 }
 
-pub fn find_slice<T: std::cmp::PartialEq>(needle: &[T], haystack: &[T]) -> Option<usize> {
+pub fn find_slice<T: PartialEq>(needle: &[T], haystack: &[T]) -> Option<usize> {
     if needle.len() <= haystack.len() {
         for n in 0..=(haystack.len() - needle.len()) {
             if &haystack[n..(n + needle.len())] == needle {

@@ -242,7 +242,7 @@ pub async fn read_http_body_to_file(
     let mut file = async_fs::File::create(temp_file.path())
         .await
         .map_err(HttpError::error_saving_file)?;
-    match copy_async(&mut AsyncReadExt::take(reader, len), &mut file).await {
+    match copy_async(&mut AsyncReadExt::take(reader, len), &mut file, len).await {
         CopyResult::Ok(num_copied) if num_copied == len => {}
         CopyResult::Ok(..) | CopyResult::ReaderErr(..) => return Err(HttpError::Truncated),
         CopyResult::WriterErr(e) => return Err(HttpError::error_saving_file(e)),
@@ -267,7 +267,13 @@ pub async fn read_http_unsized_body_to_file(
     let mut file = async_fs::File::create(temp_file.path())
         .await
         .map_err(HttpError::error_saving_file)?;
-    let len = match copy_async(AsyncReadExt::take(reader, max_len + 1), &mut file).await {
+    let len = match copy_async(
+        AsyncReadExt::take(reader, max_len + 1),
+        &mut file,
+        max_len + 1,
+    )
+    .await
+    {
         CopyResult::Ok(len) => len,
         CopyResult::ReaderErr(..) => return Err(HttpError::Truncated),
         CopyResult::WriterErr(e) => return Err(HttpError::error_saving_file(e)),

@@ -538,7 +538,7 @@ pub async fn write_http_response(
                     .map_err(HttpError::error_reading_file)?,
                 body_len,
             );
-            let num_copied = copy_async(&mut reader, &mut writer)
+            let num_copied = copy_async(&mut reader, &mut writer, body_len)
                 .await
                 .map_errs(HttpError::error_reading_response_body, |_| {
                     HttpError::Disconnected
