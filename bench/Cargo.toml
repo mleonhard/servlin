@@ -5,17 +5,13 @@ publish = false
 version = "0.0.0"
 
 [dependencies]
-criterion = { version = "0.6", default-features = false, features = [] }
+crossbeam-channel = "0.5"
 fixed-buffer = "1"
 permit = { version = "0.2" }
 safe-regex = "0.3"
-safina = { version = "0.7", path = "/Users/user/safina-rs/safina" }
+safina = { version = "0.7", path = "../../safina-rs/safina" }
 servlin = { version = "0.7", path = ".." }
 #ntex = { version = "2", features = ["tokio"] }
 #tokio = { version = "1", features = ["net", "rt-multi-thread", "time"] }
 
 [dev-dependencies]
-
-[[bench]]
-name = "bench"
-harness = false
