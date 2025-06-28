@@ -2,29 +2,29 @@
 //! 2 threads: small_rps = 80200, medium_rps = 105400, large_rps = 10600
 //! 4 threads: small_rps = 77800, medium_rps = 109000, large_rps = 9550
 
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use fixed_buffer::{FixedBuf, MalformedInputError};
 use permit::Permit;
 use safe_regex::{Matcher1, regex};
 use safina::executor::Executor;
 use servlin::internal::escape_and_elide;
 use servlin::{HttpServerBuilder, Request, Response, socket_addr_127_0_0_1_any_port};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::ops::Add;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::atomic::Ordering::AcqRel;
+use std::sync::atomic::Ordering::{AcqRel, Acquire};
 use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::thread::Thread;
 use std::time::{Duration, Instant};
 
 fn connect(addr: SocketAddr) -> Result<TcpStream, String> {
-    let tcp_stream = TcpStream::connect_timeout(&addr, Duration::from_millis(5000))
+    let tcp_stream = TcpStream::connect_timeout(&addr, Duration::from_millis(1000))
         .map_err(|e| format!("connect error: {e}"))?;
-    let _ = tcp_stream.set_read_timeout(Some(Duration::from_millis(10000)));
-    let _ = tcp_stream.set_write_timeout(Some(Duration::from_millis(10000)));
+    let _ = tcp_stream.set_read_timeout(Some(Duration::from_millis(1000)));
+    let _ = tcp_stream.set_write_timeout(Some(Duration::from_millis(1000)));
     Ok(tcp_stream)
 }
 
@@ -36,11 +36,10 @@ impl Drop for ThreadWaker {
 }
 
 struct Ctx {
-    waiting_thread_count: AtomicUsize,
     addr: SocketAddr,
     f: Box<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
     slip_nanos: AtomicU64,
-    stage_rx: Receiver<(Receiver<Instant>, Sender<Result<Duration, String>>)>,
+    thread_count: AtomicUsize,
 }
 
 fn measure_once(ctx: &Arc<Ctx>, opt_conn: Option<TcpStream>) -> Result<Option<TcpStream>, String> {
@@ -52,31 +51,24 @@ fn measure_once(ctx: &Arc<Ctx>, opt_conn: Option<TcpStream>) -> Result<Option<Tc
     Ok(Some(conn))
 }
 
-// TODO: Measure connect time separately.
-
-fn measure_stage(
+fn measure_thread(
     ctx: &Arc<Ctx>,
     token_rx: Receiver<Instant>,
     result_tx: Sender<Result<Duration, String>>,
-    mut opt_conn: Option<TcpStream>,
-) -> Option<TcpStream> {
+) {
+    let mut opt_conn = None;
     loop {
-        ctx.waiting_thread_count.fetch_add(1, AcqRel);
         let start_time = match token_rx.recv() {
             Ok(t) => t,
-            Err(..) => return opt_conn, // Empty and disconnected.
+            Err(..) => return, // Empty and disconnected.
         };
-        ctx.waiting_thread_count.fetch_sub(1, AcqRel);
         let now = Instant::now();
         let slippage = now.saturating_duration_since(start_time);
         if !slippage.is_zero() {
             let slippage_nanos = u64::try_from(slippage.as_nanos()).unwrap();
             ctx.slip_nanos.fetch_add(slippage_nanos, AcqRel);
         }
-        let wait_time = start_time.saturating_duration_since(now);
-        if !wait_time.is_zero() {
-            std::thread::sleep(wait_time);
-        }
+        sleep_until(start_time);
         let before = Instant::now();
         match measure_once(ctx, opt_conn.take()) {
             Ok(Some(conn)) => opt_conn = Some(conn),
@@ -91,150 +83,254 @@ fn measure_stage(
     }
 }
 
-fn measure_thread(ctx: &Arc<Ctx>) {
-    let mut opt_conn = None;
-    for (token_rx, result_tx) in ctx.stage_rx.iter() {
-        opt_conn = measure_stage(ctx, token_rx, result_tx, opt_conn.take());
+const NUM_CHANNELS: usize = 20;
+const BUFFER_SIZE: usize = 10_000_000 / NUM_CHANNELS; // TODO: Reduce buffer size.
+struct Channel {
+    token_tx: Sender<Instant>,
+    token_rx: Receiver<Instant>,
+    result_tx: Sender<Result<Duration, String>>,
+}
+fn make_channels() -> (Vec<Receiver<Result<Duration, String>>>, Vec<Channel>) {
+    let mut result_rxs = Vec::new();
+    let mut channels = Vec::new();
+    for _ in 0..NUM_CHANNELS {
+        let (token_tx, token_rx) = crossbeam_channel::bounded::<Instant>(BUFFER_SIZE);
+        let (result_tx, result_rx) =
+            crossbeam_channel::bounded::<Result<Duration, String>>(BUFFER_SIZE);
+        result_rxs.push(result_rx);
+        channels.push(Channel {
+            token_tx,
+            token_rx,
+            result_tx,
+        })
+    }
+    (result_rxs, channels)
+}
+
+fn make_measure_thread(ctx: &Arc<Ctx>, channels: &Vec<Channel>) {
+    let n = ctx.thread_count.fetch_add(1, AcqRel);
+    let channel_num = n % NUM_CHANNELS;
+    let channel = &channels[channel_num];
+    let token_rx = channel.token_rx.clone();
+    let result_tx = channel.result_tx.clone();
+    let ctx_clone = Arc::clone(&ctx);
+    std::thread::Builder::new()
+        .spawn(move || measure_thread(&ctx_clone, token_rx, result_tx))
+        .map_err(|e| format!("error creating thread: {e}"))
+        .unwrap();
+}
+
+fn sleep_until(t: Instant) {
+    let wait_time = t.saturating_duration_since(Instant::now());
+    if !wait_time.is_zero() {
+        std::thread::sleep(wait_time);
     }
 }
 
-pub fn measure_tcp_rps(
-    num_threads: usize,
-    addr: SocketAddr,
-    error_limit: f32,
-    time_limits: Vec<(f32, Duration)>,
-    f: impl 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>),
-) -> usize {
-    let (stage_tx, stage_rx) = crossbeam_channel::bounded(num_threads);
-    let ctx = Arc::new(Ctx {
-        waiting_thread_count: AtomicUsize::new(0),
-        addr,
-        f: Box::new(f),
-        slip_nanos: AtomicU64::new(0),
-        stage_rx,
-    });
-    for _ in 0..num_threads {
-        let ctx_clone = Arc::clone(&ctx);
-        std::thread::Builder::new()
-            .spawn(move || measure_thread(&ctx_clone))
-            .unwrap();
+enum DispatcherMessage {
+    Rps(usize),
+    AddThreads,
+}
+
+fn dispatcher_thread(
+    ctx: &Arc<Ctx>,
+    channels: Vec<Channel>,
+    dispatcher_rx: Receiver<DispatcherMessage>,
+) {
+    for _ in 0..NUM_CHANNELS {
+        make_measure_thread(ctx, &channels);
     }
-    let mut rps_range = 0..usize::MAX;
+    let mut start = Instant::now();
+    let mut rps = 10;
     loop {
-        // Begin stage.
-        let mut token_txs = Vec::new();
-        let mut token_rxs = Vec::new();
-        let mut result_txs = Vec::new();
-        let mut result_rxs = Vec::new();
-        let num_channels = 10.min(num_threads);
-        let buffer_size = 10_000_000 / num_channels;
-        for _ in 0..num_channels {
-            let (token_tx, token_rx) = crossbeam_channel::bounded::<Instant>(buffer_size);
-            token_txs.push(token_tx);
-            token_rxs.push(token_rx);
-            let (result_tx, result_rx) =
-                crossbeam_channel::bounded::<Result<Duration, String>>(buffer_size);
-            result_txs.push(result_tx);
-            result_rxs.push(result_rx);
+        start += Duration::from_millis(100);
+        loop {
+            match dispatcher_rx.try_recv() {
+                Ok(DispatcherMessage::Rps(n)) => {
+                    rps = n;
+                    assert!(10 <= rps);
+                }
+                Ok(DispatcherMessage::AddThreads) => {
+                    let num_threads = ctx.thread_count.load(Acquire);
+                    let num_threads_to_add = num_threads / 10;
+                    for _ in 0..num_threads_to_add {
+                        make_measure_thread(&ctx, &channels);
+                    }
+                    println!("num_threads={}", ctx.thread_count.load(Acquire));
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => return,
+            }
         }
-        for n in 0..num_threads {
-            let channel_num = n % num_channels;
-            let _ = stage_tx.send((
-                token_rxs[channel_num].clone(),
-                result_txs[channel_num].clone(),
-            ));
-        }
-        drop(result_txs);
-        // Queue work.
-        let rps_target = match (rps_range.start, rps_range.end) {
-            (0, usize::MAX) => 100,
-            (0, n) => 1.max(n / 2),
-            (n, usize::MAX) => n * 4,
-            (a, b) => (a + b) / 2,
-        };
-        let nanos_per_request = 1_000_000_000 / rps_target;
-        let start = Instant::now().add(Duration::from_millis(2000));
-        let num_requests = 100.max(rps_target);
-        println!("rps_range={rps_range:?} rps_target={rps_target} request_count={num_requests}");
+        // Queue tokens.
+        let num_requests = rps / 10;
+        let nanos_per_request = 1_000_000_000 / rps;
         for n in 0..num_requests {
             let offset_nanos = n * nanos_per_request;
             let offset_nanos_u64 = u64::try_from(offset_nanos).unwrap();
             let offset = Duration::from_nanos(offset_nanos_u64);
-            let channel_num = n % num_channels;
             let time = start.add(offset);
-            let _ = token_txs[channel_num].send(time);
+            let channel_num = n % NUM_CHANNELS;
+            let _ = channels[channel_num].token_tx.send(time);
         }
-        drop(token_txs);
-        // Read results
-        let mut durations = Vec::new();
-        let mut error_count = 0usize;
-        let mut error_counts = HashMap::new();
-        for result_rx in result_rxs {
-            for result in result_rx {
-                match result {
-                    Ok(duration) => durations.push(duration),
-                    Err(e) => {
-                        error_count += 1;
-                        error_counts
-                            .entry(e)
-                            .and_modify(|count| *count += 1)
-                            .or_insert(1);
-                    }
-                }
-            }
-        }
-        let error_ratio = (error_count as f32) / (num_requests as f32);
-        durations.sort();
-        let mut satisfies_constraints = true;
-        for (target_percentile, max_duration) in &time_limits {
-            if let Some(idx) = durations
-                .iter()
-                .rposition(|duration| duration <= max_duration)
-            {
-                let percentile = (idx as f32) / (durations.len() as f32);
-                println!(
-                    "response time {max_duration:?} is P{:.4}",
-                    100f32 * percentile
-                );
-                if percentile < *target_percentile {
-                    satisfies_constraints = false;
-                }
-            } else {
-                println!("response time {max_duration:?} is P0");
-                satisfies_constraints = false;
-            }
-        }
-        let slip_nanos = ctx.slip_nanos.swap(0, AcqRel);
-        let mean_slip_nanos = slip_nanos / (num_requests as u64);
-        let mean_slip = Duration::from_nanos(mean_slip_nanos);
-        println!("error_ratio={error_ratio} error_counts={error_counts:?} mean_slip={mean_slip:?}");
-        if Duration::from_millis(100) < mean_slip {
-            satisfies_constraints = false;
-        }
-        if error_limit < error_ratio {
-            satisfies_constraints = false;
-        }
-        if satisfies_constraints {
-            rps_range.start = rps_target;
-        } else {
-            rps_range.end = rps_target;
-        }
-        if 100 < (rps_range.end / (rps_range.end - rps_range.start)) {
-            break;
-        }
+        println!("enqueued={num_requests}");
+        sleep_until(start);
+        let queue_size = (0..NUM_CHANNELS)
+            .into_iter()
+            .map(|n| channels[n].token_tx.len())
+            .sum::<usize>();
+        println!("queue_size={queue_size}");
     }
-    dbg! {&rps_range};
-    rps_range.end
 }
 
-pub fn measure(
-    status: impl ToString,
-    f: impl FnOnce() -> Result<(), String>,
-) -> (String, Duration) {
-    let before = Instant::now();
-    let result = f();
-    let elapsed = before.elapsed();
-    (result.err().unwrap_or_else(|| status.to_string()), elapsed)
+struct Rollup {
+    count: usize,
+    errors: usize,
+    error_counts: HashMap<String, usize>,
+    durations: Vec<Duration>,
+    next_print: Instant,
+}
+impl Rollup {
+    pub fn new() -> Self {
+        Self {
+            count: 0,
+            errors: 0,
+            error_counts: Default::default(),
+            durations: vec![],
+            next_print: Instant::now(),
+        }
+    }
+    pub fn clear(&mut self) {
+        self.count = 0;
+        self.errors = 0;
+        self.durations.clear();
+    }
+    pub fn add_error(&mut self, e: String) {
+        self.count += 1;
+        self.errors += 1;
+        self.error_counts
+            .entry(e)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+    }
+    pub fn add_duration(&mut self, duration: Duration) {
+        self.count += 1;
+        self.durations.push(duration);
+    }
+    pub fn check_ok(&mut self, error_limit: f32, time_limits: &Vec<(f32, Duration)>) -> bool {
+        let error_proportion = self.errors as f32 / self.count.max(1) as f32;
+        let mut ok = true;
+        if error_limit < error_proportion {
+            ok = false;
+        }
+        let mut msg = format!(
+            "count={} error_proportion={error_proportion:.3}",
+            self.count
+        );
+        for (min_proportion, max_duration) in time_limits {
+            let ok_count = self.durations.iter().filter(|d| *d <= max_duration).count();
+            let ok_proportion = ok_count as f32 / self.durations.len().max(1) as f32;
+            if ok_proportion < *min_proportion {
+                ok = false;
+            }
+            msg.push_str(&format!(" {max_duration:?}=P{:.3}", 100.0 * ok_proportion))
+        }
+        if self.next_print < Instant::now() {
+            self.next_print = Instant::now(); //.add(Duration::from_secs(1));
+            println!("ok={ok} {msg} error_counts={:?}", self.error_counts);
+            self.error_counts.clear();
+        }
+        ok
+    }
+}
+
+pub fn measure_tcp_rps(
+    addr: SocketAddr,
+    error_limit: f32,
+    time_limits: &Vec<(f32, Duration)>,
+    f: impl 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>),
+) -> usize {
+    let ctx = Arc::new(Ctx {
+        addr,
+        f: Box::new(f),
+        slip_nanos: AtomicU64::new(0),
+        thread_count: AtomicUsize::new(0),
+    });
+    let (result_rxs, channels) = make_channels();
+    let (dispatcher_tx, dispatcher_rx) = crossbeam_channel::bounded(1);
+    let ctx_clone = Arc::clone(&ctx);
+    std::thread::Builder::new()
+        .spawn(move || dispatcher_thread(&ctx_clone, channels, dispatcher_rx))
+        .unwrap();
+    let mut rollup = Rollup::new();
+    let mut start = Instant::now();
+    let mut rps = 100f32;
+    let mut recent_statuses = VecDeque::new();
+    loop {
+        // Read results.
+        rollup.clear();
+        start += Duration::from_millis(100);
+        while Instant::now() < start {
+            let mut all_empty = true;
+            for result_rx in &result_rxs {
+                match result_rx.try_recv() {
+                    Ok(Ok(d)) => {
+                        all_empty = false;
+                        rollup.add_duration(d);
+                    }
+                    Ok(Err(e)) => {
+                        all_empty = false;
+                        rollup.add_error(e);
+                    }
+                    Err(TryRecvError::Empty) => {}
+                    Err(TryRecvError::Disconnected) => unreachable!(),
+                };
+            }
+            if all_empty {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+        // Check if we're meeting constraints.
+        let mut ok = rollup.check_ok(error_limit, time_limits);
+        // Check if we need more threads.
+        let slip_nanos = ctx.slip_nanos.swap(0, AcqRel);
+        let mean_slip_nanos = slip_nanos / rollup.count.max(1) as u64;
+        let mean_slip = Duration::from_nanos(mean_slip_nanos);
+        if Duration::from_millis(100) < mean_slip {
+            println!("mean_slip={mean_slip:?}");
+            let _ = dispatcher_tx.send(DispatcherMessage::AddThreads);
+            ok = false;
+        }
+        // Adjust RPS.
+        recent_statuses.push_front(ok);
+        const NUM_STATUSES: usize = 10;
+        while NUM_STATUSES < recent_statuses.len() {
+            recent_statuses.pop_back();
+        }
+        let average_status =
+            recent_statuses.iter().filter(|b| **b).count() as f32 / recent_statuses.len() as f32;
+        if recent_statuses.len() == NUM_STATUSES {
+            // TODO: Find a working termination criteria.
+            if ok && (0.49..0.51).contains(&average_status) {
+                break;
+            }
+            if !ok && rps == 10.0 {
+                break;
+            }
+        }
+        let step = 0.14 * 2.0 * (0.5 - average_status).abs();
+        let k = if ok { 1.0 + step } else { 1.0 - step };
+        rps *= k;
+        rps = rps.max(10.0);
+        println!(
+            "mean_slip={mean_slip:?} average_status={average_status} step={step:.3} k={k:.3} rps={rps}"
+        );
+        dispatcher_tx
+            .send(DispatcherMessage::Rps(rps as usize))
+            .unwrap();
+        sleep_until(start);
+    }
+    rps as usize
 }
 
 fn deframe_http_head(
@@ -339,31 +435,23 @@ fn main() {
                 .spawn(handler),
         )
         .unwrap();
-    let small_rps = measure_tcp_rps(
-        10000,
-        addr,
-        0.1,
-        vec![(0.99, Duration::from_millis(100))],
-        move |conn| do_http_request(conn, "/small", Some("small_response1")),
-    );
+    let limits = vec![(0.99, Duration::from_millis(100))];
+    let small_rps = measure_tcp_rps(addr, 0.1, &limits, move |conn| {
+        do_http_request(conn, "/small", Some("small_response1"))
+    });
     dbg! {small_rps};
-    let medium_rps = measure_tcp_rps(
-        2000,
-        addr,
-        0.1,
-        vec![(0.99, Duration::from_millis(100))],
-        move |conn| do_http_request(conn, "/medium", None),
-    );
-    dbg! {medium_rps};
-    let large_rps = measure_tcp_rps(
-        2000,
-        addr,
-        0.1,
-        vec![(0.99, Duration::from_millis(200))],
-        move |conn| do_http_request(conn, "/large", None),
-    );
-    dbg! {large_rps};
-    println!("small_rps = {small_rps}, medium_rps = {medium_rps}, large_rps = {large_rps}");
+    // let medium_rps = measure_tcp_rps(addr, 0.1, &limits, move |conn| {
+    //     do_http_request(conn, "/medium", None)
+    // });
+    // dbg! {medium_rps};
+    // let large_rps = measure_tcp_rps(
+    //     addr,
+    //     0.1,
+    //     &vec![(0.99, Duration::from_millis(200))],
+    //     move |conn| do_http_request(conn, "/large", None),
+    // );
+    // dbg! {large_rps};
+    // println!("small_rps = {small_rps}, medium_rps = {medium_rps}, large_rps = {large_rps}");
 
     //                             move |conn: &mut TcpStream| {
     // let mut result = Vec::new();
