@@ -5,7 +5,6 @@ publish = false
 version = "0.0.0"
 
 [dependencies]
-crossbeam-channel = "0.5"
 fixed-buffer = "1"
 permit = { version = "0.2" }
 safe-regex = "0.3"

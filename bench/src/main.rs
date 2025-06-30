@@ -2,18 +2,19 @@
 //! 2 threads: small_rps = 80200, medium_rps = 105400, large_rps = 10600
 //! 4 threads: small_rps = 77800, medium_rps = 109000, large_rps = 9550
 
-use crossbeam_channel::{Receiver, Sender};
 use fixed_buffer::{FixedBuf, MalformedInputError};
 use permit::Permit;
 use safe_regex::{Matcher1, regex};
 use safina::executor::Executor;
 use servlin::internal::escape_and_elide;
 use servlin::{HttpServerBuilder, Request, Response, socket_addr_127_0_0_1_any_port};
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
+use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::thread::Thread;
 use std::time::{Duration, Instant};
 
@@ -32,47 +33,38 @@ impl Drop for ThreadWaker {
     }
 }
 
-fn measure_once(
-    addr: &SocketAddr,
-    f: &Arc<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
-    opt_conn: Option<TcpStream>,
-) -> Result<Option<TcpStream>, String> {
+fn measure_once(ctx: &Arc<Ctx>, opt_conn: Option<TcpStream>) -> Result<Option<TcpStream>, String> {
     let mut conn = match opt_conn {
-        None => connect(*addr).map_err(|e| format!("error connecting: {e}"))?,
+        None => connect(ctx.addr).map_err(|e| format!("error connecting: {e}"))?,
         Some(conn) => conn,
     };
-    f(&mut conn)?;
+    (ctx.f)(&mut conn)?;
     Ok(Some(conn))
 }
 
-fn measure_thread(batch_rx: Receiver<BatchRequest>) {
+fn measure_thread(ctx: Arc<Ctx>) {
     let mut opt_conn = None;
-    for batch in batch_rx.iter() {
-        let mut result = BatchResult::new();
-        let mut start = batch.start;
-        let spacing = batch.duration / 1.max(batch.num_requests as u32);
-        for _ in 0..batch.num_requests {
-            let now = Instant::now();
-            result.slip_nanos += now.saturating_duration_since(start).as_nanos() as u64;
-            sleep_until(start);
-            let before = Instant::now();
-            match measure_once(&batch.addr, &batch.f, opt_conn.take()) {
-                Ok(Some(conn)) => {
-                    result.add_duration(before.elapsed());
-                    opt_conn = Some(conn);
-                }
-                Ok(None) => result.add_duration(before.elapsed()),
-                Err(e) => result.add_error(e),
+    while !ctx.permit.is_revoked() {
+        let request_spacing = Duration::from_nanos(ctx.request_spacing_nanos.load(Acquire));
+        let before = Instant::now();
+        match measure_once(&ctx, opt_conn.take()) {
+            Ok(Some(conn)) => {
+                ctx.add_success(before.elapsed());
+                opt_conn = Some(conn);
             }
-            start += spacing;
+            Ok(None) => ctx.add_success(before.elapsed()),
+            Err(e) => ctx.add_error(e),
         }
-        let _ = batch.result_tx.send(result);
+        ctx.duration_ns
+            .fetch_add(before.elapsed().as_nanos() as u64, AcqRel);
+        let next = before + request_spacing;
+        sleep_until(next);
     }
 }
 
-fn make_measure_thread(batch_rx: Receiver<BatchRequest>) {
+fn spawn_measure_thread(ctx: Arc<Ctx>) {
     std::thread::Builder::new()
-        .spawn(move || measure_thread(batch_rx))
+        .spawn(move || measure_thread(ctx))
         .map_err(|e| format!("error creating thread: {e}"))
         .unwrap();
 }
@@ -84,106 +76,30 @@ fn sleep_until(t: Instant) {
     }
 }
 
-#[derive(Clone)]
-struct BatchRequest {
+struct Ctx {
     addr: SocketAddr,
-    f: Arc<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
-    duration: Duration,
-    start: Instant,
-    num_requests: usize,
-    result_tx: Sender<BatchResult>,
+    count_slow: AtomicUsize,
+    count_all: AtomicU64,
+    count_error: AtomicUsize,
+    f: Box<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
+    permit: Permit,
+    request_spacing_nanos: AtomicU64,
+    time_limit: Duration,
+    duration_ns: AtomicU64,
+    //error_counts: Mutex<HashMap<String, Arc<AtomicUsize>>>,
 }
-impl BatchRequest {
-    pub fn new(
-        addr: SocketAddr,
-        duration: Duration,
-        f: &Arc<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
-        num_requests: usize,
-        start: Instant,
-        result_tx: Sender<BatchResult>,
-    ) -> Self {
-        Self {
-            addr,
-            duration,
-            f: Arc::clone(f),
-            num_requests,
-            start,
-            result_tx,
+impl Ctx {
+    pub fn add_success(self: &Arc<Self>, duration: Duration) {
+        self.count_all.fetch_add(1, AcqRel);
+        if self.time_limit < duration {
+            self.count_slow.fetch_add(1, AcqRel);
         }
     }
-}
 
-struct BatchResult {
-    count: usize,
-    errors: usize,
-    error_counts: HashMap<String, usize>,
-    durations: Vec<Duration>,
-    slip_nanos: u64,
-}
-impl BatchResult {
-    pub fn new() -> Self {
-        Self {
-            count: 0,
-            errors: 0,
-            error_counts: Default::default(),
-            durations: vec![],
-            slip_nanos: 0,
-        }
+    pub fn add_error(self: &Arc<Self>, _e: String) {
+        self.count_all.fetch_add(1, AcqRel);
+        self.count_error.fetch_add(1, AcqRel);
     }
-    pub fn add_error(&mut self, e: String) {
-        self.count += 1;
-        self.errors += 1;
-        self.error_counts
-            .entry(e)
-            .and_modify(|count| *count += 1)
-            .or_insert(1);
-    }
-    pub fn add_duration(&mut self, duration: Duration) {
-        self.count += 1;
-        self.durations.push(duration);
-    }
-}
-
-struct Summary {
-    count: usize,
-    errors: f32,
-    mean_slip: Duration,
-}
-fn summarize_results(results: &[BatchResult]) -> Summary {
-    let count = results.iter().map(|r| r.count).sum::<usize>();
-    let error_count = results.iter().map(|r| r.errors).sum::<usize>();
-    let errors = error_count as f32 / count.max(1) as f32;
-    let slip_nanos_sum = results.iter().map(|r| r.slip_nanos).sum::<u64>();
-    let mean_slip_nanos = slip_nanos_sum / count.max(1) as u64;
-    let mean_slip = Duration::from_nanos(mean_slip_nanos);
-    Summary {
-        count,
-        errors,
-        mean_slip,
-    }
-}
-
-fn combine_error_counts(results: Vec<BatchResult>) -> HashMap<String, usize> {
-    let mut error_counts: HashMap<String, usize> = HashMap::new();
-    for result in results {
-        for (e, count) in result.error_counts {
-            if let Some(count_sum) = error_counts.get_mut(&e) {
-                *count_sum += count;
-            } else {
-                error_counts.insert(e, count);
-            }
-        }
-    }
-    error_counts
-}
-
-fn get_proportion(results: &[BatchResult], max_duration: &Duration) -> f32 {
-    let ok_count = results
-        .iter()
-        .map(|r| r.durations.iter().filter(|d| *d < max_duration).count())
-        .sum::<usize>();
-    let all_count = results.iter().map(|r| r.durations.len()).sum::<usize>();
-    ok_count as f32 / all_count.max(1) as f32
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -192,80 +108,70 @@ pub struct MaxMeasurableRps(usize);
 pub fn measure_tcp_rps(
     addr: SocketAddr,
     error_limit: f32,
-    time_limits: &Vec<(f32, Duration)>,
+    time_limit: (f32, Duration),
     f: impl 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>),
-) -> Result<usize, MaxMeasurableRps> {
-    let f: Arc<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)> =
-        Arc::new(f);
-    let (batch_tx, batch_rx) = crossbeam_channel::unbounded();
-    let mut num_threads = 1;
+) -> Result<u64, MaxMeasurableRps> {
+    let permit = Permit::new();
+    let ctx = Arc::new(Ctx {
+        addr,
+        count_slow: Default::default(),
+        count_all: Default::default(),
+        count_error: Default::default(),
+        f: Box::new(f),
+        permit: permit.new_sub(),
+        request_spacing_nanos: AtomicU64::new(100_000_000),
+        time_limit: time_limit.1,
+        duration_ns: Default::default(),
+    });
+    let mut num_threads = 1u64;
     for _ in 0..num_threads {
-        make_measure_thread(batch_rx.clone());
+        spawn_measure_thread(Arc::clone(&ctx));
     }
-    let mut start = Instant::now() + Duration::from_millis(100);
-    let mut rps = 10usize;
-    let mut prev_prev_result_rx: Receiver<BatchResult> = crossbeam_channel::unbounded().1;
-    let mut prev_result_rx: Receiver<BatchResult> = crossbeam_channel::unbounded().1;
+    let mut now = Instant::now();
+    let mut rps = 100u64;
     let mut recent_statuses = VecDeque::new();
     let mut recent_rps = VecDeque::new();
     loop {
-        let before = Instant::now();
-        // Enqueue requests.
-        let (result_tx, result_rx) = crossbeam_channel::unbounded();
-        let duration = Duration::from_millis(100);
-        let total_requests = rps / 10;
-        let requests_per_batch = total_requests / num_threads;
-        for _ in 0..requests_per_batch {
-            let batch = BatchRequest::new(
-                addr,
-                duration,
-                &f,
-                requests_per_batch,
-                start,
-                result_tx.clone(),
-            );
-            batch_tx.send(batch).unwrap();
-        }
-        println!("enqueued={total_requests}");
-        let enqueue_time_ms = before.elapsed().as_millis();
-        let before = Instant::now();
-        // Check results.
-        let results: Vec<BatchResult> = prev_prev_result_rx.iter().collect();
-        let receive_time_ms = before.elapsed().as_millis();
-        let before = Instant::now();
-        prev_prev_result_rx = prev_result_rx;
-        prev_result_rx = result_rx;
+        ctx.request_spacing_nanos
+            .store((1_000_000_000 * num_threads) / rps, Release);
+        now += Duration::from_millis(100);
+        sleep_until(now);
+        ctx.count_slow.store(0, Release);
+        ctx.count_error.store(0, Release);
+        ctx.count_all.store(0, Release);
+        now += Duration::from_millis(100);
+        sleep_until(now);
+        let count_slow = ctx.count_slow.swap(0, AcqRel);
+        let count_error = ctx.count_error.swap(0, AcqRel);
+        let count_all = ctx.count_all.swap(0, AcqRel);
+        let mean_duration_ns = ctx.duration_ns.swap(0, AcqRel) / 1.max(count_all);
+        let expected_count = rps / 10;
         let mut ok = true;
-        let summary = summarize_results(&results);
-        if Duration::from_millis(50) < summary.mean_slip {
+        // if count_all < (0.90 * expected_count as f32) as u64 {
+        //     ok = false;
+        // }
+        let error_proportion = count_error as f32 / count_all.max(1) as f32;
+        if error_limit < error_proportion {
             ok = false;
-            let to_add = 1.min(((num_threads as f32) * 1.1) as usize);
+        }
+        let slow_proportion = count_slow as f32 / count_all.max(1) as f32;
+        if time_limit.0 < slow_proportion {
+            ok = false;
+        }
+        println!(
+            "ok={ok} threads={num_threads} count={count_all} expected_count={expected_count} errors={error_proportion:.3} slow={slow_proportion:.3} rps={rps}"
+        );
+        let total_duration_per_second = mean_duration_ns * rps;
+        let needed_threads = total_duration_per_second / 1_000_000_000;
+        if num_threads < needed_threads {
+            let to_add = 1.max(((num_threads as f32) * 0.3) as u64);
             for _ in 0..to_add {
-                make_measure_thread(batch_rx.clone());
+                spawn_measure_thread(Arc::clone(&ctx));
             }
             num_threads += to_add;
-        }
-        if error_limit < summary.errors {
-            ok = false;
-        }
-        let mut msg = format!(
-            "threads={num_threads} count={} errors={:.3} mean_slip_ms={}",
-            summary.count,
-            summary.errors,
-            summary.mean_slip.as_millis()
-        );
-        for (min_proportion, max_duration) in time_limits {
-            let ok_proportion = get_proportion(&results, &max_duration);
-            if ok_proportion < *min_proportion {
-                ok = false;
-            }
-            msg.push_str(&format!(" {max_duration:?}=P{:.3}", 100.0 * ok_proportion))
+            continue;
         }
         // msg.push_str(&format!(" err={:?}", combine_error_counts(results)));
-        if ok && start < Instant::now() {
-            println!("ok={ok} {msg} receive_time_ms={receive_time_ms}");
-            return Err(MaxMeasurableRps(rps));
-        }
         // Adjust RPS.
         recent_statuses.push_front(ok);
         const NUM_STATUSES: usize = 15;
@@ -289,13 +195,7 @@ pub fn measure_tcp_rps(
         }
         let step = 0.14 * 2.0 * (0.5 - average_status).abs();
         let k = if ok { 1.0 + step } else { 1.0 - step };
-        rps = 10.max((k * (rps as f32)) as usize);
-        let process_time_ms = before.elapsed().as_millis();
-        println!(
-            "ok={ok} {msg} rps={rps} enqueue_time_ms={enqueue_time_ms} receive_time_ms={receive_time_ms} process_time_ms={process_time_ms}"
-        );
-        sleep_until(start);
-        start += Duration::from_millis(100);
+        rps = 10.max((k * (rps as f32)) as u64);
     }
     Ok(rps)
 }
@@ -402,8 +302,8 @@ fn main() {
                 .spawn(handler),
         )
         .unwrap();
-    let limits = vec![(0.99, Duration::from_millis(100))];
-    let small_rps = measure_tcp_rps(addr, 0.1, &limits, move |conn| {
+    let limit = (0.99, Duration::from_millis(100));
+    let small_rps = measure_tcp_rps(addr, 0.1, limit, move |conn| {
         do_http_request(conn, "/small", Some("small_response1"))
     })
     .unwrap();
