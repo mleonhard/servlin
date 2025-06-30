@@ -13,8 +13,8 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
-use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -70,9 +70,9 @@ type AsyncMeasureFn = dyn 'static
     + (Fn(TcpStream) -> Pin<Box<dyn Sync + Send + Future<Output = Result<TcpStream, String>>>>);
 struct Ctx {
     addr: SocketAddr,
-    count_slow: AtomicUsize,
+    count_slow: AtomicU64,
     count_all: AtomicU64,
-    count_error: AtomicUsize,
+    count_error: AtomicU64,
     f: Box<AsyncMeasureFn>,
     request_spacing_nanos: AtomicU64,
     time_limit: Duration,
@@ -118,12 +118,12 @@ pub fn measure_tcp_rps(
         rt.spawn(measure_task(Arc::clone(&ctx)));
     }
     let mut now = Instant::now();
-    let mut rps = 100u64;
+    let mut target_rps = 100u64;
     let mut recent_statuses = VecDeque::new();
     let mut recent_rps = VecDeque::new();
     loop {
         ctx.request_spacing_nanos
-            .store((1_000_000_000 * num_tasks) / rps, Release);
+            .store((1_000_000_000 * num_tasks) / target_rps, Release);
         now += Duration::from_millis(100);
         sleep_until(now);
         ctx.count_slow.store(0, Release);
@@ -135,35 +135,28 @@ pub fn measure_tcp_rps(
         let count_error = ctx.count_error.swap(0, AcqRel);
         let count_all = ctx.count_all.swap(0, AcqRel);
         let mean_duration_ns = ctx.duration_ns.swap(0, AcqRel) / 1.max(count_all);
-        let expected_count = rps / 10;
         let mut ok = true;
-        if count_all < (0.80 * expected_count as f32) as u64 {
-            ok = false;
-        }
         let error_proportion = count_error as f32 / count_all.max(1) as f32;
         if error_limit < error_proportion {
             ok = false;
         }
-        let slow_proportion = count_slow as f32 / count_all.max(1) as f32;
-        if time_limit.0 < slow_proportion {
+        let fast_proportion = (count_all - count_slow) as f32 / count_all.max(1) as f32;
+        if fast_proportion < time_limit.0 {
             ok = false;
         }
-        let actual_rps = count_all * 10;
+        let rps = count_all * 10;
         println!(
-            "ok={ok} tasks={num_tasks} errors={error_proportion:.3} slow={slow_proportion:.3} rps={rps} actual_rps={actual_rps}",
+            "ok={ok:5} tasks={num_tasks} errors={error_proportion:.3} fast=P{:.3} target_rps={target_rps} rps={rps}",
+            100.0 * fast_proportion,
         );
         if count_all == 0 {
             continue;
         }
-        let total_duration_per_second = mean_duration_ns * rps;
-        let needed_threads = total_duration_per_second / 1_000_000_000;
-        if ok && num_tasks < needed_threads {
-            let to_add = 1.max(((num_tasks as f32) * 0.1) as u64);
-            for _ in 0..to_add {
-                rt.spawn(measure_task(Arc::clone(&ctx)));
-            }
-            num_tasks += to_add;
-            continue;
+        let total_duration_per_second = mean_duration_ns * target_rps;
+        let needed_tasks = total_duration_per_second / 1_000_000_000;
+        if ok && num_tasks < 1000 && num_tasks < needed_tasks {
+            rt.spawn(measure_task(Arc::clone(&ctx)));
+            num_tasks += 1;
         }
         // msg.push_str(&format!(" err={:?}", combine_error_counts(results)));
         // Adjust RPS.
@@ -172,26 +165,26 @@ pub fn measure_tcp_rps(
         while NUM_STATUSES < recent_statuses.len() {
             recent_statuses.pop_back();
         }
-        recent_rps.push_front(rps);
+        recent_rps.push_front(target_rps);
         while NUM_STATUSES < recent_rps.len() {
             recent_rps.pop_back();
         }
         let average_status =
             recent_statuses.iter().filter(|b| **b).count() as f32 / recent_statuses.len() as f32;
         if recent_statuses.len() == NUM_STATUSES {
-            let range = (0.95 * (rps as f32))..(1.05 * (rps as f32));
+            let range = (0.95 * (target_rps as f32))..(1.05 * (target_rps as f32));
             if ok && recent_rps.iter().all(|x| range.contains(&(*x as f32))) {
                 break;
             }
-            if !ok && rps == 10 {
+            if !ok && target_rps == 10 {
                 break;
             }
         }
         let step = 0.14 * 2.0 * (0.5 - average_status).abs();
         let k = if ok { 1.0 + step } else { 1.0 - step };
-        rps = 10.max((k * (rps as f32)) as u64);
+        target_rps = 10.max((k * (target_rps as f32)) as u64);
     }
-    Ok(rps)
+    Ok(target_rps)
 }
 
 fn deframe_http_head(
