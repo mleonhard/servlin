@@ -5,12 +5,12 @@ publish = false
 version = "0.0.0"
 
 [dependencies]
-fixed-buffer = "1"
+fixed-buffer = { version = "1", features = ["tokio"] }
 permit = { version = "0.2" }
 safe-regex = "0.3"
 safina = { version = "0.7", path = "../../safina-rs/safina" }
 servlin = { version = "0.7", path = ".." }
 #ntex = { version = "2", features = ["tokio"] }
-#tokio = { version = "1", features = ["net", "rt-multi-thread", "time"] }
+tokio = { version = "1", features = ["io-util", "net", "rt-multi-thread", "time"] }
 
 [dev-dependencies]

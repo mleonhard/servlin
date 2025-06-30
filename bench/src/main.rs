@@ -9,45 +9,40 @@ use safina::executor::Executor;
 use servlin::internal::escape_and_elide;
 use servlin::{HttpServerBuilder, Request, Response, socket_addr_127_0_0_1_any_port};
 use std::collections::VecDeque;
-use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::net::SocketAddr;
+use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
 use std::sync::atomic::{AtomicU64, AtomicUsize};
-use std::thread::Thread;
 use std::time::{Duration, Instant};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+use tokio::time::timeout;
 
-fn connect(addr: SocketAddr) -> Result<TcpStream, String> {
-    let tcp_stream = TcpStream::connect_timeout(&addr, Duration::from_millis(1000))
-        .map_err(|e| format!("connect error: {e}"))?;
-    let _ = tcp_stream.set_read_timeout(Some(Duration::from_millis(1000)));
-    let _ = tcp_stream.set_write_timeout(Some(Duration::from_millis(1000)));
-    Ok(tcp_stream)
-}
-
-pub struct ThreadWaker(pub Thread);
-impl Drop for ThreadWaker {
-    fn drop(&mut self) {
-        self.0.unpark();
-    }
-}
-
-fn measure_once(ctx: &Arc<Ctx>, opt_conn: Option<TcpStream>) -> Result<Option<TcpStream>, String> {
-    let mut conn = match opt_conn {
-        None => connect(ctx.addr).map_err(|e| format!("error connecting: {e}"))?,
+async fn measure_once(
+    ctx: &Arc<Ctx>,
+    opt_conn: Option<TcpStream>,
+) -> Result<Option<TcpStream>, String> {
+    let conn = match opt_conn {
+        None => timeout(Duration::from_millis(1000), TcpStream::connect(ctx.addr))
+            .await
+            .map_err(|e| format!("connect error: {e}"))?
+            .map_err(|e| format!("connect error: {e}"))?,
         Some(conn) => conn,
     };
-    (ctx.f)(&mut conn)?;
+    let conn = timeout(Duration::from_millis(1000), (ctx.f)(conn))
+        .await
+        .map_err(|_| "timeout error".to_string())??;
     Ok(Some(conn))
 }
 
-fn measure_thread(ctx: Arc<Ctx>) {
+async fn measure_task(ctx: Arc<Ctx>) {
     let mut opt_conn = None;
-    while !ctx.permit.is_revoked() {
+    loop {
         let request_spacing = Duration::from_nanos(ctx.request_spacing_nanos.load(Acquire));
         let before = Instant::now();
-        match measure_once(&ctx, opt_conn.take()) {
+        match measure_once(&ctx, opt_conn.take()).await {
             Ok(Some(conn)) => {
                 ctx.add_success(before.elapsed());
                 opt_conn = Some(conn);
@@ -62,13 +57,6 @@ fn measure_thread(ctx: Arc<Ctx>) {
     }
 }
 
-fn spawn_measure_thread(ctx: Arc<Ctx>) {
-    std::thread::Builder::new()
-        .spawn(move || measure_thread(ctx))
-        .map_err(|e| format!("error creating thread: {e}"))
-        .unwrap();
-}
-
 fn sleep_until(t: Instant) {
     let wait_time = t.saturating_duration_since(Instant::now());
     if !wait_time.is_zero() {
@@ -76,13 +64,16 @@ fn sleep_until(t: Instant) {
     }
 }
 
+type AsyncMeasureFn = dyn 'static
+    + Sync
+    + Send
+    + (Fn(TcpStream) -> Pin<Box<dyn Sync + Send + Future<Output = Result<TcpStream, String>>>>);
 struct Ctx {
     addr: SocketAddr,
     count_slow: AtomicUsize,
     count_all: AtomicU64,
     count_error: AtomicUsize,
-    f: Box<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
-    permit: Permit,
+    f: Box<AsyncMeasureFn>,
     request_spacing_nanos: AtomicU64,
     time_limit: Duration,
     duration_ns: AtomicU64,
@@ -109,23 +100,22 @@ pub fn measure_tcp_rps(
     addr: SocketAddr,
     error_limit: f32,
     time_limit: (f32, Duration),
-    f: impl 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>),
+    f: Box<AsyncMeasureFn>,
 ) -> Result<u64, MaxMeasurableRps> {
-    let permit = Permit::new();
+    let rt = tokio::runtime::Runtime::new().unwrap();
     let ctx = Arc::new(Ctx {
         addr,
         count_slow: Default::default(),
         count_all: Default::default(),
         count_error: Default::default(),
         f: Box::new(f),
-        permit: permit.new_sub(),
         request_spacing_nanos: AtomicU64::new(100_000_000),
         time_limit: time_limit.1,
         duration_ns: Default::default(),
     });
-    let mut num_threads = 1u64;
-    for _ in 0..num_threads {
-        spawn_measure_thread(Arc::clone(&ctx));
+    let mut num_tasks = 1u64;
+    for _ in 0..num_tasks {
+        rt.spawn(measure_task(Arc::clone(&ctx)));
     }
     let mut now = Instant::now();
     let mut rps = 100u64;
@@ -133,7 +123,7 @@ pub fn measure_tcp_rps(
     let mut recent_rps = VecDeque::new();
     loop {
         ctx.request_spacing_nanos
-            .store((1_000_000_000 * num_threads) / rps, Release);
+            .store((1_000_000_000 * num_tasks) / rps, Release);
         now += Duration::from_millis(100);
         sleep_until(now);
         ctx.count_slow.store(0, Release);
@@ -147,9 +137,9 @@ pub fn measure_tcp_rps(
         let mean_duration_ns = ctx.duration_ns.swap(0, AcqRel) / 1.max(count_all);
         let expected_count = rps / 10;
         let mut ok = true;
-        // if count_all < (0.90 * expected_count as f32) as u64 {
-        //     ok = false;
-        // }
+        if count_all < (0.80 * expected_count as f32) as u64 {
+            ok = false;
+        }
         let error_proportion = count_error as f32 / count_all.max(1) as f32;
         if error_limit < error_proportion {
             ok = false;
@@ -158,17 +148,21 @@ pub fn measure_tcp_rps(
         if time_limit.0 < slow_proportion {
             ok = false;
         }
+        let actual_rps = count_all * 10;
         println!(
-            "ok={ok} threads={num_threads} count={count_all} expected_count={expected_count} errors={error_proportion:.3} slow={slow_proportion:.3} rps={rps}"
+            "ok={ok} tasks={num_tasks} errors={error_proportion:.3} slow={slow_proportion:.3} rps={rps} actual_rps={actual_rps}",
         );
+        if count_all == 0 {
+            continue;
+        }
         let total_duration_per_second = mean_duration_ns * rps;
         let needed_threads = total_duration_per_second / 1_000_000_000;
-        if num_threads < needed_threads {
-            let to_add = 1.max(((num_threads as f32) * 0.3) as u64);
+        if ok && num_tasks < needed_threads {
+            let to_add = 1.max(((num_tasks as f32) * 0.1) as u64);
             for _ in 0..to_add {
-                spawn_measure_thread(Arc::clone(&ctx));
+                rt.spawn(measure_task(Arc::clone(&ctx)));
             }
-            num_threads += to_add;
+            num_tasks += to_add;
             continue;
         }
         // msg.push_str(&format!(" err={:?}", combine_error_counts(results)));
@@ -223,15 +217,16 @@ fn get_content_length(head: &[u8]) -> Result<usize, String> {
     Ok(content_length)
 }
 
-fn do_http_request(
-    conn: &mut TcpStream,
+async fn do_http_request(
+    mut conn: TcpStream,
     path: &'static str,
     expected_body: Option<&'static str>,
-) -> Result<(), String> {
+) -> Result<TcpStream, String> {
     conn.write_all(format!("GET {path} HTTP/1.1\r\n\r\n").as_bytes())
+        .await
         .map_err(|e| format!("error writing: {e}"))?;
     let mut buf: FixedBuf<4096> = FixedBuf::default();
-    let head = match buf.read_frame(conn, deframe_http_head) {
+    let head = match buf.read_frame_tokio(&mut conn, deframe_http_head).await {
         Ok(None) => return Err("error reading: connection closed".to_string()),
         Ok(Some(head)) => head,
         Err(e) => return Err(format!("error reading: {e}")),
@@ -251,7 +246,10 @@ fn do_http_request(
                 Ok((0, None))
             }
         };
-        match buf.read_frame(conn, deframe_expected_bytes) {
+        match buf
+            .read_frame_tokio(&mut conn, deframe_expected_bytes)
+            .await
+        {
             Ok(None) => return Err("error reading: connection closed".to_string()),
             Ok(Some(b)) if b == expected_response.as_bytes() => {}
             Ok(Some(b)) => {
@@ -267,11 +265,12 @@ fn do_http_request(
             let chunk_size = writable.len().min(content_length);
             let target = &mut writable[..chunk_size];
             conn.read_exact(target)
+                .await
                 .map_err(|e| format!("error reading: {e}"))?;
             content_length -= chunk_size;
         }
     }
-    Ok(())
+    Ok(conn)
 }
 
 const MEDIUM_RESPONSE: [u8; 16384] = [b'M'; 16384];
@@ -303,9 +302,12 @@ fn main() {
         )
         .unwrap();
     let limit = (0.99, Duration::from_millis(100));
-    let small_rps = measure_tcp_rps(addr, 0.1, limit, move |conn| {
-        do_http_request(conn, "/small", Some("small_response1"))
-    })
+    let small_rps = measure_tcp_rps(
+        addr,
+        0.1,
+        limit,
+        Box::new(move |conn| Box::pin(do_http_request(conn, "/small", Some("small_response1")))),
+    )
     .unwrap();
     dbg! {small_rps};
     // let medium_rps = measure_tcp_rps(addr, 0.1, &limits, move |conn| {
