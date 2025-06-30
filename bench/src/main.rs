@@ -12,7 +12,6 @@ use servlin::{HttpServerBuilder, Request, Response, socket_addr_127_0_0_1_any_po
 use std::collections::{HashMap, VecDeque};
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
-use std::ops::Add;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::Thread;
@@ -50,10 +49,12 @@ fn measure_thread(batch_rx: Receiver<BatchRequest>) {
     let mut opt_conn = None;
     for batch in batch_rx.iter() {
         let mut result = BatchResult::new();
-        for time in batch.times {
+        let mut start = batch.start;
+        let spacing = batch.duration / 1.max(batch.num_requests as u32);
+        for _ in 0..batch.num_requests {
             let now = Instant::now();
-            result.slip_nanos += now.saturating_duration_since(time).as_nanos() as u64;
-            sleep_until(time);
+            result.slip_nanos += now.saturating_duration_since(start).as_nanos() as u64;
+            sleep_until(start);
             let before = Instant::now();
             match measure_once(&batch.addr, &batch.f, opt_conn.take()) {
                 Ok(Some(conn)) => {
@@ -63,6 +64,7 @@ fn measure_thread(batch_rx: Receiver<BatchRequest>) {
                 Ok(None) => result.add_duration(before.elapsed()),
                 Err(e) => result.add_error(e),
             }
+            start += spacing;
         }
         let _ = batch.result_tx.send(result);
     }
@@ -86,52 +88,29 @@ fn sleep_until(t: Instant) {
 struct BatchRequest {
     addr: SocketAddr,
     f: Arc<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
-    times: Vec<Instant>,
+    duration: Duration,
+    start: Instant,
+    num_requests: usize,
     result_tx: Sender<BatchResult>,
 }
 impl BatchRequest {
     pub fn new(
         addr: SocketAddr,
+        duration: Duration,
         f: &Arc<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
+        num_requests: usize,
+        start: Instant,
         result_tx: Sender<BatchResult>,
     ) -> Self {
         Self {
             addr,
+            duration,
             f: Arc::clone(f),
-            times: Vec::new(),
+            num_requests,
+            start,
             result_tx,
         }
     }
-}
-
-fn enqueue_requests(
-    addr: SocketAddr,
-    f: &Arc<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)>,
-    rps: usize,
-    start: Instant,
-    thread_count: usize,
-    batch_tx: &Sender<BatchRequest>,
-) -> Receiver<BatchResult> {
-    let (result_tx, result_rx) = crossbeam_channel::unbounded();
-    let mut batches: Vec<BatchRequest> = (0..thread_count)
-        .into_iter()
-        .map(|_| BatchRequest::new(addr, &f, result_tx.clone()))
-        .collect();
-    let num_requests = rps / 10;
-    let mut offset = Duration::ZERO;
-    let spacing = Duration::from_nanos(1_000_000_000 / rps as u64);
-    let batch_len = batches.len();
-    for n in 0..num_requests {
-        let time = start.add(offset);
-        offset += spacing;
-        let batch_num = n % batch_len;
-        batches[batch_num].times.push(time);
-    }
-    for batch in batches {
-        batch_tx.send(batch).unwrap();
-    }
-    println!("enqueued={num_requests}");
-    result_rx
 }
 
 struct BatchResult {
@@ -219,7 +198,7 @@ pub fn measure_tcp_rps(
     let f: Arc<dyn 'static + Sync + Send + (Fn(&mut TcpStream) -> Result<(), String>)> =
         Arc::new(f);
     let (batch_tx, batch_rx) = crossbeam_channel::unbounded();
-    let mut num_threads = 10;
+    let mut num_threads = 1;
     for _ in 0..num_threads {
         make_measure_thread(batch_rx.clone());
     }
@@ -230,14 +209,35 @@ pub fn measure_tcp_rps(
     let mut recent_statuses = VecDeque::new();
     let mut recent_rps = VecDeque::new();
     loop {
-        let result_rx = enqueue_requests(addr, &f, rps, start, num_threads, &batch_tx);
+        let before = Instant::now();
+        // Enqueue requests.
+        let (result_tx, result_rx) = crossbeam_channel::unbounded();
+        let duration = Duration::from_millis(100);
+        let total_requests = rps / 10;
+        let requests_per_batch = total_requests / num_threads;
+        for _ in 0..requests_per_batch {
+            let batch = BatchRequest::new(
+                addr,
+                duration,
+                &f,
+                requests_per_batch,
+                start,
+                result_tx.clone(),
+            );
+            batch_tx.send(batch).unwrap();
+        }
+        println!("enqueued={total_requests}");
+        let enqueue_time_ms = before.elapsed().as_millis();
+        let before = Instant::now();
         // Check results.
         let results: Vec<BatchResult> = prev_prev_result_rx.iter().collect();
+        let receive_time_ms = before.elapsed().as_millis();
+        let before = Instant::now();
         prev_prev_result_rx = prev_result_rx;
         prev_result_rx = result_rx;
         let mut ok = true;
         let summary = summarize_results(&results);
-        if Duration::from_millis(100) < summary.mean_slip {
+        if Duration::from_millis(50) < summary.mean_slip {
             ok = false;
             let to_add = 1.min(((num_threads as f32) * 1.1) as usize);
             for _ in 0..to_add {
@@ -263,7 +263,7 @@ pub fn measure_tcp_rps(
         }
         // msg.push_str(&format!(" err={:?}", combine_error_counts(results)));
         if ok && start < Instant::now() {
-            println!("ok={ok} {msg}");
+            println!("ok={ok} {msg} receive_time_ms={receive_time_ms}");
             return Err(MaxMeasurableRps(rps));
         }
         // Adjust RPS.
@@ -290,7 +290,10 @@ pub fn measure_tcp_rps(
         let step = 0.14 * 2.0 * (0.5 - average_status).abs();
         let k = if ok { 1.0 + step } else { 1.0 - step };
         rps = 10.max((k * (rps as f32)) as usize);
-        println!("ok={ok} {msg} rps={rps}");
+        let process_time_ms = before.elapsed().as_millis();
+        println!(
+            "ok={ok} {msg} rps={rps} enqueue_time_ms={enqueue_time_ms} receive_time_ms={receive_time_ms} process_time_ms={process_time_ms}"
+        );
         sleep_until(start);
         start += Duration::from_millis(100);
     }
