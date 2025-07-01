@@ -25,7 +25,7 @@ use permit::Permit;
 use safina::executor::Executor;
 use servlin::log::log_request_and_response;
 use servlin::{
-    socket_addr_127_0_0_1, Error, Event, EventSender, HttpServerBuilder, Request, Response,
+    Error, Event, EventSender, HttpServerBuilder, Request, Response, socket_addr_127_0_0_1,
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

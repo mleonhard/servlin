@@ -4,7 +4,7 @@ use crate::test_util::connected_streams;
 use futures_lite::{AsyncReadExt, AsyncWriteExt};
 use permit::Permit;
 use safina::async_test;
-use servlin::internal::{handle_http_conn, Token};
+use servlin::internal::{Token, handle_http_conn};
 use servlin::{HttpConn, Request, Response};
 use std::future::Future;
 use std::io::ErrorKind;
@@ -16,7 +16,7 @@ const MILLIS_100: Duration = Duration::from_millis(100);
 
 async fn handle_http_conn_task<F, Fut>(request_handler: F) -> async_net::TcpStream
 where
-    Fut: Future<Output = Response> + std::marker::Send,
+    Fut: Future<Output = Response> + Send,
     F: FnOnce(Request) -> Fut + 'static + Send + Sync + Clone,
 {
     let (stream0, stream1) = connected_streams().await;
@@ -107,12 +107,12 @@ async fn handle_http_conn_upload() {
         .await
         .unwrap();
     assert_eq!(
-            "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 10\r\n\r\nread \"abc\"",
-            read_response(&mut stream, MILLIS_100)
-                .await
-                .unwrap()
-                .as_str()
-        );
+        "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 10\r\n\r\nread \"abc\"",
+        read_response(&mut stream, MILLIS_100)
+            .await
+            .unwrap()
+            .as_str()
+    );
 }
 
 #[async_test]
@@ -141,10 +141,10 @@ async fn handle_http_conn_upload_large() {
     }
     stream.flush().await.unwrap();
     assert_eq!(
-            "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 12\r\n\r\ngot 10000000",
-            read_response(&mut stream, Duration::from_secs(3))
-                .await
-                .unwrap()
-                .as_str()
-        );
+        "HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 12\r\n\r\ngot 10000000",
+        read_response(&mut stream, Duration::from_secs(3))
+            .await
+            .unwrap()
+            .as_str()
+    );
 }

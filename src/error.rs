@@ -1,5 +1,5 @@
-use crate::log::internal::{Tag, TagValue};
 use crate::Response;
+use crate::log::internal::{Tag, TagValue};
 use std::backtrace::Backtrace;
 use std::time::SystemTime;
 

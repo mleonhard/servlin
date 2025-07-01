@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use safina::sync::{sync_channel, Receiver, SyncSender};
+use safina::sync::{Receiver, SyncSender, sync_channel};
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::Duration;
 

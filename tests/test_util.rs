@@ -3,12 +3,12 @@ use permit::Permit;
 use safe_regex::{Matcher0, Matcher1};
 use safina::executor::Executor;
 use safina::sync::Receiver;
-use servlin::{socket_addr_127_0_0_1_any_port, HttpServerBuilder, Request, Response};
+use servlin::{HttpServerBuilder, Request, Response, socket_addr_127_0_0_1_any_port};
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr};
 use std::ops::Range;
-use std::sync::mpsc::RecvTimeoutError;
 use std::sync::Arc;
+use std::sync::mpsc::RecvTimeoutError;
 use std::time::{Duration, Instant};
 use temp_dir::TempDir;
 
@@ -64,7 +64,7 @@ pub fn read_response(tcp_stream: &mut std::net::TcpStream) -> Result<String, std
             Ok(1) => bytes.push(buf[0]),
             Ok(_) => unreachable!(),
             Err(e) if e.kind() == ErrorKind::WouldBlock => {
-                return Err(std::io::Error::new(ErrorKind::TimedOut, "timed out"))
+                return Err(std::io::Error::new(ErrorKind::TimedOut, "timed out"));
             }
             Err(e) => return Err(e),
         }
@@ -117,7 +117,7 @@ pub fn read_to_string(reader: &mut std::net::TcpStream) -> Result<String, std::i
             Ok(0) => break,
             Ok(n) => bytes.extend_from_slice(&buf[..n]),
             Err(e) if e.kind() == ErrorKind::WouldBlock => {
-                return Err(std::io::Error::new(ErrorKind::TimedOut, "timed out"))
+                return Err(std::io::Error::new(ErrorKind::TimedOut, "timed out"));
             }
             Err(e) => return Err(e),
         }
@@ -145,7 +145,7 @@ pub fn read_for(
                 return Err(std::io::Error::new(
                     ErrorKind::NotConnected,
                     "connection closed",
-                ))
+                ));
             }
             Ok(n) => bytes.extend_from_slice(&buf[..n]),
             Err(e) if e.kind() == ErrorKind::WouldBlock => break,

@@ -40,9 +40,9 @@ use safina::executor::Executor;
 use serde::Deserialize;
 use serde_json::json;
 use servlin::log::log_request_and_response;
-use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use servlin::{Error, HttpServerBuilder, Request, Response, socket_addr_127_0_0_1};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct State {
     count: AtomicUsize,

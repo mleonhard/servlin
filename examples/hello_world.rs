@@ -31,7 +31,7 @@
 #![forbid(unsafe_code)]
 use permit::Permit;
 use safina::executor::Executor;
-use servlin::{socket_addr_127_0_0_1, HttpServerBuilder, Response};
+use servlin::{HttpServerBuilder, Response, socket_addr_127_0_0_1};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use std::sync::Arc;

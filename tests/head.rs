@@ -8,7 +8,7 @@ use futures_lite::AsyncWriteExt;
 use safina::async_test;
 use safina::sync::Receiver;
 use safina::timer::sleep_for;
-use servlin::internal::{read_http_head, Head, HeadError, HttpError};
+use servlin::internal::{Head, HeadError, HttpError, read_http_head};
 use servlin::{AsciiString, HeaderList, Response};
 use std::time::Duration;
 use test_util::connected_streams;

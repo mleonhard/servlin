@@ -35,15 +35,11 @@ fn parse_url() {
         "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 51\r\n\r\nerror processing url: invalid digit found in string",
     );
     assert_eq!(
-        server
-            .exchange("M /? HTTP/1.1\r\n\r\n")
-            .unwrap(),
+        server.exchange("M /? HTTP/1.1\r\n\r\n").unwrap(),
         "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 41\r\n\r\nerror processing url: missing field `num`",
     );
     assert_eq!(
-        server
-            .exchange("M / HTTP/1.1\r\n\r\n")
-            .unwrap(),
+        server.exchange("M / HTTP/1.1\r\n\r\n").unwrap(),
         "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 41\r\n\r\nerror processing url: missing field `num`",
     );
 }

@@ -1,5 +1,5 @@
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cookie
-use crate::test_util::{assert_ends_with, assert_starts_with, TestServer};
+use crate::test_util::{TestServer, assert_ends_with, assert_starts_with};
 use servlin::Response;
 
 mod test_util;

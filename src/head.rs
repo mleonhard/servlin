@@ -4,7 +4,7 @@ use crate::{AsciiString, Header, HeaderList};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
 use futures_lite::AsyncReadExt;
-use safe_regex::{regex, Matcher2, Matcher3};
+use safe_regex::{Matcher2, Matcher3, regex};
 use url::Url;
 
 fn trim_trailing_cr(bytes: &[u8]) -> &[u8] {

@@ -1,5 +1,5 @@
 use crate::http_error::HttpError;
-use crate::util::{copy_async, escape_and_elide, CopyResult};
+use crate::util::{CopyResult, copy_async, escape_and_elide};
 use crate::{BodyAsyncReader, BodyReader};
 use futures_io::AsyncRead;
 use futures_lite::{AsyncReadExt, AsyncWriteExt};

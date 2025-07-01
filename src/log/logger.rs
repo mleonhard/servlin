@@ -1,13 +1,13 @@
 use crate::internal::{EpochTime, FormatTime, ToDateTime};
+use crate::log::Level;
 use crate::log::tag::Tag;
 use crate::log::tag_list::TagList;
 use crate::log::tag_value::TagValue;
-use crate::log::Level;
 use crate::{Error, Request};
 use std::cell::RefCell;
 use std::io::Write;
 use std::ops::Deref;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use std::sync::{Mutex, MutexGuard};
 use std::time::SystemTime;
 
@@ -44,9 +44,15 @@ impl LogEvent {
         let level = self.level;
         let tags = &self.tags;
         if tags.is_empty() {
-            writeln!(f, "{{\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",\"time_ns\":{time_ns}}}")
+            writeln!(
+                f,
+                "{{\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",\"time_ns\":{time_ns}}}"
+            )
         } else {
-            writeln!(f, "{{\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",{tags},\"time_ns\":{time_ns}}}")
+            writeln!(
+                f,
+                "{{\"time\":\"{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z\",\"level\":\"{level}\",{tags},\"time_ns\":{time_ns}}}"
+            )
         }
     }
 }

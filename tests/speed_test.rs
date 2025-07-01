@@ -2,10 +2,10 @@ mod test_util;
 use crate::test_util::check_elapsed;
 use permit::Permit;
 use safina::executor::Executor;
-use servlin::{socket_addr_127_0_0_1_any_port, HttpServerBuilder, Response};
+use servlin::{HttpServerBuilder, Response, socket_addr_127_0_0_1_any_port};
 use std::io::{Read, Write};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 #[test]

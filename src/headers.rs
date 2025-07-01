@@ -1,5 +1,5 @@
-use crate::util::escape_and_elide;
 use crate::AsciiString;
+use crate::util::escape_and_elide;
 use core::fmt::{Debug, Display, Formatter};
 use std::ops::{Deref, DerefMut};
 

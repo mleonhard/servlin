@@ -4,13 +4,13 @@ use std::convert::TryFrom;
 use std::io::ErrorKind;
 use std::io::Write;
 
-use crate::event::EventReceiver;
-use crate::http_error::HttpError;
-use crate::util::{copy_async, copy_chunked_async};
 #[cfg(any(feature = "include_dir", feature = "json"))]
 use crate::Error;
 #[cfg(feature = "include_dir")]
 use crate::Request;
+use crate::event::EventReceiver;
+use crate::http_error::HttpError;
+use crate::util::{copy_async, copy_chunked_async};
 use crate::{AsciiString, ContentType, Cookie, EventSender, HeaderList, ResponseBody};
 use safina::sync::sync_channel;
 use std::fmt::Debug;

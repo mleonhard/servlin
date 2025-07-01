@@ -4,7 +4,7 @@ use crate::request_body::{
     read_http_body_to_file, read_http_body_to_vec, read_http_unsized_body_to_file,
     read_http_unsized_body_to_vec,
 };
-use crate::response::{write_http_response, ResponseKind};
+use crate::response::{ResponseKind, write_http_response};
 use crate::token_set::Token;
 use crate::util::AsyncWriteCounter;
 use crate::{Request, RequestBody, Response};

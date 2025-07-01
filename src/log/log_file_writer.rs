@@ -1,13 +1,13 @@
 #![allow(clippy::unnecessary_debug_formatting)]
+use crate::Error;
 use crate::internal::ToDateTime;
 use crate::log::logger::LogEvent;
 use crate::log::prefix_file_set::{PrefixFile, PrefixFileSet};
-use crate::log::{tag, Level};
-use crate::Error;
+use crate::log::{Level, tag};
 use std::fs::{File, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use std::time::{Duration, SystemTime};
 
 pub struct LogFile {
@@ -39,7 +39,7 @@ impl LogFile {
                         len: 0,
                         path,
                         created: SystemTime::now(),
-                    })
+                    });
                 }
                 Err(e) if e.kind() == ErrorKind::AlreadyExists => {}
                 Err(e) => {

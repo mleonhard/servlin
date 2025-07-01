@@ -30,7 +30,7 @@
 //! ```
 #![forbid(unsafe_code)]
 use safina::executor::Executor;
-use servlin::{socket_addr_127_0_0_1, HttpServerBuilder, Request, Response};
+use servlin::{HttpServerBuilder, Request, Response, socket_addr_127_0_0_1};
 use std::sync::Arc;
 
 pub fn main() {

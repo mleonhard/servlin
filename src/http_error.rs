@@ -1,5 +1,5 @@
-use crate::head::HeadError;
 use crate::Response;
+use crate::head::HeadError;
 use safina::timer::{DeadlineError, DeadlineExceededError};
 use std::io::ErrorKind;
 

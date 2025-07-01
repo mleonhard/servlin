@@ -29,11 +29,11 @@
 //! ```
 #![forbid(unsafe_code)]
 use safina::executor::Executor;
-use servlin::log::{log_request_and_response, set_global_logger, LogFileWriter};
-use servlin::{socket_addr_127_0_0_1, Error, HttpServerBuilder, Request, Response};
+use servlin::log::{LogFileWriter, log_request_and_response, set_global_logger};
+use servlin::{Error, HttpServerBuilder, Request, Response, socket_addr_127_0_0_1};
 use std::io::Read;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use temp_dir::TempDir;
 
 pub struct State {

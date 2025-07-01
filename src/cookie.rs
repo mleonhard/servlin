@@ -1,5 +1,5 @@
-use crate::time::FormatTime;
 use crate::AsciiString;
+use crate::time::FormatTime;
 use core::fmt::{Display, Formatter};
 use core::time::Duration;
 use std::time::SystemTime;

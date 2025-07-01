@@ -4,7 +4,7 @@ use fixed_buffer::FixedBuf;
 use futures_lite::AsyncWriteExt;
 use safina::async_test;
 use safina::sync::Receiver;
-use servlin::internal::{read_http_request, HttpError};
+use servlin::internal::{HttpError, read_http_request};
 use servlin::{AsciiString, ContentType, Request, RequestBody};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::Duration;

@@ -1,4 +1,4 @@
-use crate::test_util::{read_for, TestServer};
+use crate::test_util::{TestServer, read_for};
 use servlin::{Event, Response};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

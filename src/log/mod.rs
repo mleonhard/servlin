@@ -12,13 +12,13 @@ pub use log_file_writer::LogFileWriter;
 use logger::log;
 pub use logger::set_global_logger;
 pub use logger::{
-    add_thread_local_log_tag, add_thread_local_log_tags_from_request, clear_thread_local_log_tags,
-    with_thread_local_log_tags, LoggerStoppedError,
+    LoggerStoppedError, add_thread_local_log_tag, add_thread_local_log_tags_from_request,
+    clear_thread_local_log_tags, with_thread_local_log_tags,
 };
 use std::fmt::{Display, Formatter};
 use std::time::{Instant, SystemTime};
-pub use tag::tag;
 use tag::Tag;
+pub use tag::tag;
 pub use tag_list::*;
 
 pub mod internal {

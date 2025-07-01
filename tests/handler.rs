@@ -1,6 +1,6 @@
 use crate::test_util::{
-    assert_ends_with, assert_starts_with, check_elapsed, read_for, read_response, read_to_string,
-    TestServer,
+    TestServer, assert_ends_with, assert_starts_with, check_elapsed, read_for, read_response,
+    read_to_string,
 };
 use servlin::{ContentType, Response};
 use std::io::{Read, Write};
@@ -384,7 +384,9 @@ fn client_incomplete_read() {
 fn unsupported_transfer_encoding() {
     let server = TestServer::start(|_req| Response::new(200)).unwrap();
     assert_eq!(
-        server.exchange("M / HTTP/1.1\r\ntransfer-encoding: unknown1\r\n\r\n").unwrap(),
+        server
+            .exchange("M / HTTP/1.1\r\ntransfer-encoding: unknown1\r\n\r\n")
+            .unwrap(),
         "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 38\r\n\r\nHttpError::UnsupportedTransferEncoding",
     );
 }
@@ -393,7 +395,9 @@ fn unsupported_transfer_encoding() {
 fn chunked_not_supported() {
     let server = TestServer::start(|_req| Response::get_body_and_reprocess(100)).unwrap();
     assert_eq!(
-        server.exchange("M / HTTP/1.1\r\ntransfer-encoding:chunked\r\n\r\n3\r\nabc\r\n0\r\n\r\n").unwrap(),
+        server
+            .exchange("M / HTTP/1.1\r\ntransfer-encoding:chunked\r\n\r\n3\r\nabc\r\n0\r\n\r\n")
+            .unwrap(),
         "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 38\r\n\r\nHttpError::UnsupportedTransferEncoding",
     );
 }
@@ -402,7 +406,11 @@ fn chunked_not_supported() {
 fn chunked_not_last() {
     let server = TestServer::start(|_req| Response::get_body_and_reprocess(100)).unwrap();
     assert_eq!(
-        server.exchange("M / HTTP/1.1\r\ntransfer-encoding:chunked, gzip\r\n\r\n3\r\nabc\r\n0\r\n\r\n").unwrap(),
+        server
+            .exchange(
+                "M / HTTP/1.1\r\ntransfer-encoding:chunked, gzip\r\n\r\n3\r\nabc\r\n0\r\n\r\n"
+            )
+            .unwrap(),
         "HTTP/1.1 400 Bad Request\r\ncontent-type: text/plain; charset=UTF-8\r\ncontent-length: 38\r\n\r\nHttpError::UnsupportedTransferEncoding",
     );
 }

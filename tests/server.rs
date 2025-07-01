@@ -1,7 +1,7 @@
 use crate::test_util::check_elapsed;
 use permit::Permit;
 use safina::sync::Receiver;
-use servlin::{socket_addr_127_0_0_1_any_port, HttpServerBuilder};
+use servlin::{HttpServerBuilder, socket_addr_127_0_0_1_any_port};
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 

@@ -13,11 +13,7 @@ fn is_leap_year(year: i64) -> bool {
 }
 
 fn year_len_days(year: i64) -> i64 {
-    if is_leap_year(year) {
-        366
-    } else {
-        365
-    }
+    if is_leap_year(year) { 366 } else { 365 }
 }
 
 #[allow(clippy::missing_panics_doc)]
