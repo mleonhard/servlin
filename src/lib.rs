@@ -101,7 +101,8 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
-//! - v0.7.0 2025-06-23
+//! - v0.7.0 2025-06-30
+//!    - Require Rust 2024 edition.
 //!   - `log_request_and_response` to log `duration_ms` tag.
 //!   - Fix typo in function name `Response::internal_server_errror_500`.
 //!   - Close connection on 5xx error.
@@ -110,6 +111,7 @@
 //!   - Add [`Response::too_many_requests_429`].
 //!   - Implement `Into<TagList>` for arrays.
 //!   - Support asterisk request target.
+//!   - Use `safina` v0.7.
 //! - v0.6.0 2024-11-02
 //!   - Remove `servlin::reexports` module.
 //!   - Use `safina` v0.6.0.

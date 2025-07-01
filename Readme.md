@@ -195,7 +195,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      🔒  │           ├── safe-proc-macro2 1.0.95
 0/0        0/0          0/0    0/0     0/0      🔒  │           └── safe-quote 1.0.40
 0/0        0/0          0/0    0/0     0/0      🔒  │               └── safe-proc-macro2 1.0.95
-0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.6.0
+0/0        0/0          0/0    0/0     0/0      🔒  ├── safina 0.7.0
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── safina-macros 0.1.3
 0/0        0/0          0/0    0/0     0/0      🔒  │       ├── safe-proc-macro2 1.0.95
 0/0        0/0          0/0    0/0     0/0      🔒  │       └── safe-quote 1.0.40
@@ -313,7 +313,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 
 # Changelog
-- v0.7.0 2025-06-23
+- v0.7.0 2025-06-30
+   - Require Rust 2024 edition.
   - `log_request_and_response` to log `duration_ms` tag.
   - Fix typo in function name `Response::internal_server_errror_500`.
   - Close connection on 5xx error.
@@ -322,6 +323,7 @@ See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/mai
   - Add [`Response::too_many_requests_429`].
   - Implement `Into<TagList>` for arrays.
   - Support asterisk request target.
+  - Use `safina` v0.7.
 - v0.6.0 2024-11-02
   - Remove `servlin::reexports` module.
   - Use `safina` v0.6.0.
