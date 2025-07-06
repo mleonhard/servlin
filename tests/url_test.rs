@@ -2,6 +2,36 @@ use servlin::{Url, UrlParseError};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 #[test]
+fn percent_decode() {
+    assert_eq!(Url::percent_decode(""), "");
+    assert_eq!(Url::percent_decode("abc"), "abc");
+    assert_eq!(Url::percent_decode("%"), "%");
+    assert_eq!(Url::percent_decode("%2"), "%2");
+    assert_eq!(Url::percent_decode("%2X"), "%2X");
+    assert_eq!(Url::percent_decode("%2%2a"), "%2*");
+    assert_eq!(Url::percent_decode("%2a"), "*");
+    assert_eq!(Url::percent_decode("%2A"), "*");
+    assert_eq!(Url::percent_decode("%c3%a6"), "æ");
+    assert_eq!(Url::percent_decode("a%c3%a6b"), "aæb");
+    assert_eq!(Url::percent_decode("%c3"), "\u{fffd}");
+    assert_eq!(Url::percent_decode("%c3X"), "\u{fffd}X");
+}
+
+#[test]
+fn percent_encode() {
+    assert_eq!(Url::percent_encode(""), "");
+    assert_eq!(Url::percent_encode("abc"), "abc");
+    assert_eq!(Url::percent_encode("%"), "%");
+    assert_eq!(Url::percent_encode("%2"), "%2");
+    assert_eq!(Url::percent_encode("%2X"), "%2X");
+    assert_eq!(Url::percent_encode("%2*"), "%2%2A");
+    assert_eq!(Url::percent_encode("*"), "%2A");
+    assert_eq!(Url::percent_encode("æ"), "%C3%A6");
+    assert_eq!(Url::percent_encode("aæb"), "a%C3%A6b");
+    assert_eq!(Url::percent_encode("\u{fffd}"), "%EF%BF%BD");
+}
+
+#[test]
 fn parse_absolute() {
     assert_eq!(Url::parse_absolute(""), Err(UrlParseError::MalformedUrl));
     assert_eq!(
@@ -173,11 +203,11 @@ fn parse_absolute_path() {
     // assert_eq!(Url::parse_absolute("http:///p1").unwrap().path, "/p1");
     assert_eq!(
         Url::parse_absolute(
-            "http://h/-._~!$&'()*,;=:@/%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            "http://h/-._~%!$&'()*,;=:@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789%C3%A6"
         )
             .unwrap()
             .path,
-        "/-._~!$&'()*,;=:@/%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        "/-._~%!$&'()*,;=:@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789æ"
     );
     assert_eq!(
         Url::parse_absolute("http://h/^"),

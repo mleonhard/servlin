@@ -21,6 +21,97 @@ pub struct Url {
     pub fragment: String,
 }
 impl Url {
+    /// # Panics
+    /// Panics when `b` is not in `0..=15`.
+    #[must_use]
+    pub fn upper_hex_char(b: u8) -> char {
+        const TABLE: [char; 16] = [
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+        ];
+        assert!(b < 16, "cannot convert number to hex: {b}");
+        TABLE[b as usize]
+    }
+
+    #[must_use]
+    pub fn from_hex_byte(b: u8) -> Option<u8> {
+        match b {
+            b'0'..=b'9' => Some(b - b'0'),
+            b'a'..=b'f' => Some(10 + b - b'a'),
+            b'A'..=b'F' => Some(10 + b - b'A'),
+            _ => None,
+        }
+    }
+
+    pub fn percent_decode(bytes: impl AsRef<[u8]>) -> String {
+        // https://datatracker.ietf.org/doc/html/rfc3986#section-2.1
+        let mut result_bytes: Vec<u8> = Vec::new();
+        let bytes = bytes.as_ref();
+        let mut n = 0;
+        while n < bytes.len() {
+            match bytes[n] {
+                b'%' if n + 2 < bytes.len() => {
+                    let opt_d1 = Self::from_hex_byte(bytes[n + 1]);
+                    let opt_d0 = Self::from_hex_byte(bytes[n + 2]);
+                    match (opt_d1, opt_d0) {
+                        (Some(d1), Some(d0)) => {
+                            let b = (d1 << 4) | d0;
+                            result_bytes.push(b);
+                            n += 2;
+                        }
+                        _ => result_bytes.push(b'%'),
+                    }
+                }
+                c => result_bytes.push(c),
+            }
+            n += 1;
+        }
+        String::from_utf8_lossy(&result_bytes).to_string()
+    }
+
+    pub fn percent_encode(s: impl AsRef<str>) -> String {
+        // https://datatracker.ietf.org/doc/html/rfc3986#section-2.1
+        // reserved   = gen-delims / sub-delims
+        // gen-delims = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+        // sub-delims = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / ";" / "="
+        let mut result = String::new();
+        for c in s.as_ref().chars() {
+            let is_reserved = matches!(
+                c,
+                ':' | '/'
+                    | '?'
+                    | '#'
+                    | '['
+                    | ']'
+                    | '@'
+                    | '!'
+                    | '$'
+                    | '&'
+                    | '\''
+                    | '('
+                    | ')'
+                    | '*'
+                    | '+'
+                    | ','
+                    | ';'
+                    | '='
+            );
+            if !is_reserved && c.is_ascii() {
+                result.push(c);
+            } else {
+                let mut buf = [0; 4];
+                let c_str = c.encode_utf8(&mut buf);
+                for b in c_str.as_bytes() {
+                    let d1 = *b >> 4;
+                    let d0 = *b & 0xf;
+                    result.push('%');
+                    result.push(Self::upper_hex_char(d1));
+                    result.push(Self::upper_hex_char(d0));
+                }
+            }
+        }
+        result
+    }
+
     /// # Errors
     /// Returns an error when it fails to parse `url_s`.
     #[allow(clippy::missing_panics_doc)]
@@ -119,7 +210,7 @@ impl Url {
             ),
             _ => return Err(UrlParseError::PortOutOfRange),
         };
-        let path = std::str::from_utf8(path_bytes).unwrap().to_string();
+        let path = Self::percent_decode(std::str::from_utf8(path_bytes).unwrap());
         let query = std::str::from_utf8(query_bytes).unwrap().to_string();
         let fragment = std::str::from_utf8(fragment_bytes).unwrap().to_string();
         Ok(Self {
