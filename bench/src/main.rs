@@ -1,7 +1,13 @@
+//! ```
 //! Run: cargo run --release
 //! 2 threads: small_rps = 80200, medium_rps = 105400, large_rps = 10600
 //! 4 threads: small_rps = 77800, medium_rps = 109000, large_rps = 9550
+//! ```
 
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::items_after_statements)]
 use fixed_buffer::{FixedBuf, MalformedInputError};
 use permit::Permit;
 use safe_regex::{Matcher1, regex};
@@ -93,25 +99,24 @@ impl Ctx {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct MaxMeasurableRps(usize);
-
+#[allow(clippy::missing_panics_doc)]
+#[must_use]
 pub fn measure_tcp_rps(
     addr: SocketAddr,
     error_limit: f32,
     time_limit: (f32, Duration),
     f: Box<AsyncMeasureFn>,
-) -> Result<u64, MaxMeasurableRps> {
+) -> u64 {
     let rt = tokio::runtime::Runtime::new().unwrap();
     let ctx = Arc::new(Ctx {
         addr,
-        count_slow: Default::default(),
-        count_all: Default::default(),
-        count_error: Default::default(),
+        count_slow: AtomicU64::default(),
+        count_all: AtomicU64::default(),
+        count_error: AtomicU64::default(),
         f: Box::new(f),
         request_spacing_nanos: AtomicU64::new(100_000_000),
         time_limit: time_limit.1,
-        duration_ns: Default::default(),
+        duration_ns: AtomicU64::default(),
     });
     let mut num_tasks = 1u64;
     for _ in 0..num_tasks {
@@ -184,9 +189,10 @@ pub fn measure_tcp_rps(
         let k = if ok { 1.0 + step } else { 1.0 - step };
         target_rps = 10.max((k * (target_rps as f32)) as u64);
     }
-    Ok(target_rps)
+    target_rps
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn deframe_http_head(
     b: &[u8],
 ) -> Result<(usize, Option<core::ops::Range<usize>>), MalformedInputError> {
@@ -230,7 +236,7 @@ async fn do_http_request(
             escape_and_elide(head, 100)
         ));
     }
-    let mut content_length = get_content_length(&head)?;
+    let mut content_length = get_content_length(head)?;
     if let Some(expected_response) = expected_body {
         let deframe_expected_bytes = |b: &[u8]| {
             if content_length <= b.len() {
@@ -249,7 +255,7 @@ async fn do_http_request(
                 return Err(format!("unexpected response: {}", escape_and_elide(b, 100)));
             }
             Err(e) => return Err(format!("error reading: {e}")),
-        };
+        }
     } else {
         content_length -= buf.len();
         buf.clear();
@@ -266,13 +272,13 @@ async fn do_http_request(
     Ok(conn)
 }
 
-const MEDIUM_RESPONSE: [u8; 16384] = [b'M'; 16384];
-const LARGE_RESPONSE: [u8; 512 * 1024] = [b'L'; 512 * 1024];
+static MEDIUM_RESPONSE: [u8; 16384] = [b'M'; 16384];
+static LARGE_RESPONSE: [u8; 512 * 1024] = [b'L'; 512 * 1024];
 
 fn main() {
     let permit = Permit::new();
     safina::timer::start_timer_thread();
-    let handler = |req: Request| match req.url.path() {
+    let handler = |req: Request| match req.url.path.as_str() {
         "/drop_connection" => Response::drop_connection(),
         "/small" => Response::text(200, "small_response1"),
         "/medium" => Response::text(200, MEDIUM_RESPONSE),
@@ -300,8 +306,7 @@ fn main() {
         0.1,
         limit,
         Box::new(move |conn| Box::pin(do_http_request(conn, "/small", Some("small_response1")))),
-    )
-    .unwrap();
+    );
     dbg! {small_rps};
     // let medium_rps = measure_tcp_rps(addr, 0.1, &limits, move |conn| {
     //     do_http_request(conn, "/medium", None)
