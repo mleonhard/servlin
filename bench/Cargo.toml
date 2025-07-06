@@ -8,8 +8,9 @@ version = "0.0.0"
 fixed-buffer = { version = "1", features = ["tokio"] }
 permit = { version = "0.2" }
 safe-regex = "0.3"
-safina = { version = "0.7", path = "../../safina-rs/safina" }
-servlin = { version = "0.7", path = ".." }
+#safina = { version = "0", path = "../../safina-rs/safina" }
+safina = { version = "0.7" }
+servlin = { version = "0", path = ".." }
 #ntex = { version = "2", features = ["tokio"] }
 tokio = { version = "1", features = ["io-util", "net", "rt-multi-thread", "time"] }
 
