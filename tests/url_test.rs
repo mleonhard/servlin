@@ -1,34 +1,40 @@
-use servlin::{Url, UrlParseError};
+use servlin::{PercentEncodePurpose, Url, UrlParseError, percent_decode, percent_encode};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 #[test]
-fn percent_decode() {
-    assert_eq!(Url::percent_decode(""), "");
-    assert_eq!(Url::percent_decode("abc"), "abc");
-    assert_eq!(Url::percent_decode("%"), "%");
-    assert_eq!(Url::percent_decode("%2"), "%2");
-    assert_eq!(Url::percent_decode("%2X"), "%2X");
-    assert_eq!(Url::percent_decode("%2%2a"), "%2*");
-    assert_eq!(Url::percent_decode("%2a"), "*");
-    assert_eq!(Url::percent_decode("%2A"), "*");
-    assert_eq!(Url::percent_decode("%c3%a6"), "æ");
-    assert_eq!(Url::percent_decode("a%c3%a6b"), "aæb");
-    assert_eq!(Url::percent_decode("%c3"), "\u{fffd}");
-    assert_eq!(Url::percent_decode("%c3X"), "\u{fffd}X");
+fn percent_decode_test() {
+    assert_eq!(percent_decode(""), "");
+    assert_eq!(percent_decode("abc"), "abc");
+    assert_eq!(percent_decode("%"), "%");
+    assert_eq!(percent_decode("%2"), "%2");
+    assert_eq!(percent_decode("%2X"), "%2X");
+    assert_eq!(percent_decode("%2%2a"), "%2*");
+    assert_eq!(percent_decode("%2a"), "*");
+    assert_eq!(percent_decode("%2A"), "*");
+    assert_eq!(percent_decode("%c3%a6"), "æ");
+    assert_eq!(percent_decode("a%c3%a6b"), "aæb");
+    assert_eq!(percent_decode("%c3"), "\u{fffd}");
+    assert_eq!(percent_decode("%c3X"), "\u{fffd}X");
 }
 
 #[test]
-fn percent_encode() {
-    assert_eq!(Url::percent_encode(""), "");
-    assert_eq!(Url::percent_encode("abc"), "abc");
-    assert_eq!(Url::percent_encode("%"), "%");
-    assert_eq!(Url::percent_encode("%2"), "%2");
-    assert_eq!(Url::percent_encode("%2X"), "%2X");
-    assert_eq!(Url::percent_encode("%2*"), "%2%2A");
-    assert_eq!(Url::percent_encode("*"), "%2A");
-    assert_eq!(Url::percent_encode("æ"), "%C3%A6");
-    assert_eq!(Url::percent_encode("aæb"), "a%C3%A6b");
-    assert_eq!(Url::percent_encode("\u{fffd}"), "%EF%BF%BD");
+fn percent_encode_test() {
+    assert_eq!(percent_encode("", PercentEncodePurpose::Path), "");
+    assert_eq!(percent_encode("abc", PercentEncodePurpose::Path), "abc");
+    assert_eq!(percent_encode("%", PercentEncodePurpose::Path), "%");
+    assert_eq!(percent_encode("%2", PercentEncodePurpose::Path), "%2");
+    assert_eq!(percent_encode("%2X", PercentEncodePurpose::Path), "%2X");
+    assert_eq!(percent_encode("%2#", PercentEncodePurpose::Path), "%2%23");
+    assert_eq!(percent_encode("#", PercentEncodePurpose::Path), "%23");
+    assert_eq!(percent_encode("æ", PercentEncodePurpose::Path), "%C3%A6");
+    assert_eq!(
+        percent_encode("aæb", PercentEncodePurpose::Path),
+        "a%C3%A6b"
+    );
+    assert_eq!(
+        percent_encode("\u{fffd}", PercentEncodePurpose::Path),
+        "%EF%BF%BD"
+    );
 }
 
 #[test]
@@ -259,5 +265,28 @@ fn parse_absolute_fragment() {
     assert_eq!(
         Url::parse_absolute("http://h#^"),
         Err(UrlParseError::MalformedUrl)
+    );
+}
+
+#[test]
+fn display() {
+    assert_eq!(
+        format!(
+            "{}",
+            Url::parse_absolute("http://u1:p1@h1:2/d1?q1#f1").unwrap()
+        ),
+        "http://u1:p1@h1:2/d1?q1#f1"
+    );
+    assert_eq!(
+        format!("{}", Url::parse_absolute("http://h1/d1#f1").unwrap()),
+        "http://h1/d1#f1"
+    );
+    assert_eq!(
+        format!("{}", Url::parse_absolute("http://h1:2?q1").unwrap()),
+        "http://h1:2?q1"
+    );
+    assert_eq!(
+        format!("{}", Url::parse_absolute("http://h1/d1%23").unwrap()),
+        "http://h1/d1%23"
     );
 }

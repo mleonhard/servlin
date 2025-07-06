@@ -199,7 +199,7 @@ pub use crate::request::Request;
 pub use crate::request_body::RequestBody;
 pub use crate::response::Response;
 pub use crate::response_body::ResponseBody;
-pub use crate::url::{Url, UrlParseError};
+pub use crate::url::{PercentEncodePurpose, Url, UrlParseError, percent_decode, percent_encode};
 
 /// This part of the library is not covered by the semver guarantees.
 /// If you use these in your program, a minor version upgrade could break your build.
