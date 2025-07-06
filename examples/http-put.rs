@@ -68,7 +68,7 @@ fn put(state: Arc<State>, req: Request) -> Result<Response, Error> {
 }
 
 fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
-    match (req.method(), req.url().path()) {
+    match (req.method(), req.url().path.as_str()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("PUT", "/upload") => put(state, req),
         (_, "/upload") => Ok(Response::method_not_allowed_405(&["PUT"])),

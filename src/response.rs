@@ -87,7 +87,7 @@ impl Response {
     // TODO: Change this to handle HEAD requests properly.
     // TODO: Honor Accept request header.
     pub fn include_dir(req: &Request, dir: &'static include_dir::Dir) -> Result<Response, Error> {
-        let path = req.url.path();
+        let path = &req.url.path;
         let path = path.strip_prefix('/').unwrap_or(path);
         let file = if path.is_empty() {
             dir.get_file("index.html")

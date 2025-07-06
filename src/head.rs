@@ -1,11 +1,10 @@
 use crate::http_error::HttpError;
 use crate::util::find_slice;
-use crate::{AsciiString, Header, HeaderList};
+use crate::{AsciiString, Header, HeaderList, Url};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
 use futures_lite::AsyncReadExt;
 use safe_regex::{Matcher2, Matcher3, regex};
-use url::Url;
 
 fn trim_trailing_cr(bytes: &[u8]) -> &[u8] {
     if let Some(&b'\r') = bytes.last() {
@@ -88,10 +87,7 @@ impl Head {
         if url_string != "*" && !url_string.starts_with('/') {
             return Err(HeadError::MalformedPath);
         }
-        let url = Url::options()
-            .base_url(Some(&Url::parse("http://unknown/").unwrap()))
-            .parse(url_string)
-            .map_err(|_| HeadError::MalformedPath)?;
+        let url = Url::parse_relative(url_string).map_err(|_| HeadError::MalformedPath)?;
         if proto_bytes != b"HTTP/1.1" {
             return Err(HeadError::UnsupportedProtocol);
         }
@@ -163,11 +159,8 @@ impl core::fmt::Debug for Head {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         write!(
             f,
-            "Head{{method={:?}, path={:?}, query={:?}, headers={:?}}}",
-            self.method,
-            self.url.path(),
-            self.url.query().unwrap_or(""),
-            self.headers
+            "Head{{method={:?}, url={}, headers={:?}}}",
+            self.method, self.url, self.headers
         )
     }
 }

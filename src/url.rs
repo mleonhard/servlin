@@ -1,4 +1,4 @@
-use safe_regex::{Matcher9, regex};
+use safe_regex::{Matcher3, Matcher9, regex};
 use std::fmt::{Display, Formatter};
 use std::net::IpAddr;
 
@@ -59,15 +59,35 @@ pub enum PercentEncodePurpose {
 #[allow(clippy::match_same_arms)]
 pub fn percent_encode(s: impl AsRef<str>, purpose: PercentEncodePurpose) -> String {
     // https://datatracker.ietf.org/doc/html/rfc3986#section-2.1
-    // reserved   = gen-delims / sub-delims
-    // gen-delims = ":" / "/" / "?" / "#" / "[" / "]" / "@"
-    // sub-delims = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / ";" / "="
     let mut result = String::new();
     for c in s.as_ref().chars() {
         let is_reserved = match (purpose, c) {
             (PercentEncodePurpose::Fragment, _) => true,
-            (PercentEncodePurpose::Path, '#') => true,
-            (PercentEncodePurpose::Path, _) => false,
+            // path-abempty
+            (
+                PercentEncodePurpose::Path,
+                '-'
+                | '.'
+                | '_'
+                | '~'
+                | 'a'..='z'
+                | 'A'..='Z'
+                | '0'..='9'
+                | '!'
+                | '$'
+                | '&'
+                | '\''
+                | '('
+                | ')'
+                | '*'
+                | ','
+                | ';'
+                | '='
+                | ':'
+                | '@'
+                | '/',
+            ) => false,
+            (PercentEncodePurpose::Path, _) => true,
             (PercentEncodePurpose::UserInfo, '@' | '?' | '#') => true,
             (PercentEncodePurpose::UserInfo, _) => false,
         };
@@ -145,7 +165,6 @@ impl Url {
         // port          = *DIGIT
         // path-abempty  = *( "/" segment )
         // path-absolute = "/" [ segment-nz *( "/" segment ) ]
-        // path-noscheme = segment-nz-nc *( "/" segment )
         // path-rootless = segment-nz *( "/" segment )
         // path-empty    = 0<pchar>
         // segment       = *pchar
@@ -215,6 +234,50 @@ impl Url {
             host,
             ip,
             port,
+            path,
+            query,
+            fragment,
+        })
+    }
+
+    /// # Errors
+    /// Returns an error when it fails to parse `url_s`.
+    #[allow(clippy::missing_panics_doc)]
+    pub fn parse_relative(url_s: impl AsRef<[u8]>) -> Result<Self, UrlParseError> {
+        // https://datatracker.ietf.org/doc/html/rfc3986
+        // https://datatracker.ietf.org/doc/html/rfc7230#section-2.7
+        // URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
+        // hier-part     = "//" authority path-abempty
+        //               / path-absolute
+        //               / path-rootless
+        //               / path-empty
+        // unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+        // pct-encoded   = "%" HEXDIG HEXDIG
+        // sub-delims    = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / ";" / "="
+        // path-absolute = "/" [ segment-nz *( "/" segment ) ]
+        // path-rootless = segment-nz *( "/" segment )
+        // path-empty    = 0<pchar>
+        // segment       = *pchar
+        // segment-nz    = 1*pchar
+        // segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )
+        //               ; non-zero-length segment without any colon ":"
+        // pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
+        // query         = *( pchar / "/" / "?" )
+        // fragment      = *( pchar / "/" / "?" )
+        let orig_bytes = url_s.as_ref();
+        let matcher: Matcher3<_> = regex!(br"([-._~a-zA-Z0-9%!$&'()*,;=:@/]*)?(?:\?([-._~a-zA-Z0-9%!$&'()*,;=:@/?]*))?(?:#([-._~a-zA-Z0-9%!$&'()*,;=:@/?]*))?");
+        let (path_bytes, query_bytes, fragment_bytes) = matcher
+            .match_slices(orig_bytes)
+            .ok_or(UrlParseError::MalformedUrl)?;
+        let path = percent_decode(std::str::from_utf8(path_bytes).unwrap());
+        let query = std::str::from_utf8(query_bytes).unwrap().to_string();
+        let fragment = std::str::from_utf8(fragment_bytes).unwrap().to_string();
+        Ok(Self {
+            scheme: String::new(),
+            user: String::new(),
+            host: String::new(),
+            ip: None,
+            port: None,
             path,
             query,
             fragment,

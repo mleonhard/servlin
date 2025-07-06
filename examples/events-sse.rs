@@ -70,7 +70,7 @@ fn subscribe(state: Arc<State>, _req: Request) -> Result<Response, Error> {
 
 #[allow(clippy::unnecessary_wraps)]
 fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
-    match (req.method(), req.url().path()) {
+    match (req.method(), req.url().path.as_str()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("GET", "/subscribe") => subscribe(state, req),
         _ => Ok(Response::text(404, "Not found")),

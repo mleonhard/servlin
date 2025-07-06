@@ -7,7 +7,7 @@ keywords = ["web", "http", "server", "async", "threaded"]
 license = "MIT OR Apache-2.0"
 name = "servlin"
 repository = "https://github.com/mleonhard/servlin"
-version = "0.7.0"
+version = "0.8.0"
 
 [features]
 default = []
@@ -33,7 +33,6 @@ serde_json = { version = "1", optional = true, default-features = false, feature
 serde_urlencoded = { version = "0.7", optional = true, default-features = false, features = [] }
 temp-dir = { version = "0.1", default-features = false, features = [] }
 temp-file = { version = "0.1", default-features = false, features = [] }
-url = { version = "2", default-features = false, features = [] }
 
 [dev-dependencies]
 #safina = { version = "0.7", default-features = false, features = ["async_test"], path = "../safina-rs/safina" }

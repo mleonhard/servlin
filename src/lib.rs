@@ -66,7 +66,7 @@
 //! }
 //!
 //! fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
-//!     match (req.method(), req.url().path()) {
+//!     match (req.method(), req.url().path.as_str()) {
 //!         ("GET", "/ping") => Ok(Response::text(200, "ok")),
 //!         ("POST", "/hello") => hello(state, req),
 //!         _ => Ok(Response::text(404, "Not found")),
@@ -101,6 +101,7 @@
 //! See [rust-webserver-comparison.md](https://github.com/mleonhard/servlin/blob/main/rust-webserver-comparison.md).
 //!
 //! # Changelog
+//! - v0.8.0 2025-07-06 - Use own [Url] struct.
 //! - v0.7.0 2025-06-30
 //!    - Require Rust 2024 edition.
 //!   - `log_request_and_response` to log `duration_ms` tag.

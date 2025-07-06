@@ -9,10 +9,9 @@ use safina::async_test;
 use safina::sync::Receiver;
 use safina::timer::sleep_for;
 use servlin::internal::{Head, HeadError, HttpError, read_http_head};
-use servlin::{AsciiString, HeaderList, Response};
+use servlin::{AsciiString, HeaderList, Response, Url};
 use std::time::Duration;
 use test_util::connected_streams;
-use url::Url;
 
 #[test]
 fn request_line() {
@@ -70,7 +69,7 @@ fn try_read_request_line() {
         (
             Ok(Head {
                 method: "M".to_string(),
-                url: Url::parse("http://unknown/").unwrap(),
+                url: Url::parse_relative("/").unwrap(),
                 headers: HeaderList::default(),
             }),
             "M / HTTP/1.1\r\n\r\n",
@@ -101,7 +100,7 @@ fn try_read_url() {
         Head::try_read(&mut FixedBuf::from(*b"M / HTTP/1.1\r\n\r\n",)),
         Ok(Head {
             method: "M".to_string(),
-            url: Url::parse("http://unknown/").unwrap(),
+            url: Url::parse_relative("/").unwrap(),
             headers: HeaderList::default(),
         })
     );
@@ -109,7 +108,7 @@ fn try_read_url() {
         Head::try_read(&mut FixedBuf::from(*b"M /? HTTP/1.1\r\n\r\n",)),
         Ok(Head {
             method: "M".to_string(),
-            url: Url::parse("http://unknown/?").unwrap(),
+            url: Url::parse_relative("/?").unwrap(),
             headers: HeaderList::default(),
         })
     );
@@ -117,7 +116,7 @@ fn try_read_url() {
         Head::try_read(&mut FixedBuf::from(*b"M /?q HTTP/1.1\r\n\r\n",)),
         Ok(Head {
             method: "M".to_string(),
-            url: Url::parse("http://unknown/?q").unwrap(),
+            url: Url::parse_relative("/?q").unwrap(),
             headers: HeaderList::default(),
         })
     );
@@ -126,7 +125,7 @@ fn try_read_url() {
         Head::try_read(&mut FixedBuf::from(*b"M * HTTP/1.1\r\n\r\n",)),
         Ok(Head {
             method: "M".to_string(),
-            url: Url::parse("http://unknown/*").unwrap(),
+            url: Url::parse_relative("*").unwrap(),
             headers: HeaderList::default(),
         })
     );
@@ -291,10 +290,10 @@ fn head_try_read_reads() {
         .unwrap();
     let head = Head::try_read(&mut buf).unwrap();
     assert_eq!("A", head.method);
-    assert_eq!("/a", head.url.path());
+    assert_eq!("/a", head.url.path.as_str());
     let head = Head::try_read(&mut buf).unwrap();
     assert_eq!("B", head.method);
-    assert_eq!("/b", head.url.path());
+    assert_eq!("/b", head.url.path.as_str());
     assert_eq!(Err(HeadError::Truncated), Head::try_read(&mut buf));
 }
 
@@ -319,7 +318,7 @@ async fn read_http_head_ok() {
     stream.write_all(b"M / HTTP/1.1\r\n\r\n").await.unwrap();
     let head = receiver.async_recv().await.unwrap().unwrap();
     assert_eq!("M", head.method);
-    assert_eq!("/", head.url.path());
+    assert_eq!("/", head.url.path.as_str());
     assert!(head.headers.is_empty());
 }
 
@@ -364,7 +363,7 @@ async fn read_http_head_multiple_writes() {
     stream.flush().await.unwrap();
     let head = receiver.async_recv().await.unwrap().unwrap();
     assert_eq!("M", head.method);
-    assert_eq!("/", head.url.path());
+    assert_eq!("/", head.url.path.as_str());
     assert!(head.headers.is_empty());
 }
 
@@ -374,12 +373,26 @@ async fn read_http_head_subsequent() {
     stream.write_all(b"M /1 HTTP/1.1\r\n\r\n").await.unwrap();
     assert_eq!(
         "/1",
-        receiver.async_recv().await.unwrap().unwrap().url.path()
+        receiver
+            .async_recv()
+            .await
+            .unwrap()
+            .unwrap()
+            .url
+            .path
+            .as_str()
     );
     stream.write_all(b"M /2 HTTP/1.1\r\n\r\n").await.unwrap();
     assert_eq!(
         "/2",
-        receiver.async_recv().await.unwrap().unwrap().url.path()
+        receiver
+            .async_recv()
+            .await
+            .unwrap()
+            .unwrap()
+            .url
+            .path
+            .as_str()
     );
     drop(stream);
     assert_eq!(
@@ -404,7 +417,7 @@ fn head_derive() {
     assert_ne!(head1, head2);
     // Debug
     assert_eq!(
-        "Head{method=\"A\", path=\"/1\", query=\"q=x\", headers={H1: \"V1\", h2: \"v2\"}}",
+        "Head{method=\"A\", url=/1?q=x, headers={H1: \"V1\", h2: \"v2\"}}",
         format!("{head1:?}").as_str()
     );
 }

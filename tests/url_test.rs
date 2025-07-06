@@ -21,10 +21,10 @@ fn percent_decode_test() {
 fn percent_encode_test() {
     assert_eq!(percent_encode("", PercentEncodePurpose::Path), "");
     assert_eq!(percent_encode("abc", PercentEncodePurpose::Path), "abc");
-    assert_eq!(percent_encode("%", PercentEncodePurpose::Path), "%");
-    assert_eq!(percent_encode("%2", PercentEncodePurpose::Path), "%2");
-    assert_eq!(percent_encode("%2X", PercentEncodePurpose::Path), "%2X");
-    assert_eq!(percent_encode("%2#", PercentEncodePurpose::Path), "%2%23");
+    assert_eq!(percent_encode("%", PercentEncodePurpose::Path), "%25");
+    assert_eq!(percent_encode("%2", PercentEncodePurpose::Path), "%252");
+    assert_eq!(percent_encode("%2X", PercentEncodePurpose::Path), "%252X");
+    assert_eq!(percent_encode("%2#", PercentEncodePurpose::Path), "%252%23");
     assert_eq!(percent_encode("#", PercentEncodePurpose::Path), "%23");
     assert_eq!(percent_encode("æ", PercentEncodePurpose::Path), "%C3%A6");
     assert_eq!(
@@ -269,24 +269,111 @@ fn parse_absolute_fragment() {
 }
 
 #[test]
-fn display() {
+fn parse_relative_path() {
+    assert_eq!(Url::parse_relative("").unwrap().path, "");
+    assert_eq!(Url::parse_relative("/").unwrap().path, "/");
+    assert_eq!(Url::parse_relative("/p1").unwrap().path, "/p1");
     assert_eq!(
-        format!(
-            "{}",
-            Url::parse_absolute("http://u1:p1@h1:2/d1?q1#f1").unwrap()
-        ),
+        Url::parse_relative(
+            "/-._~%!$&'()*,;=:@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789%C3%A6"
+        )
+            .unwrap()
+            .path,
+        "/-._~%!$&'()*,;=:@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789æ"
+    );
+    assert_eq!(Url::parse_relative("/^"), Err(UrlParseError::MalformedUrl));
+}
+
+#[test]
+fn parse_relative_query() {
+    assert_eq!(Url::parse_relative("").unwrap().query, "");
+    assert_eq!(Url::parse_relative("?").unwrap().query, "");
+    assert_eq!(Url::parse_relative("/p1?q1").unwrap().query, "q1");
+    assert_eq!(Url::parse_relative("/p1?a=b").unwrap().query, "a=b");
+    assert_eq!(Url::parse_relative("/p1?a=b&c").unwrap().query, "a=b&c");
+    assert_eq!(
+        Url::parse_relative(
+            "/p?-._~!$&'()*,;=:@/?%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        )
+        .unwrap()
+        .query,
+        "-._~!$&'()*,;=:@/?%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    );
+    assert_eq!(Url::parse_relative("/?^"), Err(UrlParseError::MalformedUrl));
+}
+
+#[test]
+fn parse_relative_fragment() {
+    assert_eq!(Url::parse_relative("").unwrap().fragment, "");
+    assert_eq!(Url::parse_relative("#").unwrap().fragment, "");
+    assert_eq!(Url::parse_relative("#f1").unwrap().fragment, "f1");
+    assert_eq!(Url::parse_relative("/p1#f1").unwrap().fragment, "f1");
+    assert_eq!(
+        Url::parse_relative(
+            "/p#-._~!$&'()*,;=:@/?%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        )
+        .unwrap()
+        .fragment,
+        "-._~!$&'()*,;=:@/?%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    );
+    assert_eq!(Url::parse_relative("#^"), Err(UrlParseError::MalformedUrl));
+}
+
+#[test]
+fn display() {
+    // TODO: Test chars that are invalid in userinfo, query, fragment, etc.
+    assert_eq!(
+        Url::parse_absolute("http://u1:p1@h1:2/d1?q1#f1")
+            .unwrap()
+            .to_string(),
         "http://u1:p1@h1:2/d1?q1#f1"
     );
     assert_eq!(
-        format!("{}", Url::parse_absolute("http://h1/d1#f1").unwrap()),
-        "http://h1/d1#f1"
+        Url::parse_absolute("http://u1:p1@h1").unwrap().to_string(),
+        "http://u1:p1@h1"
     );
     assert_eq!(
-        format!("{}", Url::parse_absolute("http://h1:2?q1").unwrap()),
-        "http://h1:2?q1"
+        Url::parse_absolute("http://h1:2").unwrap().to_string(),
+        "http://h1:2"
     );
     assert_eq!(
-        format!("{}", Url::parse_absolute("http://h1/d1%23").unwrap()),
+        Url::parse_absolute("http://h1/d1").unwrap().to_string(),
+        "http://h1/d1"
+    );
+    assert_eq!(
+        Url::parse_absolute("http://h1/d1%23").unwrap().to_string(),
         "http://h1/d1%23"
     );
+    assert_eq!(
+        Url::parse_absolute("http://h1?q1").unwrap().to_string(),
+        "http://h1?q1"
+    );
+    assert_eq!(
+        Url::parse_absolute("http://h1#f1").unwrap().to_string(),
+        "http://h1#f1"
+    );
+
+    assert_eq!(
+        Url::parse_relative("/d1?q1#f1").unwrap().to_string(),
+        "/d1?q1#f1"
+    );
+    assert_eq!(Url::parse_relative("d1").unwrap().to_string(), "d1");
+    assert_eq!(Url::parse_relative("/d1").unwrap().to_string(), "/d1");
+    assert_eq!(Url::parse_relative("/d1%23").unwrap().to_string(), "/d1%23");
+    // Test chars outside of `path-abempty` `[-._~a-zA-Z0-9%!$&'()*,;=:@/]`.
+    assert_eq!(Url::parse_relative("/d1%5e").unwrap().to_string(), "/d1%5E");
+    assert_eq!(
+        Url::parse_relative("/d1%00%01%02%03%04%05%06%07%08%09%0a%0b%0c%0d%0f%10%11%12%13%14%15%16%17%18%19%1a%1b%1c%1d%1f")
+            .unwrap()
+            .to_string(),
+        "/d1%00%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1F"
+    );
+    assert_eq!(
+        Url::parse_relative("/d1%20%22%23%25%2b%3c%3e%3f%5c%5d%5e%60%7b%7c%7d")
+            .unwrap()
+            .to_string(),
+        "/d1%20%22%23%25%2B%3C%3E%3F%5C%5D%5E%60%7B%7C%7D"
+    );
+    assert_eq!(Url::parse_relative("?q1").unwrap().to_string(), "?q1");
+    assert_eq!(Url::parse_relative("#f1").unwrap().to_string(), "#f1");
 }

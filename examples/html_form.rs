@@ -100,7 +100,7 @@ fn add(state: Arc<State>, req: Request) -> Result<Response, Error> {
 }
 
 fn handle_req(state: Arc<State>, req: Request) -> Result<Response, Error> {
-    match (req.method(), req.url().path()) {
+    match (req.method(), req.url().path.as_str()) {
         ("GET", "/health") => Ok(Response::text(200, "ok")),
         ("GET", "/") => Ok(index(state)),
         ("POST", "/increment") => Ok(increment(state)),

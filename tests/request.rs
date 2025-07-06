@@ -27,7 +27,7 @@ async fn head() {
         .unwrap();
     assert_eq!(addr1(), req.remote_addr);
     assert_eq!("M", req.method());
-    assert_eq!("/1", req.url.path());
+    assert_eq!("/1", req.url.path.as_str());
     assert_eq!(
         Some("Val1"),
         req.headers.get_only("header1").map(AsciiString::as_str)
@@ -222,7 +222,7 @@ async fn read_http_request_ok() {
     stream.write_all(b"M / HTTP/1.1\r\n\r\n").await.unwrap();
     let req = receiver.async_recv().await.unwrap().unwrap();
     assert_eq!("M", req.method());
-    assert_eq!("/", req.url().path());
+    assert_eq!("/", req.url().path.as_str());
     drop(stream);
     receiver.async_recv().await.unwrap_err();
 }

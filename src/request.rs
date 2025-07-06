@@ -1,13 +1,12 @@
 use crate::head::read_http_head;
 use crate::http_error::HttpError;
 use crate::rand::next_insecure_rand_u64;
-use crate::{AsciiString, ContentType, HeaderList, RequestBody, Response};
+use crate::{AsciiString, ContentType, HeaderList, RequestBody, Response, Url};
 use fixed_buffer::FixedBuf;
 use futures_io::AsyncRead;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::SocketAddr;
-use url::Url;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Request {
@@ -168,8 +167,7 @@ impl Request {
     #[cfg(feature = "urlencoded")]
     pub fn parse_url<T: serde::de::DeserializeOwned>(&self) -> Result<T, Response> {
         use crate::util::escape_and_elide;
-        let url_str = self.url.query().unwrap_or_default();
-        serde_urlencoded::from_str(url_str).map_err(|e| {
+        serde_urlencoded::from_str(&self.url.query).map_err(|e| {
             Response::text(
                 400,
                 format!(
@@ -193,7 +191,7 @@ impl Debug for Request {
             "Request{{{}, method={}, path={:?}, headers={:?}, cookies={:?}, {:?}{}{}{}{}, {:?}}}",
             self.remote_addr,
             self.method(),
-            self.url().path(),
+            self.url().path,
             self.headers,
             cookie_strings,
             self.content_type(),
