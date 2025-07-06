@@ -180,6 +180,7 @@ mod response;
 mod response_body;
 mod time;
 mod token_set;
+mod url;
 mod util;
 
 pub use crate::accept::{
@@ -198,6 +199,7 @@ pub use crate::request::Request;
 pub use crate::request_body::RequestBody;
 pub use crate::response::Response;
 pub use crate::response_body::ResponseBody;
+pub use crate::url::{Url, UrlParseError};
 
 /// This part of the library is not covered by the semver guarantees.
 /// If you use these in your program, a minor version upgrade could break your build.
